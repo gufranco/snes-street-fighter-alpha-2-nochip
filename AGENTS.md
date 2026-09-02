@@ -66,6 +66,33 @@ fails to decompress is a missing entry in a table, not a broken decompressor, an
 the tools say which. Packing before verifying produces an image that boots and is
 wrong somewhere nobody looked.
 
+## The table is the design and the fallback is what keeps it honest
+
+The family standard carries this rule; what follows is what it means here.
+
+The table holds what the game asks for, never what the part accepts. Sizing
+against the part's input domain concludes that nothing can be stored, because the
+domain is the exponent of the argument count. Sizing against the game concludes
+that almost all of it can. Any figure here says which of the two it measured.
+
+What the game asks for is a property of the whole game. A recording is a floor,
+and a recording of the attract demo with the controls untouched is the lowest
+floor there is. A figure taken from one states the frames it covers and what the
+run was doing.
+
+Two questions come apart and are answered separately. Which calculations the game
+can ask for is answered by reading the whole image, and that closes. Which values
+it asks for them with is answered by running the game, and that does not: the
+values are computed from state the image does not hold.
+
+Every command has a fallback in 65816, and it is never optional. A lookup with no
+row has no answer, so a replacement that meets one either hangs or reads whatever
+was in memory. The intent is that the fallback never runs; the requirement is that
+it always could. A slower answer beats a stopped machine.
+
+A fallback nobody measured is a fallback nobody has. Its cost is stated in cycles
+and a build reports how often it fired, rather than asserting it did not.
+
 ## The input is a retail cartridge, and it is not here
 
 Neither image is in this repository and neither is any output. Everything
