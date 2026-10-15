@@ -213,8 +213,6 @@ class RetailRomTest(unittest.TestCase):
 
 
 class GatelessTest(unittest.TestCase):
-    """An image with no unlock gate is refused rather than written out unchanged."""
-
     def test_an_image_with_no_gate_is_refused(self) -> None:
         with self.assertRaises(ValueError) as raised:
             shinakuma.apply(bytes(0x40000))
@@ -223,8 +221,6 @@ class GatelessTest(unittest.TestCase):
 
 
 class EntryTest(unittest.TestCase):
-    """The command line, run with both streams collected rather than printed."""
-
     def _paths(self) -> tuple[Path, Path]:
         where = Path(tempfile.mkdtemp())
         source = where / "in.sfc"

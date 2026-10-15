@@ -45,15 +45,6 @@ class ShapeTest(unittest.TestCase):
 
 
 class GateTest(unittest.TestCase):
-    """The contract the recorded requests exist to enforce.
-
-    Each entry is an address the retail cartridge was observed to decompress
-    from, and the largest transfer it asked for. The converted image serves those
-    reads from a table, so an address the hardware asks for and the table does
-    not carry, or carries with a shorter length, hands the game the wrong bytes
-    for something the cartridge demonstrably needs.
-    """
-
     def test_every_address_the_hardware_asked_for_is_in_the_table(self) -> None:
         missing = [source for source, _ in requests_jp.REQUESTS if source not in TABLE]
 

@@ -22,11 +22,6 @@ APU = re.compile(r"^APU frame=(\d+) writes=\d+")
 
 
 def run(image: Path, mapping: str, execute: Callable[..., Any] = subprocess.run) -> Path:
-    """Drive one image and leave the emulator's log behind.
-
-    The reaching out is a parameter so the summarising and the verdict, which
-    are the parts worth testing, can be driven without a container.
-    """
     LOGS.mkdir(parents=True, exist_ok=True)
     log = LOGS / f"{image.stem}{mapping}.txt"
     with log.open("wb") as handle:
@@ -105,13 +100,6 @@ CART_MAPPING = "-1"
 
 
 def mapping_for(stem: str) -> str:
-    """Which map an image is read through, decided by the form it was built in.
-
-    A converted image is windowed, because it is larger than the address space
-    the cartridge layout can reach. One still in cartridge form is not, and
-    reading it through the windowed map would fetch the right bytes from the
-    wrong bank.
-    """
     return FREE_MAPPING if stem.endswith("-free") else CART_MAPPING
 
 
@@ -121,12 +109,6 @@ def main(
     drive: Callable[[Path, str], Path] = run,
     say: Callable[[str], None] = print,
 ) -> int:
-    """Drive every built image and report which of them failed.
-
-    The image list and the driving are parameters, so the verdict can be
-    driven without a container and without a build on disk. An image is a
-    failure when it did not load, missed a lookup, or stopped early.
-    """
     wanted = argv[1] if len(argv) > 1 else ""
     rows = []
     for image in sorted(IMAGES.glob("*.sfc")) if images is None else images:

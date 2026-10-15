@@ -32,11 +32,6 @@ JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 def retail(path: Path) -> bytes:
-    """The cartridge, or a skip when this machine does not have it.
-
-    Both arms are decided by what is on disk, so no single run covers both: a
-    machine with the dump never raises and a machine without it never reads.
-    """
     if not path.exists():  # pragma: no cover
         raise unittest.SkipTest(f"{path} is not present")
     return path.read_bytes()  # pragma: no cover
@@ -427,8 +422,6 @@ class RetailTest(unittest.TestCase):
 
 
 class EntryTest(unittest.TestCase):
-    """The command line, run with both streams collected rather than printed."""
-
     def _paths(self) -> tuple[Path, Path]:
         where = Path(tempfile.mkdtemp())
         source = where / "in.sfc"
@@ -474,12 +467,6 @@ class EntryTest(unittest.TestCase):
 
 
 class VanishedRunTest(unittest.TestCase):
-    """A run the survey saw and the patch cannot find.
-
-    One fix overwriting another's stock bytes is how this happens for real, and
-    the cartridge has no such pair, so the survey is supplied instead.
-    """
-
     def test_a_run_that_is_no_longer_there_is_refused(self) -> None:
         claimed = {fix.name: gamefixes.APPLIED for fix in gamefixes.FIXES}
 

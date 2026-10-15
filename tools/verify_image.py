@@ -72,12 +72,6 @@ def main(
     say: Callable[[str], None] = print,
     fixes: Callable[[Any], Any] | None = None,
 ) -> int:
-    """Check that every stream in the table really is where the image says it is.
-
-    The cartridge reader and the table are parameters, so both failures, a
-    lookup that resolves nowhere and bytes that do not match, can be driven
-    without an assembled image on the machine.
-    """
     read = dump.read if read is None else read
     fixes = gamefixes.apply if fixes is None else fixes
     image_path = Path(argv[1]) if len(argv) > 1 else ROOT / "build" / "all" / "jp-both-free.sfc"

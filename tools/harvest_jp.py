@@ -61,12 +61,6 @@ def build_image(
     name: str,
     execute: Callable[..., Any] = subprocess.run,
 ) -> Path:
-    """One variant assembled and packed, ready to be driven.
-
-    The shelling out is passed in so a test can watch what was asked for without
-    a container being present. Everything either side of it, the staging, the
-    repack and the write, runs for real.
-    """
     OUT.mkdir(parents=True, exist_ok=True)
     staged = OUT / f"jp-{name}-cart.sfc"
     staged.write_bytes(cart)
@@ -95,7 +89,6 @@ def build_image(
 
 
 def scan_log(image: Path, execute: Callable[..., Any] = subprocess.run) -> list[str]:
-    """What the emulator reported while driving one image, as lines."""
     log = OUT / f"{image.stem}-scan.txt"
     with log.open("wb") as handle:
         execute(
@@ -202,12 +195,6 @@ def main(
     decode: Callable[..., Any] = sdd1.decompress,
     rounds: int = 25,
 ) -> dict[int, int]:
-    """Drive every variant until a round finds nothing new.
-
-    Each collaborator is passed in so the loop can be run without a cartridge or
-    a container. The convergence rule is the thing worth testing and it is pure:
-    a round that adds nothing stops, and the round cap is the backstop under it.
-    """
     rom = dump.read(RETAIL) if rom is None else rom
     table = dict(load("jpstreams").STREAMS) if table is None else table
     carts = variants(rom) if carts is None else carts

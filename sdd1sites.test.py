@@ -139,8 +139,6 @@ def tagged_blob(markers: list[tuple[int, int]], size: int = 8192) -> bytes:
 
 
 class WindowTest(unittest.TestCase):
-    """Backing up to the instruction boundary a register write really sits on."""
-
     def test_a_write_near_the_start_still_yields_a_listing(self) -> None:
         rom = bytearray(256)
         rom[4:7] = bytes([sites.STA_ABSOLUTE, 0x01, 0x48])
@@ -167,8 +165,6 @@ class WindowTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven without a dump on the machine."""
-
     def run_with(self, argv: list[str], rom: bytes, tagged: bytes) -> tuple[int, list[str]]:
         said: list[str] = []
         code = sites.main(

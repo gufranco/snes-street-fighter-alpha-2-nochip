@@ -18,11 +18,6 @@ def run(
     out: Path,
     execute: Callable[..., Any] = subprocess.run,
 ) -> Path:
-    """Play one matchup and leave a per-frame hash log behind.
-
-    The reaching out is a parameter so the comparison, which is the part worth
-    testing, can be driven against recorded logs rather than a container.
-    """
     out.parent.mkdir(parents=True, exist_ok=True)
     execute(
         [
@@ -73,11 +68,6 @@ def main(
     say: Callable[[str], None] = print,
     roster: int = ROSTER,
 ) -> int:
-    """Report, per opponent, how many frames the two images render differently.
-
-    The playing is a parameter so the reporting can be driven without a
-    container, and the roster is one so a run can cover a single matchup.
-    """
     before_image = ROOT / (argv[1] if len(argv) > 1 else "build/baseline/usa-both-free.before.sfc")
     after_image = ROOT / (argv[2] if len(argv) > 2 else "build/all/usa-both-free.sfc")
     tag = argv[3] if len(argv) > 3 else "usa"

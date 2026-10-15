@@ -79,8 +79,6 @@ class EstimateTest(unittest.TestCase):
 
 
 class MbitTest(unittest.TestCase):
-    """Sizes in the unit cartridges are sold in."""
-
     def test_a_megabyte_is_eight_megabit(self) -> None:
         self.assertEqual(an.mbit(1048576), 8)
 
@@ -89,8 +87,6 @@ class MbitTest(unittest.TestCase):
 
 
 class ReportTest(unittest.TestCase):
-    """One line about one cartridge."""
-
     def test_it_names_the_label_it_was_given(self) -> None:
         said: list[str] = []
 
@@ -110,8 +106,6 @@ class ReportTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The projection, driven without four dumps on the machine."""
-
     def run_with(self, roms: dict[str, bytes]) -> tuple[int, list[str]]:
         said: list[str] = []
         code = an.main(

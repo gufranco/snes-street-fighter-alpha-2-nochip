@@ -58,11 +58,6 @@ def decode_response(blob: bytes, cases: list[tuple[int, int]]) -> list[bytes]:
 
 
 def build_image(quiet: bool = True, execute: Callable[..., Any] = subprocess.run) -> int:
-    """Build the reference image, returning whatever the builder exited with.
-
-    The builder is a parameter so a caller can be driven without a container
-    runtime on the machine.
-    """
     stream = subprocess.DEVNULL if quiet else None
     returned: int = execute(
         build_image_command(), stdout=stream, stderr=stream, check=False
@@ -75,11 +70,6 @@ def reference_outputs(
     cases: list[tuple[int, int]],
     execute: Callable[..., Any] = subprocess.run,
 ) -> list[bytes]:
-    """Ask the C reference for one output per case.
-
-    The running is a parameter so the framing, which is the part worth testing,
-    can be driven against a recorded response.
-    """
     result = execute(
         run_command(), input=encode_request(rom, cases), capture_output=True, check=False
     )
@@ -95,11 +85,6 @@ def compare(
     cases: list[tuple[int, int]],
     reference: Callable[..., list[bytes]] = reference_outputs,
 ) -> list[tuple[int, int, str]]:
-    """Every case where this package and the C reference disagree.
-
-    The reference is a parameter so each kind of disagreement can be driven
-    without a container.
-    """
     expected = reference(rom, cases)
     mismatches: list[tuple[int, int, str]] = []
     for (offset, length), want in zip(cases, expected, strict=True):
@@ -131,12 +116,6 @@ def main(
     check: Callable[..., list[tuple[int, int, str]]] = compare,
     say: Callable[..., None] = print,
 ) -> int:
-    """The command line, with every step that reaches outside passed in.
-
-    A run needs a cartridge and a container, so both are parameters and every
-    branch, including the two refusals and the mismatch report, can be driven
-    without either.
-    """
     argv = sys.argv if argv is None else argv
     read = dump.read if read is None else read
     if len(argv) < 2:

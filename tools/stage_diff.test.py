@@ -69,8 +69,6 @@ class CompareTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The one step that reaches for a container, with the reaching passed in."""
-
     def test_it_names_the_matchup_and_where_to_write_the_hashes(self) -> None:
         asked: list[Any] = []
         out = stage_diff.LOGS / "probe-hashes.txt"
@@ -95,8 +93,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The per-opponent report, driven against recorded logs."""
-
     def logs(self, before: dict[int, str], after: dict[int, str]) -> Callable[..., Path]:
         where = Path(tempfile.mkdtemp())
 

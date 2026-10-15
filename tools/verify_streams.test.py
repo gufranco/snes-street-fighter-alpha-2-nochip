@@ -76,8 +76,6 @@ class RegionTest(unittest.TestCase):
 
 
 class VerifyTest(unittest.TestCase):
-    """Batching the work and reporting progress while it happens."""
-
     def run_on(self, mismatched: list[Any]) -> tuple[list[Any], list[Any], list[str]]:
         said: list[str] = []
         cases, mismatches = verify_streams.verify(
@@ -112,8 +110,6 @@ class VerifyTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven without a container."""
-
     def run_with(self, argv: list[str], **rest: Any) -> tuple[int, list[str]]:
         said: list[str] = []
         code = verify_streams.main(

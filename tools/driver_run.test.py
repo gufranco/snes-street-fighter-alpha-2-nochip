@@ -25,12 +25,6 @@ USA = ROOT / "roms" / "sfa2-usa-final.sfc"
 NEEDS_A_DUMP = unittest.skipUnless(
     USA.exists(), "the retail dump is not on this machine, and nothing here ships one"
 )
-"""What the driver actually does can only be run against the cartridge it came from.
-
-Nobody may distribute that file, so on a build machine these report as skipped
-rather than as passed. Everything that can be checked without one is checked
-without one, and is above.
-"""
 
 
 def _unit_builds() -> bool:
@@ -49,13 +43,6 @@ NEEDS_THE_BOOT_ROM = unittest.skipUnless(
     _unit_builds(),
     "the audio unit needs Sony's boot program, which nobody may distribute",
 )
-"""The composed unit will not start without sixty four bytes Sony wrote.
-
-Those are an artifact like the cartridge is, so a machine without them skips the
-runs that need one rather than failing. This is asked by building a unit rather
-than by looking for a file, because where the model searches for it is the
-model's business and not this file's.
-"""
 
 JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
@@ -164,8 +151,6 @@ class ImageTest(unittest.TestCase):
 
 @NEEDS_A_DUMP  # pragma: no cover
 class TransferTest(unittest.TestCase):
-    """The patched receive loop, run rather than read."""
-
     def deliver(self, payload: bytes | bytearray, rom: Path = USA) -> Any:
         image = driver_run.image_of(spcfast.apply(bytearray(rom.read_bytes())))
         return driver_run.deliver(image, payload, driver_run.DESTINATION)
@@ -223,8 +208,6 @@ class TransferTest(unittest.TestCase):
 
 @NEEDS_A_DUMP  # pragma: no cover
 class StockTest(unittest.TestCase):
-    """The driver before the patch, which is the thing the patch is faster than."""
-
     def stock(self, payload: bytes | bytearray, rom: Path = USA) -> Any:
         image = driver_run.image_of(bytearray(rom.read_bytes()))
         return driver_run.deliver_one_at_a_time(image, payload, driver_run.DESTINATION)
@@ -263,13 +246,6 @@ class StockTest(unittest.TestCase):
 @NEEDS_A_DUMP  # pragma: no cover
 @NEEDS_THE_BOOT_ROM  # pragma: no cover
 class ComposedTest(unittest.TestCase):
-    """The same driver on the whole audio unit, which is a second witness.
-
-    Agreeing with the stand-in is the point of these. The stand-in was written to
-    a reading of the driver, so it can only ever confirm that reading is
-    self-consistent. The unit was not written for this project at all.
-    """
-
     def images(self) -> tuple[bytes, bytes]:
         rom = bytearray(USA.read_bytes())
         return driver_run.image_of(rom), driver_run.image_of(spcfast.apply(bytearray(rom)))

@@ -38,11 +38,6 @@ def run(
     frames: int,
     execute: Callable[..., Any] = subprocess.run,
 ) -> dict[int, int]:
-    """Run one tour pass and read every decompression it asked for.
-
-    The reaching out is a parameter so the parsing, which is the part worth
-    testing, can be driven against a recorded log rather than a container.
-    """
     log = ROOT / "build" / "harvest" / f"tour-{name}.txt"
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("wb") as handle:
@@ -72,13 +67,6 @@ def run(
 
 
 def requests(lines: list[str]) -> dict[int, int]:
-    """Every decompression the cartridge asked for, and the largest it asked for.
-
-    Only transfers whose source address never advances are decompressions, which
-    is the condition the chip works under, and only sources inside the cartridge
-    window are cartridge data. A transfer from below the window is the game
-    moving something else, and counting it would put fiction into the table.
-    """
     wanted: dict[int, int] = {}
     for line in lines:
         found = DMA.match(line)
@@ -100,13 +88,6 @@ def main(
     say: Callable[[str], None] = print,
     decode: Callable[..., Any] = sdd1.decompress,
 ) -> int:
-    """Widen the table with everything the tour saw the cartridge ask for.
-
-    The cartridge, both files and the tour itself are parameters, so the rule
-    that decides what to add and what to grow can be driven without a container
-    and without the ROM. An entry already held at that length is left alone; a
-    shorter one is grown; anything that does not decode is skipped.
-    """
     rom = dump.read(RETAIL) if rom is None else rom
     table_path = TABLE if table_path is None else table_path
     seen_path = ROOT / "build" / "harvest" / "tour-requests.txt" if seen_path is None else seen_path

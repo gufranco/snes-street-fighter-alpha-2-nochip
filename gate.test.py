@@ -69,8 +69,6 @@ class ShippedTableTest(unittest.TestCase):
 
 
 class UndecodableTest(unittest.TestCase):
-    """The two ways an entry can fail to reproduce what the table claims."""
-
     ROM = bytes(0x400000)
 
     def test_a_table_every_entry_of_which_decodes_reports_nothing(self) -> None:
@@ -93,8 +91,6 @@ class UndecodableTest(unittest.TestCase):
 
 
 class CheckTest(unittest.TestCase):
-    """Each finding on its own, driven without a cartridge."""
-
     ABSENT = Path("/nonexistent/cartridge.sfc")
 
     def findings(self, **rest: Any) -> list[str]:
@@ -149,8 +145,6 @@ class CheckTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, with the region check passed in."""
-
     def run_with(self, argv: list[str], findings: list[str]) -> tuple[int, list[str]]:
         said: list[str] = []
         code = gate.main(

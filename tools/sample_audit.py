@@ -1,36 +1,3 @@
-"""Check the audio processor's sample bank as sound rather than as bytes.
-
-The per-upload comparison in `compare_audio.py` answers whether the bytes that
-left the cartridge arrived intact. It cannot answer the question the skip patch
-actually raises, which is whether the bytes that are *already there* are still
-the right ones. A skipped upload is correct only if the memory it declined to
-write already held what the write would have put there, and a voice pointed at
-half of an old sample and half of a new one reads perfectly valid bytes.
-
-So this reads the bank the way the chip reads it. Each directory entry is walked
-as a chain of nine byte blocks until one of them says it is the last, which is
-the only thing that ends a sample. A chain that never says so is not a quiet
-defect: the chip keeps reading, off the end of the sample, through whatever
-follows it, until it finds a byte that happens to have the flag set.
-
-Four faults are worth naming, and none of them is visible in a byte comparison:
-
-A chain that runs off the end of memory before it terminates. A loop point that
-does not land on a block boundary, which makes the chip resume mid block and
-decode nonsense. A loop point outside the sample it belongs to. And two samples
-that share bytes without being the same sample, where overwriting one damages
-the other.
-
-The last check is the one the patch needs. Given which voices are keyed on and
-which addresses an upload is about to write, it reports any playing sample the
-upload would walk through. That is the defect the plan named and the reason the
-audio DSP is vendored here at all.
-
-Running it needs an image of the audio processor's memory, which the harness in
-`emu/` can dump. The tests beside this file build their images by hand, so they
-prove the checks without needing a cartridge.
-"""
-
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -91,8 +58,6 @@ class Unreadable(Exception):
 
 
 class Chain:
-    """What walking one sample found: how far it reached, and what stopped it."""
-
     def __init__(self, start: int, blocks: int, reach: range, fault: str | None) -> None:
         self.start = start
         self.blocks = blocks
@@ -105,8 +70,6 @@ class Chain:
 
 
 class Fault:
-    """One thing wrong with one sample."""
-
     def __init__(self, sample: int, fault: str, at: int) -> None:
         self.sample = sample
         self.fault = fault
@@ -128,14 +91,12 @@ class Fault:
 
 
 def load(image: bytes | bytearray) -> bytearray:
-    """An audio memory image, refused unless it is the whole sixty four kilobytes."""
     if len(image) != APU_RAM:
         raise Unreadable(f"an audio memory image is {APU_RAM} bytes, not {len(image)}")
     return bytearray(image)
 
 
 def entry(ram: bytearray, directory: int, sample: int) -> tuple[int, int]:
-    """The start and loop addresses the directory holds for that sample."""
     at = (directory + sample * DIRECTORY_BYTES) & 0xFFFF
     start = ram[at] | (ram[(at + 1) & 0xFFFF] << 8)
     loop = ram[(at + 2) & 0xFFFF] | (ram[(at + 3) & 0xFFFF] << 8)
@@ -143,12 +104,6 @@ def entry(ram: bytearray, directory: int, sample: int) -> tuple[int, int]:
 
 
 def chain(ram: bytearray, start: int) -> Chain:
-    """Walk a sample the way the chip walks it, and report where it stops.
-
-    Nothing bounds this walk except the flag in a block header, so the bound here
-    is the number of blocks that could fit in memory at all. Reaching it means the
-    chip would not have stopped either.
-    """
     at = start
     for blocks in range(1, MAX_BLOCKS + 1):
         if at + BLOCK_BYTES > APU_RAM:
@@ -181,19 +136,16 @@ def _prepare(ram: bytearray, directory: int, sample: int) -> Any:
 
 
 def play(ram: bytearray, directory: int, sample: int, samples: int = RENDER_SAMPLES) -> Any:
-    """What the chip produces from that sample, through the real decoder."""
     return _prepare(ram, directory, sample).render(samples)
 
 
 def reaches_end(ram: bytearray, directory: int, sample: int, samples: int = RENDER_SAMPLES) -> bool:
-    """Whether the chip reports finishing the sample within that many samples."""
     chip = _prepare(ram, directory, sample)
     chip.render(samples)
     return bool(chip.read(REG_ENDX) & 0x01)
 
 
 def faults(ram: bytearray, directory: int, used: Sequence[int]) -> list[Fault]:
-    """Everything wrong with the samples that are actually in use."""
     found = []
     for sample in used:
         start, loop = entry(ram, directory, sample)
@@ -209,7 +161,6 @@ def faults(ram: bytearray, directory: int, used: Sequence[int]) -> list[Fault]:
 
 
 def overlaps(ram: bytearray, directory: int, used: Sequence[int]) -> list[tuple[int, int, int]]:
-    """Pairs of different samples that share bytes, which one upload can damage."""
     reached: dict[int, tuple[int, set[int]]] = {}
     for sample in used:
         start, _ = entry(ram, directory, sample)
@@ -232,7 +183,6 @@ def overlaps(ram: bytearray, directory: int, used: Sequence[int]) -> list[tuple[
 def collisions(
     ram: bytearray, directory: int, playing: Sequence[int], written: Sequence[int]
 ) -> list[Fault]:
-    """Which playing samples an upload would walk through while they are playing."""
     touched = set(written)
     found = []
     for sample in playing:
@@ -249,7 +199,6 @@ def collisions(
 
 
 def report(ram: bytearray, directory: int, used: Sequence[int]) -> list[str]:
-    """Everything this can say about a bank, as lines a person reads."""
     lines = []
     for fault in faults(ram, directory, used):
         lines.append(f"  sample {fault.sample:3d} at {fault.at:#06x}: {fault.fault}")

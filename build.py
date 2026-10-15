@@ -9,8 +9,7 @@ ASM_DIR = ROOT / "asm"
 IMAGE = "snes-street-fighter-alpha-2-nochip/asar:1.81"
 
 
-class ToolchainMissing(Exception):
-    """The program that builds and runs the container is not on PATH."""
+class ToolchainMissing(Exception): ...
 
 
 def build_image_command() -> list[str]:
@@ -59,7 +58,6 @@ def run(
     execute: Callable[[list[str]], int] | None = None,
     say: Callable[[str], None] = print,
 ) -> int:
-    """One command, printed before it runs so a failing build says what it ran."""
     say("  $ " + " ".join(args))
     if execute is None:
         execute = _shell_out
@@ -83,7 +81,6 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
 ) -> int:
-    """The command line, with the shelling out passed in so it can be checked."""
     argv = sys.argv if argv is None else argv
     complain = say if complain is None else complain
 

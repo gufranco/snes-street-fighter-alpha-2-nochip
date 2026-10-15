@@ -63,8 +63,6 @@ def _scan(address: int, channels: Any) -> str:
 
 
 class TableTest(unittest.TestCase):
-    """The table on disk, which is the only state that survives a round."""
-
     @override
     def setUp(self) -> None:
         self.path = Path(tempfile.mkdtemp()) / "table.txt"
@@ -86,8 +84,6 @@ class TableTest(unittest.TestCase):
 
 
 class RequestTest(unittest.TestCase):
-    """Reading the streams a pass asked for out of the emulator log."""
-
     class Result:
         def __init__(self, out: str) -> None:
             self.stdout, self.stderr = out, ""
@@ -145,8 +141,6 @@ class RequestTest(unittest.TestCase):
 
 
 class BuildTest(unittest.TestCase):
-    """Assembling the three variants, with the assembler passed in."""
-
     @staticmethod
     def headed() -> bytes:
         rom = bytearray(0x400000)
@@ -177,8 +171,6 @@ class BuildTest(unittest.TestCase):
 
 
 class ConvergenceTest(unittest.TestCase):
-    """The rule that decides when the table is complete."""
-
     ROM = bytes(0x400000)
 
     def run_with(

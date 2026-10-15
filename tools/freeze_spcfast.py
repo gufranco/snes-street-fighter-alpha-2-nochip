@@ -33,11 +33,6 @@ def load(name: str) -> Any:
 
 
 def assemble(region: str, execute: Callable[..., Any] = subprocess.run) -> Any:
-    """Build the patch source against one region's cartridge and read the result.
-
-    The shelling out is a parameter so the caller can be driven without the
-    assembler on the machine.
-    """
     output = f"probe-{region}.sfc"
     execute(
         [sys.executable, "build.py", SOURCE, str(RETAIL[region].relative_to(ROOT)), output],
@@ -168,13 +163,6 @@ def main(
     verify: Callable[[str], Any] = load,
     say: Callable[..., None] = print,
 ) -> int:
-    """Freeze what the assembler produced into a table, then prove they agree.
-
-    Each collaborator is a parameter, so the decision the tool makes can be
-    driven without the assembler and without either cartridge. The decision is
-    the part worth testing: which runs are shared, whether the region specific
-    ones agree, and whether the table it writes reproduces the assembler.
-    """
     check_only = "--check" in argv[1:]
     read = dump.read if read is None else read
     target = ROOT / "spcfast.py" if target is None else target

@@ -59,13 +59,6 @@ def assemble(
     cart: bytes | bytearray,
     execute: Callable[..., Any] = subprocess.run,
 ) -> Path:
-    """Stage one variant and assemble the bypass against it.
-
-    The shelling out is a parameter so the staging and the naming can be driven
-    without the assembler on the machine. The output directory is created here
-    rather than only in the caller, so a caller that starts with this step does
-    not fail on a checkout that has never been built.
-    """
     OUT.mkdir(parents=True, exist_ok=True)
     staged = OUT / f"{region}-{name}-cart.sfc"
     staged.write_bytes(cart)
@@ -95,12 +88,6 @@ PREFIGHT_VARIANT = "both"
 def image_source(
     name: str, bypass: Path, read: Callable[[Path], Any] | None = None
 ) -> tuple[Any, tuple[Any, ...]]:
-    """What goes into the image, and anything that has to be placed alongside it.
-
-    Only one variant carries the pre-fight patch, and only that one needs its
-    table written into the image. The cartridge reader is a parameter so both
-    answers can be driven without an assembled bypass on disk.
-    """
     read = dump.read if read is None else read
     rom = read(bypass)
     if name != PREFIGHT_VARIANT:
@@ -115,12 +102,6 @@ def main(
     table_for: Callable[[str], Any] = entries_for,
     say: Callable[[str], None] = print,
 ) -> int:
-    """Rebuild every variant of every region, in cartridge, bypass and free form.
-
-    The variant set, the assembler and the prefight step are parameters, so the
-    loop can be driven without the dumps and without the assembler. Deriving the
-    variants is not tested here because each patch carries its own proof.
-    """
     OUT.mkdir(parents=True, exist_ok=True)
     carts = (
         {region: variants(dump.read(path)) for region, path in RETAIL.items()}

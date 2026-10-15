@@ -23,11 +23,6 @@ JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 def retail(path: Path) -> bytes:
-    """The cartridge, or a skip when this machine does not have it.
-
-    Both arms are decided by what is on disk, so no single run covers both: a
-    machine with the dump never raises and a machine without it never reads.
-    """
     if not path.exists():  # pragma: no cover
         raise unittest.SkipTest(f"{path} is not present")
     return path.read_bytes()  # pragma: no cover
@@ -57,11 +52,6 @@ class RoutineTest(unittest.TestCase):
         self.assertEqual(len(repeatload.hook()), len(repeatload.REPLACED))
 
     def test_the_routine_matches_what_the_assembler_emits(self) -> None:
-        """What this package emits against what the assembler emits.
-
-        The comparison needs a build that neither a plain checkout nor a runner
-        has, so on both it skips and the body below never runs.
-        """
         assembled = ROOT / "asm" / "repeat-out.sfc"
         if not assembled.exists():
             raise unittest.SkipTest("assemble asm/repeat-load.asm first")
@@ -93,14 +83,6 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(set(window), {0xFF}, str(path))
 
     def test_the_marker_sits_inside_the_run_no_write_was_seen_in(self) -> None:
-        """The measured free run, not a range that looked free.
-
-        Two forty five thousand frame tours, one per region, walking the whole
-        roster and entering fights, wrote no byte anywhere in this range. The
-        marker sits inside it with room on both sides. The address it used before
-        was one byte below a run that really is free, and the game writes that
-        byte on every play.
-        """
         first, last = 0x7E5E70, 0x7EFE3F
 
         self.assertGreaterEqual(repeatload.MARKER, first)
@@ -171,8 +153,6 @@ class ApplyTest(unittest.TestCase):
 
 
 class RefusalTest(unittest.TestCase):
-    """An image the patch does not recognise is refused rather than patched anyway."""
-
     def test_an_image_whose_filler_is_not_free_is_refused(self) -> None:
         rom = bytearray(repeatload.FILLER_END + 0x100)
         rom[repeatload.HOOK_FILE : repeatload.HOOK_FILE + len(repeatload.REPLACED)] = (
@@ -201,8 +181,6 @@ class RefusalTest(unittest.TestCase):
 
 
 class EntryTest(unittest.TestCase):
-    """The command line, run with both streams collected rather than printed."""
-
     def _paths(self) -> tuple[Path, Path]:
         where = Path(tempfile.mkdtemp())
         source = where / "in.sfc"

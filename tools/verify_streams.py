@@ -42,13 +42,6 @@ SETS: dict[str, tuple[Path, Callable[[], list[Any]]]] = {
 
 
 def batches(cases: list[Any], size: int = BATCH) -> list[list[Any]]:
-    """The cases split into runs the reference is asked about one run at a time.
-
-    The reference runs in a container, and handing it every stream at once means
-    one very long silence followed by an answer. Splitting the work lets progress
-    be reported while it happens, which on a set of several thousand streams is
-    the difference between a tool that looks stuck and one that does not.
-    """
     return [cases[start : start + size] for start in range(0, len(cases), size)]
 
 
@@ -58,12 +51,6 @@ def verify(
     compare: Callable[..., list[Any]] | None = None,
     say: Callable[[str], None] = print,
 ) -> tuple[list[Any], list[Any]]:
-    """Every stream in one region's table, compared against the C reference.
-
-    The cartridge reader and the comparison are parameters, so the batching and
-    the running count, which are what this function adds, can be driven without
-    a dump or a container.
-    """
     read = dump.read if read is None else read
     compare = sdd1ref.compare if compare is None else compare
     retail, cases_for = SETS[region]
@@ -84,7 +71,6 @@ def main(
     check: Callable[..., tuple[list[Any], list[Any]]] = verify,
     say: Callable[..., None] = print,
 ) -> int:
-    """The command line, with the container build and the comparison passed in."""
     wanted = argv[1:] or sorted(SETS)
     if build() != 0:
         say("the reference image failed to build", file=sys.stderr)

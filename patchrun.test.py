@@ -130,15 +130,6 @@ class TranslationTest(unittest.TestCase):
             self.assertTrue(outcome.cpu.c)
 
     def test_a_narrow_caller_gets_back_only_what_it_could_hold(self) -> None:
-        """The high byte of an index register does not survive an eight bit caller.
-
-        The routine widens the registers, pushes them whole, and restores the
-        caller's status byte on the way out. Restoring a status byte that says the
-        index registers are eight bits wide clears their high bytes, so a caller
-        running narrow cannot smuggle sixteen bits through the call. That is the
-        processor's rule rather than this routine's, and a test that expected
-        otherwise was reading a model that did not implement it.
-        """
         outcome = patchrun.translate(
             self.memory, self.entries[0].source, a=0x0001, x=0x1234, y=0x5678
         )
@@ -189,10 +180,6 @@ STAR_OCEAN_STREAMS = (
 
 @unittest.skipUnless(STAR_OCEAN.exists(), "the star ocean build is not present")  # pragma: no cover
 class ReferenceBuildTest(unittest.TestCase):
-    """Runs neviksti's own translation routine, from his hardware-proven build,
-    through the same interpreter and address model this project uses. It is the
-    closest available check that the mapping is right, short of the SF7."""
-
     image: ClassVar[Any]
 
     @classmethod
@@ -262,8 +249,6 @@ class EntryTest(unittest.TestCase):
 
 
 class MemoryTest(unittest.TestCase):
-    """What the processor sees at each kind of address."""
-
     def memory(self) -> Any:
         return patchrun.SnesMemory(bytes(rombuild.IMAGE_SIZE))
 
@@ -293,12 +278,6 @@ class MemoryTest(unittest.TestCase):
 
 
 class WalkTest(unittest.TestCase):
-    """Reporting where the processor disagreed with the allocation.
-
-    The translation is passed in, so the reporting can be driven without an
-    assembled image and without running the processor over the whole table.
-    """
-
     class Entry:
         def __init__(self, index: int, source: int) -> None:
             self.index, self.source = index, source

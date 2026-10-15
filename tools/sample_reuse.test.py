@@ -331,8 +331,6 @@ class TimingTest(unittest.TestCase):
 
 
 class ReportTest(unittest.TestCase):
-    """What one log says about how much of each load was already resident."""
-
     @staticmethod
     def log(*lines: str) -> str:
         return "\n".join(lines) + "\n"
@@ -389,8 +387,6 @@ class ReportTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven against a log written for the occasion."""
-
     def test_a_named_log_is_reported_on(self) -> None:
         where = Path(tempfile.mkdtemp()) / "grp-probe.txt"
         where.write_text("nothing here\n")
@@ -422,8 +418,6 @@ class CommandTest(unittest.TestCase):
 
 
 class WalkBeforeLoadTest(unittest.TestCase):
-    """A mark that arrives before any load has started."""
-
     def test_a_walk_with_no_load_open_is_ignored(self) -> None:
         runs = parse(WALK.format(frame=1, ids="05,00,00", alloc="1500"))
 
@@ -441,8 +435,6 @@ class WalkBeforeLoadTest(unittest.TestCase):
 
 
 class BaseSpanTest(unittest.TestCase):
-    """The one span each load walks before anything else."""
-
     def test_a_load_with_no_base_span_has_none(self) -> None:
         self.assertIsNone(sample_reuse.base_span({"spans": []}))
 
@@ -456,12 +448,6 @@ class BaseSpanTest(unittest.TestCase):
 
 
 class ReplayCountTest(unittest.TestCase):
-    """The four ways a load relates to the one before it.
-
-    The runs come from the parser rather than being written by hand, so they
-    carry every field the replay reads.
-    """
-
     @staticmethod
     def load(frame: int, ids: str, src: str, dest: str = "1500") -> list[str]:
         return [

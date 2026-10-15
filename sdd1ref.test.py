@@ -127,8 +127,6 @@ class DifferentialTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The two steps that reach for a container, with the reaching passed in."""
-
     class Exited:
         def __init__(self, code: int, out: bytes = b"", err: bytes = b"") -> None:
             self.returncode, self.stdout, self.stderr = code, out, err
@@ -167,8 +165,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class CompareTest(unittest.TestCase):
-    """The three outcomes of comparing one case against the reference."""
-
     ROM = bytes(0x400000)
 
     def test_a_case_the_two_agree_on_is_not_a_mismatch(self) -> None:
@@ -191,8 +187,6 @@ class CompareTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven without a cartridge or a container."""
-
     ROM = bytes(0x400000)
 
     def run_with(self, argv: list[str], **rest: Any) -> tuple[int, list[str]]:
@@ -248,8 +242,6 @@ class CommandTest(unittest.TestCase):
 
 
 class SampleTest(unittest.TestCase):
-    """Choosing which streams to compare."""
-
     def test_a_rom_too_small_to_hold_a_block_is_refused(self) -> None:
         with self.assertRaises(ValueError):
             ref.sample_cases(bytes(16), 1, 1)

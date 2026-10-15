@@ -1,32 +1,3 @@
-"""Whether what came out of the decompressor is shaped like graphics.
-
-The decompressor is checked against digests, against a reference, against an
-encoder somebody else wrote and against a cartridge that predates the
-compression. All of those ask whether the bytes are the right bytes. This asks a
-different and weaker question, and it is worth asking because it needs nothing
-outside this machine: are the bytes shaped like a tile sheet at all?
-
-**Why the obvious check is worthless.** Reading a stream back through the 4bpp
-layout and writing it out again reproduces the input for any run whose length
-divides by thirty two, because the planar layout is a rearrangement and nothing
-is lost. It reproduces noise exactly as happily as art. A round trip is not
-evidence and this does not report one.
-
-**What is measured instead.** Reuse. A real sheet repeats tiles, because blank
-space and flat colour repeat, and a run of random bytes never repeats a
-thirty two byte tile. So the reading is the fraction of tiles that are not the
-first of their kind, and beside every real reading is one taken from random bytes
-of the same length. Across 900 streams of the USA cartridge the real figure is
-about 0.14 and the control is 0.00, and 470 sheets repeat something where no
-control does.
-
-The control is the point. Without it a reader cannot tell a measurement from an
-artefact of the format, which is the trap this whole file exists to avoid.
-
-Usage:
-    python3 tools/tile_shape.py <rom> [streams]
-"""
-
 import importlib.util
 import os
 import sys
@@ -43,28 +14,10 @@ sdd1 = hardware.load("sdd1")
 snesgfx = hardware.load("snesgfx")
 
 FOUR_BIT = snesgfx.FORMATS["4bpp"]
-"""The layout this cartridge stores, taken from the model rather than restated.
-
-The model is what knows that a tile is thirty two bytes and what refuses a run
-that is not a whole number of them. Writing either of those here would be a
-second copy of a fact that already has an owner, and the two would drift.
-"""
 
 TILE_BYTES = 32
-"""One 8x8 tile at four bits per pixel, kept only to report and to size a control.
-
-The number is not used to decide anything. `FOUR_BIT.decode` decides what is a
-tile and what is not, and this is checked against it below so a change in the
-model is a failing test here rather than a silent disagreement.
-"""
 
 SMALLEST = 512
-"""Below this a reuse figure is noise in both directions, so a stream is skipped.
-
-A sheet of four tiles that happens to repeat one reads as 0.25, which says
-nothing. The threshold is stated rather than tuned: it is sixteen tiles, the
-smallest sheet where a single coincidence does not dominate the fraction.
-"""
 
 
 class Survey(NamedTuple):
@@ -77,12 +30,6 @@ class Survey(NamedTuple):
 
 
 def tiles(data: bytes | bytearray | None) -> list[tuple[int, ...]] | None:
-    """The run cut into tiles by the model, or nothing when it is not tiles.
-
-    The model raises rather than padding, which is the behaviour wanted: a run
-    that is not a whole number of tiles is a run this measurement has nothing to
-    say about, and guessing at its tail would invent the reuse being counted.
-    """
     if not data:
         return None
     try:
@@ -93,7 +40,6 @@ def tiles(data: bytes | bytearray | None) -> list[tuple[int, ...]] | None:
 
 
 def reuse(data: bytes | bytearray | None) -> float | None:
-    """What fraction of the tiles are not the first of their kind."""
     cut = tiles(data)
     if cut is None:
         return None
@@ -101,12 +47,10 @@ def reuse(data: bytes | bytearray | None) -> float | None:
 
 
 def noise(length: int) -> bytes:
-    """Random bytes, which is what a reading has to be compared against."""
     return os.urandom(length)
 
 
 def survey(runs: list[bytes]) -> Survey:
-    """Every run measured, each against a control of its own length."""
     aligned = unaligned = 0
     real, control = [], []
     for data in runs:
@@ -128,7 +72,6 @@ def survey(runs: list[bytes]) -> Survey:
 
 
 def table_for(where: Path | str) -> Any:
-    """The stream table belonging to whichever cartridge this is."""
     name = "usastreams" if "usa" in Path(where).name.lower() else "jpstreams"
     root = Path(__file__).resolve().parent.parent
     spec = importlib.util.spec_from_file_location(name, root / f"{name}.py")
@@ -139,11 +82,6 @@ def table_for(where: Path | str) -> Any:
 
 
 def against(where: Path | str, limit: int | None = None, table: Any = None) -> Survey:
-    """Every stream the cartridge declares, decompressed and measured.
-
-    The table is a parameter so a caller can measure a chosen set rather than
-    whichever one the cartridge name selects.
-    """
     rom = bytearray(Path(where).read_bytes())
     runs = []
     for off, length in table_for(where) if table is None else table:

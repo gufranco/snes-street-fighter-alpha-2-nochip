@@ -143,8 +143,6 @@ class RealMapTest(unittest.TestCase):
 
 
 class RepairTest(unittest.TestCase):
-    """Placements the greedy pass gets wrong and the repair pass fixes."""
-
     AMBIGUOUS: ClassVar[list[tuple[int, int]]] = [
         (0xC1, 0x05),
         (0xC1, 0x3E),
@@ -162,14 +160,6 @@ class RepairTest(unittest.TestCase):
         (0xC1, 0x37),
         (0xC1, 0x1A),
     ]
-    """A key set crowded enough that the first placement leaves keys ambiguous.
-
-    Found by searching random key sets for one that reaches the repair pass. It
-    carries a repeated key, so the repair cannot succeed and the refusal comes
-    after the attempts rather than instead of them. Keys this crowded do not
-    occur in either cartridge, which is why neither the repair pass nor the
-    refusal is reachable from the real tables.
-    """
 
     def test_a_key_set_the_repair_cannot_settle_is_refused(self) -> None:
         with self.assertRaises(tables.PlacementError):
@@ -191,8 +181,6 @@ class RepairTest(unittest.TestCase):
 
 
 class VerifyTest(unittest.TestCase):
-    """Checking a placement rather than producing one."""
-
     def test_a_placement_where_every_key_scans_correctly_is_accepted(self) -> None:
         keys = [(0xC1, 0x100), (0xC2, 0x200)]
 
@@ -212,8 +200,6 @@ class VerifyTest(unittest.TestCase):
 
 
 class ScanTest(unittest.TestCase):
-    """Following the table from an address until the bank matches."""
-
     def test_a_bank_that_is_in_the_table_is_found(self) -> None:
         self.assertEqual(tables._scan({0x100: 0xC1}, 0xC1, 0x100), 0x100)
 
@@ -225,8 +211,6 @@ class ScanTest(unittest.TestCase):
 
 
 class FullTableTest(unittest.TestCase):
-    """A table with no slot left to give."""
-
     def test_a_full_table_has_no_free_slot(self) -> None:
         full = dict.fromkeys(range(tables.SLOTS), 0xC1)
 

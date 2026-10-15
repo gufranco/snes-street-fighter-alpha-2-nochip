@@ -26,11 +26,6 @@ JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 def retail(path: Path) -> bytes:
-    """The cartridge, or a skip when this machine does not have it.
-
-    Both arms are decided by what is on disk, so no single run covers both: a
-    machine with the dump never raises and a machine without it never reads.
-    """
     if not path.exists():  # pragma: no cover
         raise unittest.SkipTest(f"{path} is not present")
     return path.read_bytes()  # pragma: no cover
@@ -79,11 +74,6 @@ class RoutineTest(unittest.TestCase):
         self.assertIn(bytes([prefight.TABLE_ADDRESS >> 16]), emitted)
 
     def test_the_routine_matches_what_the_assembler_emits(self) -> None:
-        """What this package emits against what the assembler emits.
-
-        The comparison needs a build that neither a plain checkout nor a runner
-        has, so on both it skips and the body below never runs.
-        """
         assembled = ROOT / "asm" / "prefight-out.sfc"
         if not assembled.exists():
             raise unittest.SkipTest("assemble asm/prefight-table.asm first")
@@ -178,12 +168,6 @@ class ApplyTest(unittest.TestCase):
 
 
 def synthetic(builder: int = 0x030000, callers: tuple[int, ...] = (0x020000,)) -> bytearray:
-    """A cartridge carrying only what the patch looks for.
-
-    A real dump is not on every machine, and the patch's decisions do not depend
-    on anything else in the cartridge, so a stand-in that carries the builder,
-    its callers and free filler exercises every branch honestly.
-    """
     rom = bytearray(0x400000)
     rom[builder : builder + len(prefight.BUILDER_SIGNATURE)] = prefight.BUILDER_SIGNATURE
     rom[prefight.FILLER_FILE : prefight.FILLER_END] = b"\xff" * prefight.FILLER_SIZE
@@ -195,8 +179,6 @@ def synthetic(builder: int = 0x030000, callers: tuple[int, ...] = (0x020000,)) -
 
 
 class SyntheticLocationTest(unittest.TestCase):
-    """Finding the builder and its callers, without a cartridge on the machine."""
-
     def test_a_cartridge_without_the_builder_has_none(self) -> None:
         self.assertIsNone(prefight.find_builder(bytes(0x400000)))
 
@@ -220,8 +202,6 @@ class SyntheticLocationTest(unittest.TestCase):
 
 
 class SyntheticApplyTest(unittest.TestCase):
-    """Applying the patch, and every reason it refuses to."""
-
     def test_a_cartridge_without_the_builder_is_refused(self) -> None:
         with self.assertRaises(ValueError):
             prefight.apply(bytes(0x400000))
@@ -265,8 +245,6 @@ class SyntheticApplyTest(unittest.TestCase):
 
 
 class ReportTest(unittest.TestCase):
-    """What the patch says it found."""
-
     def test_a_cartridge_without_the_builder_is_said_to_have_none(self) -> None:
         said: list[str] = []
 
@@ -297,8 +275,6 @@ class ReportTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven against a stand-in cartridge."""
-
     def test_the_wrong_number_of_arguments_prints_the_usage(self) -> None:
         said: list[str] = []
 

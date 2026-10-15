@@ -24,12 +24,6 @@ def load_module(name: str, path: Path) -> Any:
 verify_image = load_module("verify_image", ROOT / "tools" / "verify_image.py")
 
 BANKS = 192
-"""The image the builder produces, and the smallest one that reaches the table.
-
-The lookup table sits in bank `$60`, which the windowed layout places past the
-eighth megabyte of the file. An image small enough to be convenient for a test
-cannot hold it, so the fixture is the size the real one is.
-"""
 
 
 def _image(banks: int = BANKS) -> bytearray:
@@ -151,8 +145,6 @@ class NamingTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The two failures the check reports, driven without an assembled image."""
-
     RETAIL = bytes(0x400000)
 
     def run_with(self, image: bytearray, streams: list[tuple[int, int]]) -> tuple[int, list[str]]:

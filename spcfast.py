@@ -152,7 +152,6 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
 ) -> int:
-    """The command line, with both streams passed in so a run can be checked."""
     complain = say if complain is None else complain
     if len(argv) != 3:
         complain("usage: spcfast.py <source-rom> <output-rom>")

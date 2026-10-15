@@ -307,12 +307,6 @@ def changed_bytes(rom: bytes | bytearray) -> int:
 
 
 def apply(rom: bytes | bytearray, found: dict[str, str] | None = None) -> bytes:
-    """Apply every fix this cartridge can take, and refuse if it can take none.
-
-    The survey is a parameter so the guard against a run that was there when the
-    cartridge was surveyed and is not there when it is patched can be driven. One
-    fix overwriting another's stock bytes is the way that happens for real.
-    """
     found = survey(rom) if found is None else found
     if all(state == ABSENT for state in found.values()):
         raise ValueError("this ROM carries none of the sites these fixes name")
@@ -350,7 +344,6 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
 ) -> int:
-    """The command line, with both streams passed in so a run can be checked."""
     complain = say if complain is None else complain
     if len(argv) != 3:
         complain("usage: gamefixes.py <source-rom> <output-rom>")

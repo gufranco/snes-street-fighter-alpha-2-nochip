@@ -1,27 +1,3 @@
-"""Look at this machine and say what is actually here, so a report can be believed.
-
-This project is the end of a chain. It rebuilds a cartridge without its
-decompressor, using models that live in other repositories and a dump that
-belongs to whoever made the game. Any link can be missing on a given machine, and
-from outside they all look the same: it does not work.
-
-So this looks, and prints what it found in a form that can be pasted into an
-issue as it stands.
-
-It asks the models it is built on for their own reports too, and files what comes
-back under their names. That is recursive by construction: whatever they examine,
-including anything they are built on in turn, arrives with it. A project can be
-entirely well while the thing underneath it is stale, and a report that looked
-only here would come back clean in exactly that case.
-
-Two rules shape the rest. Nothing is hidden: a check that fails says what it saw,
-and a check that itself throws is reported as what it threw, named by type.
-Nothing is inferred: every line is something looked at on this machine just now.
-
-No byte of anybody's cartridge is printed. The digest of a dump identifies it
-without carrying it, which is the whole reason digests are published.
-"""
-
 import importlib
 import platform
 import shutil
@@ -48,15 +24,11 @@ OLDEST_PYTHON = (3, 12)
 PROJECT = "snes-street-fighter-alpha-2-nochip"
 
 PART = "sdd1"
-"""The coprocessor this cartridge carries, and the model a check runs against."""
 
 TOOLS = ("docker",)
-"""What a build shells out to. Nothing here needs them; the build does."""
 
 
 class Finding:
-    """One thing that was looked at, and what was there."""
-
     def __init__(self, name: str, ok: bool, detail: str, advice: str | None = None) -> None:
         self.name = name
         self.ok = ok
@@ -65,12 +37,10 @@ class Finding:
 
     @property
     def line(self) -> str:
-        """The one-line form, which is what a reader scans."""
         return f"  {'ok  ' if self.ok else '   !'}  {self.name}: {self.detail}"
 
     @property
     def report(self) -> str:
-        """The same, with what to do about it when there is something to do."""
         if self.ok or not self.advice:
             return self.line
         return f"{self.line}\n         {self.advice}"
@@ -99,7 +69,6 @@ def _default_import(package: str) -> Any:
 
 
 def _model(package: str, where: Path, load: Callable[[str], Any]) -> Finding:
-    """Whether that model is checked out and imports, and which version it is."""
     if not Path(where).is_dir() or not any(Path(where).iterdir()):
         return Finding(
             package,
@@ -127,12 +96,6 @@ def _default_cartridges() -> list[Any]:
 
 
 def _cartridges(diagnose: Callable[[], list[Any]] = _default_cartridges) -> list[Finding]:
-    """Every dump this project reads, and whether the one here is the one it wants.
-
-    A region with no digests published yet is reported and is not a failure. It
-    says something true about the project rather than about the machine running
-    it, and a report that came back unwell on every machine would stop being read.
-    """
     try:
         found = list(diagnose())
     except Exception as trouble:
@@ -166,12 +129,6 @@ def _default_decompress() -> Any:
 
 
 def _decompressor(decompress: Callable[[], Any] = _default_decompress) -> Finding:
-    """That the decompressor is wired here, rather than merely importable.
-
-    Every image this project builds is an expansion of streams that came out of
-    this part, so a decompressor that will not run is the one failure that stops
-    everything, and it is worth one call to find out before anything else does.
-    """
     try:
         found = decompress()
     except Exception as trouble:
@@ -185,11 +142,6 @@ def _decompressor(decompress: Callable[[], Any] = _default_decompress) -> Findin
 
 
 def _tools(named: Any = TOOLS, look: Any = shutil.which) -> list[Finding]:
-    """What a build shells out to, and whether this machine has it.
-
-    Absent, the analysis still runs and the build does not. That is worth saying
-    plainly rather than leaving to the first subprocess that fails.
-    """
     lines = []
     for one in named:
         where = look(one)
@@ -205,20 +157,12 @@ def _tools(named: Any = TOOLS, look: Any = shutil.which) -> list[Finding]:
 
 
 def _default_beneath() -> list[tuple[str, bool]]:
-    """Every model that carries a doctor, asked for its own report.
-
-    A model with no doctor is passed over rather than reported: not every one of
-    them has grown one yet, and a line saying so on every run would be noise. A
-    model whose doctor is here and will not run is a different thing entirely and
-    is left to raise, because that is a real fault on this machine.
-    """
     return _ask_each(sorted(hardware.PACKAGES), hardware.root_of, importlib.import_module)
 
 
 def _ask_each(
     packages: list[str], locate: Callable[[str], Path], load: Callable[[str], Any]
 ) -> list[tuple[str, bool]]:
-    """Each named model asked for its report, skipping the ones that have none."""
     found: list[tuple[str, bool]] = []
     for package in packages:
         where = Path(locate(package))
@@ -235,21 +179,10 @@ def _ask_each(
 
 
 def _default_unused() -> tuple[str, ...]:
-    """Findings from a model that are about something this cartridge does not carry."""
     return ()
 
 
 def _beneath(beneath: Any, unused: Any = _default_unused) -> list[Finding]:
-    """Everything the models found, each filed under the name of its repository.
-
-    One adjustment is made on the way through, and it is worth saying exactly
-    what it is. The coprocessor model covers six parts and reports a missing
-    image for each. This cartridge carries one of them. A missing image for the
-    other five is a true statement about this machine and not a fault of it, so
-    the line is kept, in full, and stops being counted as a failure. Nothing is
-    removed: a report that hid those lines would be hiding the one thing somebody
-    checking a digest needs to see.
-    """
     try:
         found = list(beneath())
     except Exception as trouble:
@@ -279,7 +212,6 @@ def _beneath(beneath: Any, unused: Any = _default_unused) -> list[Finding]:
 
 
 def examine(load: Any = _default_import, beneath: Any = _default_beneath) -> list[Finding]:
-    """Everything worth looking at on this machine, in the order a reader wants it."""
     found = [_python(), _project()]
     found.extend(
         _model(package, hardware.root_of(package), load) for package in sorted(hardware.PACKAGES)
@@ -292,7 +224,6 @@ def examine(load: Any = _default_import, beneath: Any = _default_beneath) -> lis
 
 
 def report(found: list[Finding]) -> list[str]:
-    """The lines a person pastes into an issue."""
     unwell = [one for one in found if not one.ok]
     lines = [f"{PROJECT} {VERSION} on {platform.python_version()}, {platform.system()}", ""]
     lines.append("  the machine")

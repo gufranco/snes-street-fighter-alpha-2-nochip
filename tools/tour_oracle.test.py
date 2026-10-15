@@ -108,13 +108,6 @@ class OracleTest(unittest.TestCase):
         self.assertTrue(tour_oracle.ORACLE.endswith("-cart.sfc"))
 
     def test_the_oracle_carries_no_skip_patch(self) -> None:
-        """A harvest has to see every request, including the repeated ones.
-
-        The skip patch exists to avoid an upload the cartridge would otherwise
-        repeat. An oracle carrying it would record fewer requests than the
-        hardware makes, and every table built from that oracle would be short by
-        exactly the requests the patch suppressed.
-        """
         self.assertNotIn("repeat", tour_oracle.ORACLE)
         self.assertNotIn("both", tour_oracle.ORACLE)
 
@@ -125,8 +118,6 @@ class OracleTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The one step that reaches for a container, with the reaching passed in."""
-
     def test_it_reads_back_what_the_pass_wrote_to_the_log(self) -> None:
         line = "DMA ch=0 src=D9:104C n=832 b=18 fixed=1\n"
 
@@ -156,8 +147,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The rule that decides what the tour adds to the table."""
-
     ROM = bytes(0x400000)
 
     def run_with(self, seen: dict[int, int], held: dict[int, int], **rest: Any) -> dict[int, int]:

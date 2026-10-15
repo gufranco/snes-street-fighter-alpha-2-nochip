@@ -21,17 +21,6 @@ pack = load_module("pack", ROOT / "pack.py")
 USA = pack.REGIONS["usa"].retail
 
 
-"""The one step that composes the whole build over a real cartridge.
-
-It reads the dump, runs six patches over it in order, and hands back an image.
-Its inputs cannot exist on a machine that does not have the cartridge, and a
-synthetic four megabyte stand-in would satisfy every step by construction and
-prove nothing about any of them. So this runs it for real where the dump is
-present and reports as skipped where it is not, and pack.py keeps that one
-function out of the coverage measurement for the same reason.
-"""
-
-
 @unittest.skipUnless(USA.exists(), "the retail dump is supplied by the builder")  # pragma: no cover
 class BuildTest(unittest.TestCase):
     def _workdir(self) -> Path:

@@ -89,8 +89,6 @@ class RenderTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The one step that reaches for the assembler, with the reaching passed in."""
-
     def test_it_asks_the_assembler_for_the_named_region(self) -> None:
         asked: list[Any] = []
         (freeze.ROOT / "asm" / "probe-jp.sfc").write_bytes(bytes(0x400000))
@@ -108,8 +106,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class FreezeTest(unittest.TestCase):
-    """The decision the tool makes once it has both assembled images."""
-
     SOURCE = (
         "PATCH = (\n"
         "    (0x000000, bytes.fromhex('00')),\n"
@@ -251,8 +247,6 @@ class FreezeTest(unittest.TestCase):
 
 
 class LoadTest(unittest.TestCase):
-    """Reading a sibling module back after the table has been rewritten."""
-
     def test_it_returns_the_module_the_name_points_at(self) -> None:
         found = freeze.load("spcfast")
 
@@ -260,8 +254,6 @@ class LoadTest(unittest.TestCase):
 
 
 class TrailingRunTest(unittest.TestCase):
-    """A run that reaches the last byte, where there is no next byte to close it."""
-
     def test_a_change_at_the_final_byte_is_still_recorded(self) -> None:
         before = bytes(16)
         after = bytes(15) + b"\xaa"
@@ -276,8 +268,6 @@ class TrailingRunTest(unittest.TestCase):
 
 
 class PlumbingTest(unittest.TestCase):
-    """Adding the frame hook plumbing, which must not be added twice."""
-
     def test_a_source_that_already_carries_it_is_left_alone(self) -> None:
         source = "FRAME_HOOK_SITES = (1,)\ndef checksum(rom):\n    return 0\n"
 

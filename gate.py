@@ -63,12 +63,6 @@ def undecodable(
     entries: list[tuple[int, int]],
     decode: Callable[..., Any] = sdd1.decompress,
 ) -> list[tuple[int, int, str]]:
-    """Every entry in the table that the decompressor will not reproduce.
-
-    The decompressor is a parameter so both ways an entry can be wrong, raising
-    and returning the wrong length, can be driven without a cartridge that
-    happens to contain one.
-    """
     broken: list[tuple[int, int, str]] = []
     for source, length in entries:
         try:
@@ -110,17 +104,6 @@ def check(
     retail: Path | None = None,
     decode: Callable[..., Any] = sdd1.decompress,
 ) -> list[str]:
-    """Everything wrong with one region's table, or an empty list.
-
-    The table, the observed requests and the cartridge are parameters so each
-    finding can be driven on its own. A missing cartridge is not a finding: the
-    decode check is simply not run, and the others still are.
-
-    The scan check is skipped when a source repeats, because two entries under
-    one key have no placement at all and the allocator raises rather than
-    returning a distance. The repeat is the thing to fix first, and reporting it
-    is worth more than falling over on the way to the next check.
-    """
     entries = table(region) if entries is None else entries
     findings = []
 
@@ -160,7 +143,6 @@ def main(
     examine: Callable[[str], list[str]] = check,
     listing: Callable[[str], list[tuple[int, int]]] = table,
 ) -> int:
-    """The command line, with both streams passed in so a run can be checked."""
     complain = say if complain is None else complain
     wanted = argv[1:] or sorted(RETAIL)
     unknown = [region for region in wanted if region not in RETAIL]

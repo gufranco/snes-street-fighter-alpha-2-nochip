@@ -174,8 +174,6 @@ class VerdictTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The one step that reaches for a container, with the reaching passed in."""
-
     def test_it_asks_for_as_many_frames_as_the_roster_and_budget_need(self) -> None:
         asked: list[Any] = []
 
@@ -202,8 +200,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class ReportTest(unittest.TestCase):
-    """One block about one image."""
-
     @staticmethod
     def moving(fighter: int) -> dict[str, Any]:
         return {"fighter": fighter, "main": {"a", "b"}, "nmi": {"c", "d"}, "bad": [], "ticks": 9}
@@ -234,8 +230,6 @@ class ReportTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The verdict over a set of images, driven against recorded logs."""
-
     @staticmethod
     def healthy(roster: int, budget: int) -> str:
         lines = []

@@ -162,8 +162,6 @@ class RealMapTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven without a cartridge."""
-
     ROM = bytes(0x400000)
 
     def run_with(self, argv: list[str], blob: bytes) -> tuple[int, list[str]]:

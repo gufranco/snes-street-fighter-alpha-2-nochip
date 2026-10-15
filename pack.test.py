@@ -104,8 +104,6 @@ class AssemblyFailureTest(unittest.TestCase):
 
 
 class LoadingTest(unittest.TestCase):
-    """A tree with no submodules says so rather than failing on an import."""
-
     def test_the_model_it_loads_is_the_image_handling_one(self) -> None:
         self.assertTrue(hasattr(pack.load_images(), "dump"))
 
@@ -133,8 +131,6 @@ class ShellingOutTest(unittest.TestCase):
 
 
 class AssembleTest(unittest.TestCase):
-    """What assembling a bypass patch shells out to, checked without Docker."""
-
     def test_the_command_names_the_patch_and_where_the_output_goes(self) -> None:
         found = pack.assemble_command("usa", pack.ROOT / "dist" / "x.sfc", "usa-bypass.sfc")
 
@@ -175,14 +171,6 @@ class AssembleTest(unittest.TestCase):
 
 @contextlib.contextmanager
 def a_dump_in_place(region: str = "usa") -> Iterator[Path]:
-    """Point a region at a file that exists, so the presence check lets a run through.
-
-    These cases drive `pack.main` past the point where it looks for the dump, and
-    what they check has nothing to do with the dump's contents: the builder is
-    injected. Pointing the region at a temporary file rather than skipping is what
-    lets them run on a machine that holds no cartridge, which is every machine but
-    the author's.
-    """
     original = pack.REGIONS[region]
     with tempfile.TemporaryDirectory() as where:
         stand_in = Path(where) / "stand-in.sfc"
@@ -195,8 +183,6 @@ def a_dump_in_place(region: str = "usa") -> Iterator[Path]:
 
 
 class EntryTest(unittest.TestCase):
-    """A run from the command line, with the slow steps passed in."""
-
     def test_a_region_nobody_knows_is_refused(self) -> None:
         complained: list[Any] = []
 

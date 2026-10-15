@@ -148,13 +148,6 @@ class FindStreamsTest(unittest.TestCase):
 
 
 class SyntheticFindTest(unittest.TestCase):
-    """Locating a stream without either cartridge on the machine.
-
-    The scan does not care what the compressed bytes mean, only that they decode
-    to something distinctive that also appears in the reference. Noise at a known
-    offset gives exactly that, so every branch can be driven from a stand-in.
-    """
-
     STREAM = 0x1000
 
     @classmethod
@@ -210,8 +203,6 @@ class SyntheticFindTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven against stand-in cartridges."""
-
     def run_with(self, argv: list[str], source: bytes, reference: bytes) -> tuple[int, list[str]]:
         said: list[str] = []
         code = find.main(
@@ -290,8 +281,6 @@ class CommandTest(unittest.TestCase):
 
 
 class ExtendTest(unittest.TestCase):
-    """How far a confirmed stream keeps agreeing with the reference."""
-
     def test_agreement_stops_where_the_reference_stops(self) -> None:
         rom = SyntheticFindTest.source()
         short = find.sdd1.decompress(rom, SyntheticFindTest.STREAM, find.CONFIRM_LENGTH).data
@@ -310,8 +299,6 @@ class ExtendTest(unittest.TestCase):
 
 
 class ChainTest(unittest.TestCase):
-    """Grouping hits whose outputs sit next to each other in the reference."""
-
     @staticmethod
     def hit(source: int, target: int, length: int) -> Any:
         return find.Hit(source, target, length)
@@ -336,8 +323,6 @@ class ChainTest(unittest.TestCase):
 
 
 class ProbeRefusalTest(unittest.TestCase):
-    """The four reasons an offset is passed over before it is ever confirmed."""
-
     def test_an_offset_that_does_not_decode_is_passed_over(self) -> None:
         rng = random.Random(31)
         rom = bytearray(0x8000)
@@ -377,12 +362,6 @@ class ProbeRefusalTest(unittest.TestCase):
         self.assertEqual(find.find_streams(rom, bytes(0x2000), 0x1000, 0x1001), [])
 
     NARROW = bytes.fromhex("03030201020102020200000001ff0001020202000100ff0302030101ff030002")
-    """Compressed bytes whose eight byte probe is varied and whose thirty two is not.
-
-    Found by searching low entropy inputs for one that clears the probe threshold
-    and fails the confirmation threshold, which is the only way to reach the
-    second distinctiveness check.
-    """
 
     def test_an_offset_whose_confirmation_is_not_distinctive_is_passed_over(self) -> None:
         rom = bytearray(0x2000)
@@ -404,8 +383,6 @@ class ProbeRefusalTest(unittest.TestCase):
 
 
 class ExtendStopTest(unittest.TestCase):
-    """Agreement that ends because the stream does, rather than because it diverges."""
-
     def test_a_stream_that_runs_off_the_cartridge_stops_where_it_stopped(self) -> None:
         rom = bytearray(0x2000)
         rng = random.Random(9)

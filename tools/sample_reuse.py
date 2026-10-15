@@ -199,10 +199,6 @@ def seconds(count: int) -> float:
 
 
 def report(name: str, text: str, say: Callable[[str], None] = print) -> dict[str, Any]:
-    """What one soundwalk log says about how much of each load was already there.
-
-    The stream is a parameter so a run can be read back rather than watched.
-    """
     runs = list(loads(events(text.splitlines())))
     totals, per_load = replay(runs)
     carrying = [entry for entry in per_load if entry["bytes"]]
@@ -263,7 +259,6 @@ def report(name: str, text: str, say: Callable[[str], None] = print) -> dict[str
 
 
 def main(argv: list[str], say: Callable[[str], None] = print) -> int:
-    """Report on every log named, or on every one the soundwalk left behind."""
     paths = [Path(name) for name in argv[1:]]
     if not paths:
         paths = sorted((ROOT / "build" / "soundwalk").glob("grp-*.txt"))

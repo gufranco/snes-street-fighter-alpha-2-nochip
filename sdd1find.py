@@ -76,13 +76,6 @@ def find_streams(
     probe_bits: int = PROBE_BITS,
     confirm_bits: int = CONFIRM_BITS,
 ) -> list[Any]:
-    """Every offset in the source whose decompressed output appears in the reference.
-
-    Two bitmaps narrow the search before anything is decompressed twice. Their
-    widths are parameters because they are a tuning knob: a narrow one reports
-    more false positives, which the search then has to reject by looking the
-    output up in the reference for real.
-    """
     stop = len(source) if stop is None else stop
     probe_map = build_bitmap(reference, PROBE_LENGTH, probe_bits)
     confirm_map = build_bitmap(reference, CONFIRM_LENGTH, confirm_bits)
@@ -139,11 +132,6 @@ def main(
     read: Callable[[Any], Any] | None = None,
     say: Callable[..., None] = print,
 ) -> int:
-    """Find every compressed stream in one cartridge whose output is in another.
-
-    The arguments and the cartridge reader are parameters, so the refusal and a
-    whole scan can be driven without either dump on the machine.
-    """
     argv = sys.argv if argv is None else argv
     read = dump.read if read is None else read
     if len(argv) < 3:

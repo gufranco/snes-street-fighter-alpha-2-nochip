@@ -26,25 +26,6 @@ FILLER_SIZE = FILLER_END - FILLER_FILE
 ROUTINE_ADDRESS = FILLER_FILE & 0xFFFF
 
 MARKER = 0x7E9000
-"""Where the routine remembers which list it last uploaded.
-
-Three bytes: two of magic and one list identifier. They have to live somewhere
-the game never writes, and the first choice did not. The magic sat at `$00:1F3F`,
-which reads as free until you look at a run that actually plays: the game holds a
-value there, overwrites the magic every time, and the comparison that decides
-whether an upload can be skipped then fails on every call. The patch was both
-scribbling on live state and doing nothing at all, and neither showed up as a
-symptom anyone would notice.
-
-This address is chosen from measurement rather than from inspection. Two
-forty five thousand frame tours, one per region, walking the whole roster and
-entering fights, wrote no byte anywhere in `$7E:5E70` through `$7E:FE3F`. That is
-forty kilobytes, and this sits in the middle of it rather than at an edge.
-
-Being untouched across a long run is evidence, not proof. It is the strongest
-evidence this harness can produce, and it is considerably more than the previous
-address had.
-"""
 
 JSR = 0x20
 
@@ -91,7 +72,6 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
 ) -> int:
-    """The command line, with both streams passed in so a run can be checked."""
     complain = say if complain is None else complain
     if len(argv) != 3:
         complain("usage: repeatload.py <source-rom> <output-rom>")

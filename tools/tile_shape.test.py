@@ -1,18 +1,3 @@
-"""That the tile measurement measures something, and knows when it does not.
-
-The trap this exists to avoid is a check that passes on anything. Reading a
-decompressed stream back as tiles and writing it out again reproduces the input
-for any run of bytes whose length divides by thirty two, because the planar
-layout is a rearrangement and nothing else. A round trip is therefore not
-evidence that the output is graphics, and treating it as such would be a check
-nobody has seen fail.
-
-What separates art from noise is reuse. A real sheet repeats tiles, because blank
-space and flat colour repeat, and random bytes never do. So the measurement is
-the duplicate fraction, and the control is random bytes of the same length. The
-control has to come out at zero or the measurement is not measuring reuse.
-"""
-
 import importlib.util
 import sys
 import unittest
@@ -159,8 +144,6 @@ class EntryTest(unittest.TestCase):
 
 @NEEDS_A_DUMP  # pragma: no cover
 class ExhaustedTableTest(unittest.TestCase):
-    """A survey that runs out of streams rather than stopping at a limit."""
-
     def test_a_table_shorter_than_the_limit_is_measured_whole(self) -> None:
         table = list(tile_shape.table_for(USA))[:3]
 

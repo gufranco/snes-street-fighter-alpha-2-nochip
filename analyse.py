@@ -43,10 +43,6 @@ def mbit(size: float) -> float:
 
 
 def report(label: str, data: bytes | bytearray, say: Callable[[str], None] = print) -> int:
-    """One line about how much of a cartridge looks compressed, and that figure.
-
-    The stream is a parameter so a run can be read back rather than watched.
-    """
     hits, blocks, _ = compressed_share(data)
     comp_bytes = hits * BLOCK
     say(
@@ -61,12 +57,6 @@ def main(
     read: Callable[[Path], Any] | None = None,
     say: Callable[[str], None] = print,
 ) -> int:
-    """Compare the two Star Ocean builds, then project the same growth onto this one.
-
-    The arguments and the cartridge reader are parameters, so the projection,
-    which is the part worth checking, can be driven without four dumps on the
-    machine.
-    """
     argv = sys.argv if argv is None else argv
     read = dump.read if read is None else read
     roms = {}

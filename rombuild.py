@@ -100,12 +100,6 @@ def reclaimed_regions(
     entries: list[Any],
     decode: Callable[..., Any] = sdd1.decompress,
 ) -> list[Region]:
-    """The cartridge space each stream stops needing once it has been placed.
-
-    The decompressor is a parameter so the guard against a stream that consumes
-    nothing can be shown to fire. The real one always advances past its source,
-    so nothing else can drive that branch.
-    """
     spans: list[Region] = []
     for entry in entries:
         if entry.length is None:
@@ -227,11 +221,6 @@ def main(
     read: Callable[[Any], Any] | None = None,
     say: Callable[..., None] = print,
 ) -> int:
-    """The command line, with the arguments and the cartridge reader passed in.
-
-    Both are parameters so the refusal and a whole build can be driven without
-    a dump on the machine.
-    """
     argv = sys.argv if argv is None else argv
     read = dump.read if read is None else read
     if len(argv) < 4:

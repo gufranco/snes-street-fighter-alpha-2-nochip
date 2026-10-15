@@ -13,12 +13,6 @@ import hardware
 
 
 def load_images(load: Callable[[str], Any] = hardware.load) -> Any:
-    """The image handling model, or the reason a tree without it cannot go on.
-
-    A submodule is a pinned commit rather than content, so a clone without them
-    leaves named but empty directories. Saying that plainly beats a bare import
-    error from whatever happens to import first.
-    """
     try:
         return load("romimage")
     except hardware.ModelMissing as unchecked:
@@ -89,8 +83,7 @@ def entries_for(region: str) -> Any:
     return rombuild.entries_from_map({str(source): length for source, length in table})
 
 
-class AssemblyFailed(Exception):
-    """The bypass patch did not assemble, carrying what the assembler said."""
+class AssemblyFailed(Exception): ...
 
 
 def assembly_failure(region: str, result: Any) -> str:
@@ -108,7 +101,6 @@ def assembly_failure(region: str, result: Any) -> str:
 
 
 def assemble_command(region: str, staged: Path, produced_name: str) -> list[str]:
-    """What assembling one region's bypass patch shells out to."""
     return [
         sys.executable,
         "build.py",
@@ -160,7 +152,6 @@ def main(
     complain: Callable[[str], None] | None = None,
     dist: Path | None = None,
 ) -> int:
-    """Every region built, with the two slow steps passed in so a run can be checked."""
     complain = say if complain is None else complain
     make = build if make is None else make
     gate_check = gate.check if gate_check is None else gate_check

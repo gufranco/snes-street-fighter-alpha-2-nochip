@@ -83,13 +83,6 @@ def build_variants(
     execute: Callable[..., Any] = subprocess.run,
     carts: dict[str, bytes | bytearray] | None = None,
 ) -> Any:
-    """Assemble the bypass against each cartridge variant and stamp the table in.
-
-    The shelling out is a parameter so the loop can be driven without a
-    container, and so is the variant set, so it can be driven without the ROM.
-    Deriving the variants is not tested here because each patch carries its own
-    proof that it produces what it claims.
-    """
     OUT.mkdir(parents=True, exist_ok=True)
     carts = variants() if carts is None else carts
     entries = rombuild.entries_from_map({str(s): n for s, n in table.items()})
@@ -126,11 +119,6 @@ def requests_of(
     frames: int,
     execute: Callable[..., Any] = subprocess.run,
 ) -> dict[int, int]:
-    """Run one emulator pass and read every stream the cartridge asked for.
-
-    The reaching out is a parameter so the parsing, which is the part worth
-    testing, can be driven against a recorded log rather than a container.
-    """
     result = execute(
         [
             "docker",
@@ -181,14 +169,6 @@ def main(
     decode: Callable[..., Any] = sdd1.decompress,
     rounds: int = 20,
 ) -> int:
-    """Widen the table until a round finds no stream the cartridge still wants.
-
-    Every collaborator is passed in, so the convergence rule can be driven
-    without a ROM, a container or the assembler. The rule is the part worth
-    testing: a round that adds nothing means the table is complete, and a run
-    that exhausts its rounds without that happening has not converged and says
-    so through the exit status.
-    """
     retail = dump.read(RETAIL) if retail is None else retail
     for iteration in range(1, rounds + 1):
         table = read()

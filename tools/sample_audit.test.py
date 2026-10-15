@@ -334,8 +334,6 @@ class LoadTest(unittest.TestCase):
 
 
 class FaultIdentityTest(unittest.TestCase):
-    """Two findings are the same finding when they name the same defect."""
-
     def test_two_faults_naming_the_same_defect_are_equal(self) -> None:
         self.assertEqual(audit.Fault(1, "loop", 0x20), audit.Fault(1, "loop", 0x20))
 

@@ -293,8 +293,6 @@ class MainTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The one step that reaches for a container, with the reaching passed in."""
-
     def test_it_names_the_roster_and_the_budget(self) -> None:
         asked: list[Any] = []
 
@@ -337,8 +335,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The verdict, driven against recorded logs."""
-
     def run_with(self, argv: list[str], stock: str, patched: str) -> tuple[int, list[str]]:
         where = Path(tempfile.mkdtemp())
         said: list[str] = []

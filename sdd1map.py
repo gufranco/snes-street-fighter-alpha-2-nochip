@@ -90,11 +90,6 @@ def main(
     read: Callable[[Any], Any] | None = None,
     say: Callable[..., None] = print,
 ) -> int:
-    """The command line, with the arguments and the cartridge reader passed in.
-
-    Both are parameters so every branch, including the two refusals, can be
-    driven without a cartridge on the machine.
-    """
     argv = sys.argv if argv is None else argv
     read = dump.read if read is None else read
     if len(argv) < 3:

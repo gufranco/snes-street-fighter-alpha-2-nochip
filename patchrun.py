@@ -67,18 +67,6 @@ def translate(
     dmap: int = ARMED_DMAP,
     **registers: Any,
 ) -> Any:
-    """Run the translation the way the cartridge runs it, and read the result.
-
-    Native mode is not a detail. The processor powers on in emulation mode, where
-    the instruction that widens the accumulator and index registers is defined to
-    do nothing, and the routine's first act is to widen them. Left in emulation
-    mode it loads eight bits of a sixteen bit address, indexes with a register
-    that wraps at two hundred and fifty six, and scans forever without finding
-    what it is looking for.
-
-    The cartridge reaches this routine from native-mode code, so the harness has
-    to start where the caller does.
-    """
     base = DMA_BASE + channel
     memory.ram.clear()
     memory.ram[base] = dmap
@@ -108,11 +96,6 @@ def walk(
     say: Callable[[str], None],
     run: Callable[[Any, int], Any] = translate,
 ) -> int:
-    """Every stream translated on the processor, and where it disagreed.
-
-    The translation is a parameter so the reporting can be driven without an
-    assembled image and without running the processor over the whole table.
-    """
     failures = 0
     for entry in entries:
         outcome = run(memory, entry.source)
@@ -134,7 +117,6 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
 ) -> int:
-    """The command line, with both streams passed in so a run can be checked."""
     argv = sys.argv if argv is None else argv
     complain = say if complain is None else complain
 

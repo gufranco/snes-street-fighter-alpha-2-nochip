@@ -104,16 +104,6 @@ def report(
     read: Callable[[Path], Any] | None = None,
     entries: list[tuple[int, int]] | None = None,
 ) -> int:
-    """Everything wrong with one cartridge's table, and whether that is a failure.
-
-    The stream, the cartridge reader and the table are parameters, so each
-    finding can be driven without a dump on the machine.
-
-    The scan is not measured when a source repeats, because two entries under
-    one key have no placement and the allocator raises rather than returning a
-    distance. The repeat already fails the run, and reporting it is worth more
-    than falling over on the way to the verdict.
-    """
     read = dump.read if read is None else read
     rom = read(Path(rom_path))
     entries = load(table_for(rom_path)) if entries is None else entries
@@ -138,7 +128,6 @@ def main(
     complain: Callable[[str], None] | None = None,
     examine: Callable[..., int] = report,
 ) -> int:
-    """The command line, with both streams and the check passed in."""
     complain = say if complain is None else complain
     if len(argv) != 2:
         complain("usage: mapcheck.py <rom>")

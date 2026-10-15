@@ -122,13 +122,6 @@ class MissedTest(unittest.TestCase):
         self.assertEqual(harvest_jp.missed_streams(lines), {})
 
     def test_the_earliest_scan_in_reach_is_the_one_used(self) -> None:
-        """Not the nearest, which is worth knowing before trusting a busy log.
-
-        The search walks forward from four lines back and stops at the first scan
-        naming the address it wants. Two scans for one address inside that window
-        therefore resolve to the older, which in a real log is the request that
-        actually preceded the lookup.
-        """
         lines = [
             _scan(0x104C, ((BASE + 0x19, 0x104C, 832), (0x00, 0x0000, 0), (0x00, 0x0000, 0))),
             _scan(0x104C, ((BASE + 0x19, 0x104C, 4096), (0x00, 0x0000, 0), (0x00, 0x0000, 0))),
@@ -173,12 +166,6 @@ class VariantTest(unittest.TestCase):
         harvest_jp.RETAIL.exists(), "the retail cartridge is not present"
     )  # pragma: no cover
     def test_the_harvest_variants_carry_no_skip_patch(self) -> None:
-        """The harvest measures what the cartridge asks for, so it patches nothing that changes that.
-
-        The skip patch exists to avoid an upload the cartridge would otherwise
-        repeat. A harvest that carried it would record fewer requests than the
-        hardware makes, and the table built from that harvest would be short.
-        """
         import hardware
 
         repeatload = load_module("repeatload", ROOT / "repeatload.py")
@@ -197,8 +184,6 @@ class VariantTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The two steps that reach outside, with the reaching passed in."""
-
     @staticmethod
     def headed() -> bytes:
         rom = bytearray(0x400000)
@@ -274,8 +259,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class ConvergenceTest(unittest.TestCase):
-    """The loop, driven with every collaborator supplied."""
-
     def a_run(self, wanted: list[dict[int, int]]) -> tuple[dict[int, int], list[str]]:
         said: list[str] = []
         rounds = iter(wanted)
@@ -351,8 +334,6 @@ class AbsorbTest(unittest.TestCase):
 
 
 class ShortenTest(unittest.TestCase):
-    """Finding the longest length that still ends where the next stream starts."""
-
     ROM = bytes(0x400000)
 
     def test_a_boundary_a_length_can_reach_is_found(self) -> None:
@@ -375,8 +356,6 @@ class ShortenTest(unittest.TestCase):
 
 
 class OverlapTest(unittest.TestCase):
-    """A stream that runs into the next one is trimmed, or the pair is refused."""
-
     ROM = bytes(0x400000)
 
     def test_an_earlier_stream_that_overruns_is_trimmed_back(self) -> None:
@@ -408,8 +387,6 @@ class OverlapTest(unittest.TestCase):
 
 
 class SkipTest(unittest.TestCase):
-    """The three reasons a reported stream is passed over rather than absorbed."""
-
     ROM = bytes(0x400000)
 
     @staticmethod

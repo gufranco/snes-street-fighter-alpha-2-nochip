@@ -1,41 +1,3 @@
-"""Check that the audio patches deliver the bytes they were meant to deliver.
-
-Two of the patches here change how the cartridge feeds the audio processor. One
-replaces the sample-upload loop with a faster one. The other skips an upload
-entirely when the list being asked for is the one already loaded. Both change
-timing and work avoided, and neither is allowed to change which bytes end up in
-the audio processor's memory.
-
-The obvious comparison, running both builds and diffing that memory at the end,
-does not answer it. The patch changes when things happen, so the two runs stop
-with the driver in different places: mid-note, mid-envelope, with different
-counters. Thousands of bytes differ and none of them mean anything.
-
-The comparison that does answer it is per upload. Every time the cartridge hands
-the audio processor a block, the harness records where the block came from, how
-long it is, and where it landed, then compares the bytes that arrived against the
-bytes still in the cartridge. A faster loop that drops a byte fails that check on
-the block it dropped it in, whatever the driver happens to be doing afterwards.
-
-So this drives each build through the same deterministic tour and reads three
-things out of it.
-
-**Whether every block arrived intact.** Anything other than zero bad blocks is a
-patch that corrupts what it uploads, and the block is named.
-
-**Which blocks were uploaded at all.** The skip patch is supposed to upload fewer
-of them, never different ones. A source the stock build uploads and the patched
-one never uploads is a skip that skipped something real.
-
-**How many writes each block took.** This is what the fast patch was for, and the
-one number that is supposed to change. Reporting it turns "it feels faster" into
-a ratio.
-
-Listening cannot do any of this. Two builds sound identical to a person while
-differing in a sample nobody reached, and nobody hears a block that arrived one
-byte short.
-"""
-
 import re
 import subprocess
 import sys
@@ -64,7 +26,6 @@ RESULT = re.compile(r"^RESULT load=(\w+) frames=(\d+)")
 
 
 def mapping_for(stem: str) -> str:
-    """Which map an image is read through, decided by the form it was built in."""
     return FREE_MAPPING if stem.endswith("-free") else CART_MAPPING
 
 
@@ -73,13 +34,6 @@ class Usage(Exception):
 
 
 def options(argv: list[str]) -> tuple[str, str, int, int, bool]:
-    """The tour to drive, and the two images to drive through it.
-
-    The default tour walks the roster, and every character loads a different
-    sample list, so the skip patch never meets the condition it exists for. The
-    fight flag is what reaches it: entering a fight and coming back asks for a
-    list that is already loaded, which is the only time skipping one is possible.
-    """
     roster, budget, fights = ROSTER, BUDGET, False
     rest = []
     argv = list(argv[1:])
@@ -105,11 +59,6 @@ def run(
     fights: bool = False,
     execute: Callable[..., Any] = subprocess.run,
 ) -> Path:
-    """Drive one image through the tour with every upload verified as it lands.
-
-    The reaching out is a parameter so the comparison, which is the part worth
-    testing, can be driven against recorded logs rather than a container.
-    """
     LOGS.mkdir(parents=True, exist_ok=True)
     image = Path(image).resolve()
     log = LOGS / f"audio-{image.stem}.txt"
@@ -144,7 +93,6 @@ def run(
 
 
 def read(log: Path) -> dict[str, Any]:
-    """What one run uploaded, and whether all of it arrived."""
     blocks = []
     corrupt = []
     ok = bad = frames = 0
@@ -193,12 +141,10 @@ def read(log: Path) -> dict[str, Any]:
 
 
 def uploads(found: dict[str, Any]) -> Counter[tuple[int, int]]:
-    """How many times each source block was uploaded."""
     return Counter((block["source"], block["length"]) for block in found["blocks"])
 
 
 def fewer(stock: dict[str, Any], patched: dict[str, Any]) -> dict[Any, Any]:
-    """Sources the patched build uploaded fewer times than the stock one."""
     before, after = uploads(stock), uploads(patched)
     return {
         source: (count, after.get(source, 0))
@@ -208,20 +154,17 @@ def fewer(stock: dict[str, Any], patched: dict[str, Any]) -> dict[Any, Any]:
 
 
 def missing(stock: dict[str, Any], patched: dict[str, Any]) -> list[Any]:
-    """Sources the stock build uploaded and the patched one never did at all."""
     after = uploads(patched)
     return [source for source in uploads(stock) if source not in after]
 
 
 def cost(found: dict[str, Any]) -> float:
-    """Writes per byte uploaded, which is what a faster loop is meant to lower."""
     written = sum(block["writes"] for block in found["blocks"])
     length = sum(block["length"] for block in found["blocks"])
     return written / length if length else 0.0
 
 
 def verdict(stock: dict[str, Any], patched: dict[str, Any]) -> list[str]:
-    """Whatever the patch did that is a defect rather than an improvement."""
     reasons = []
     if stock["load"] != "ok" or patched["load"] != "ok":
         reasons.append("one of the builds did not load")
@@ -239,7 +182,6 @@ def report(
     patched: dict[str, Any],
     say: Callable[[str], None] = print,
 ) -> None:
-    """What each build did, and what the difference between them means."""
     for name, found in ((stock_name, stock), (patched_name, patched)):
         say(
             f"  {name:24s} load={found['load']:3s} frames={found['frames']:6d} "
@@ -267,11 +209,6 @@ def main(
     drive: Callable[..., Path] = run,
     say: Callable[..., None] = print,
 ) -> int:
-    """Compare what two builds upload, and say whether the patch broke anything.
-
-    The driving is a parameter so both verdicts can be driven against recorded
-    logs rather than a container.
-    """
     try:
         stock, patched, roster, budget, fights = options(argv)
     except (Usage, IndexError, ValueError) as refusal:

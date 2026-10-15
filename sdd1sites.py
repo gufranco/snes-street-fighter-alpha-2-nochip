@@ -87,11 +87,6 @@ def main(
     read: Callable[[Any], Any] | None = None,
     say: Callable[..., None] = print,
 ) -> int:
-    """Where the cartridge writes the chip's registers, and what surrounds them.
-
-    The arguments and the cartridge reader are parameters, so both refusals and
-    the report can be driven without a dump on the machine.
-    """
     argv = sys.argv if argv is None else argv
     read = dump.read if read is None else read
     if len(argv) < 3:

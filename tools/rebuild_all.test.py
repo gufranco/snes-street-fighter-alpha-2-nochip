@@ -98,8 +98,6 @@ class EntryTest(unittest.TestCase):
 
 
 class AssembleTest(unittest.TestCase):
-    """Staging one variant and asking the assembler for it."""
-
     @staticmethod
     def build(region: str, name: str, cart: bytes) -> tuple[Path, list[Any]]:
         asked: list[Any] = []
@@ -133,8 +131,6 @@ class AssembleTest(unittest.TestCase):
 
 
 class ImageSourceTest(unittest.TestCase):
-    """What each variant puts into the image."""
-
     ROM = bytes(0x400000)
 
     def test_an_ordinary_variant_carries_nothing_extra(self) -> None:
@@ -162,8 +158,6 @@ class ImageSourceTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The rebuild loop, driven without the dumps and without the assembler."""
-
     @staticmethod
     def headed() -> bytes:
         rom = bytearray(0x400000)

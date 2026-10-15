@@ -11,10 +11,6 @@ import hardware
 
 
 def _never_asked(_name: str) -> Any:
-    """Handed to a walk that must not reach a load, so reaching one is a failure.
-
-    Never running is the whole point, which is why the body is not measured.
-    """
     raise AssertionError("nothing should have been loaded")  # pragma: no cover
 
 
@@ -109,8 +105,6 @@ class ModelTest(unittest.TestCase):
 
 
 class DecompressorTest(unittest.TestCase):
-    """Every image built here is an expansion, so a dead decoder stops everything."""
-
     def test_the_report_says_whether_the_decompressor_runs(self) -> None:
         self.assertIn("decompressor", [one.name for one in doctor.examine()])
 
@@ -203,8 +197,6 @@ class CartridgeTest(unittest.TestCase):
 
 
 class BeneathTest(unittest.TestCase):
-    """That what this is built on is examined too, and under its own name."""
-
     def test_the_models_that_carry_a_doctor_are_asked_for_theirs(self) -> None:
         def beneath() -> list[Any]:
             return [("snes-sdd1-python", doctor.Finding("python", True, "some version"))]
@@ -236,8 +228,6 @@ class BeneathTest(unittest.TestCase):
 
 
 class AskingEachTest(unittest.TestCase):
-    """Which models get asked for a report, and which are passed over."""
-
     def _a_doctor(self, findings: list[Any]) -> Any:
         return type("Underneath", (), {"examine": staticmethod(lambda: findings)})
 

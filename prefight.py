@@ -105,10 +105,6 @@ def apply(rom: bytes | bytearray) -> bytes:
 
 
 def report(rom: bytes | bytearray, say: Callable[[str], None] = print) -> None:
-    """What the patch found in this cartridge, or that it found nothing.
-
-    The stream is a parameter so a run can be read back rather than watched.
-    """
     at = find_builder(rom)
     if at is None:
         say("  no pre-fight table builder in this ROM")
@@ -128,7 +124,6 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
 ) -> int:
-    """The command line, with both streams passed in so a run can be checked."""
     complain = say if complain is None else complain
     if len(argv) != 3:
         complain("usage: prefight.py <source-rom> <output-rom>")

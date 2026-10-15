@@ -306,8 +306,6 @@ def tagged_blob(markers: list[tuple[int, int]], size: int = 8192) -> bytes:
 
 
 class LoadEntriesTest(unittest.TestCase):
-    """Reading the marker table, including the stream whose length is not in it."""
-
     def test_a_blob_with_no_markers_yields_nothing(self) -> None:
         self.assertEqual(rombuild.load_entries(bytes(4096)), [])
 
@@ -323,8 +321,6 @@ class LoadEntriesTest(unittest.TestCase):
 
 
 class EntriesFromMapTest(unittest.TestCase):
-    """Building the same entry list from a written table instead."""
-
     def test_entries_come_back_in_source_order(self) -> None:
         entries = rombuild.entries_from_map({"512": 16, "256": 32})
 
@@ -342,8 +338,6 @@ class EntriesFromMapTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line, driven without a dump on the machine."""
-
     def test_too_few_arguments_prints_the_usage(self) -> None:
         said: list[str] = []
 
@@ -391,16 +385,12 @@ class CommandTest(unittest.TestCase):
 
 
 class AllocationRefusalTest(unittest.TestCase):
-    """Placement with nowhere to place into."""
-
     def test_no_regions_at_all_is_refused(self) -> None:
         with self.assertRaises(rombuild.AllocationError):
             rombuild.allocate([(0, 16)], [])
 
 
 class SubtractTest(unittest.TestCase):
-    """Removing reserved spans from the free regions."""
-
     def test_a_hole_that_misses_a_region_leaves_it_whole(self) -> None:
         found = rombuild.subtract([region(0x40, 0x0000, 0x1000)], [region(0x40, 0x2000, 0x3000)])
 
@@ -423,8 +413,6 @@ class SubtractTest(unittest.TestCase):
 
 
 class ReclaimTest(unittest.TestCase):
-    """The cartridge space a stream stops needing once it has been decompressed."""
-
     ROM = bytes(rombuild.ORIGINAL_SIZE)
 
     def test_a_stream_of_unknown_length_reclaims_nothing(self) -> None:
@@ -467,8 +455,6 @@ class ReclaimTest(unittest.TestCase):
 
 
 class ExtraPlacementTest(unittest.TestCase):
-    """Data the caller asks to be placed at a fixed address."""
-
     def test_it_lands_where_the_caller_named(self) -> None:
         payload = bytes(range(16))
         at = 0x5F0000

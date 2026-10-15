@@ -121,8 +121,6 @@ class MappingTest(unittest.TestCase):
 
 
 class ShellOutTest(unittest.TestCase):
-    """The one step that reaches for a container, with the reaching passed in."""
-
     def test_it_names_the_image_and_the_mapping(self) -> None:
         asked: list[Any] = []
 
@@ -145,8 +143,6 @@ class ShellOutTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The verdict on a set of images, driven against recorded logs."""
-
     @staticmethod
     def log(load: str = "ok", frames: int = validate_all.FRAMES, misses: int = 0) -> str:
         lines = [f"RESULT load={load} frames={frames}", "BRIGHT frame=1 value=9.0"]

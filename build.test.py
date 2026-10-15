@@ -21,7 +21,6 @@ bd = load_module()
 
 
 def _record(into: list[Any], args: list[str]) -> int:
-    """Note what was shelled out and report success, which append alone cannot do."""
     into.append(args)
     return 0
 
@@ -134,8 +133,6 @@ class ToolchainTest(unittest.TestCase):
 
 
 class RunTest(unittest.TestCase):
-    """What a build shells out to, checked without shelling out."""
-
     def test_a_command_is_printed_before_it_runs(self) -> None:
         said: list[Any] = []
 
@@ -158,8 +155,6 @@ class StagingTest(unittest.TestCase):
 
 
 class ShellingOutTest(unittest.TestCase):
-    """That the real path runs the command, checked with one that does nothing."""
-
     def test_with_nothing_passed_in_it_runs_the_command_itself(self) -> None:
         code = bd.run(["true"], say=lambda _line: None)
 

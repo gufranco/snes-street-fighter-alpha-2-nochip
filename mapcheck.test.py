@@ -111,8 +111,6 @@ class JapaneseMapTest(unittest.TestCase):
 
 
 class RegionTest(unittest.TestCase):
-    """Telling which table a cartridge name belongs to."""
-
     def test_a_japanese_name_selects_the_japanese_table(self) -> None:
         self.assertIs(mapcheck.table_for("sfz2-jp-final.sfc"), mapcheck.jpstreams.STREAMS)
 
@@ -131,8 +129,6 @@ class RegionTest(unittest.TestCase):
 
 
 class UndecodableTest(unittest.TestCase):
-    """Entries the decompressor will not reproduce."""
-
     ROM = bytes(0x400000)
 
     def test_a_table_that_decodes_reports_nothing(self) -> None:
@@ -143,8 +139,6 @@ class UndecodableTest(unittest.TestCase):
 
 
 class ReportTest(unittest.TestCase):
-    """The verdict on one cartridge, driven without a dump."""
-
     ROM = bytes(0x400000)
 
     def run_with(self, entries: list[tuple[int, int]]) -> tuple[int, list[str]]:
@@ -188,8 +182,6 @@ class ReportTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
-    """The command line."""
-
     def test_the_wrong_number_of_arguments_prints_the_usage(self) -> None:
         said: list[str] = []
 
@@ -220,15 +212,11 @@ class CommandTest(unittest.TestCase):
 
 
 class EmptyScanTest(unittest.TestCase):
-    """A table with nothing in it has no scan to measure."""
-
     def test_an_empty_table_costs_nothing(self) -> None:
         self.assertEqual(mapcheck.scan_cost([]), (0, 0))
 
 
 class LoadRefusalTest(unittest.TestCase):
-    """A length that cannot describe a stream."""
-
     def test_a_non_positive_length_is_refused(self) -> None:
         with self.assertRaises(ValueError):
             mapcheck.load([(0x100000, 0)])

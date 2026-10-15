@@ -249,14 +249,6 @@ class LoadingTest(unittest.TestCase):
 
 
 class FrameHookTest(unittest.TestCase):
-    """The frame hook is dormant, and these say exactly how dormant.
-
-    `FRAME_HOOK` is empty, so nothing is written at either site and `runs_for`
-    hands back the patch unchanged. The finder is generated alongside it by
-    tools/freeze_spcfast.py and waits for a hook to place, so what is pinned here
-    is the dormancy itself rather than the behaviour of code that cannot run.
-    """
-
     def test_no_hook_is_placed_while_there_is_no_hook_to_place(self) -> None:
         self.assertEqual(spcfast.FRAME_HOOK, b"")
 
@@ -268,8 +260,6 @@ class FrameHookTest(unittest.TestCase):
 
 
 class EntryTest(unittest.TestCase):
-    """The command line, run with both streams collected rather than printed."""
-
     def _paths(self) -> tuple[Path, Path]:
         where = Path(tempfile.mkdtemp())
         source = where / "in.sfc"
