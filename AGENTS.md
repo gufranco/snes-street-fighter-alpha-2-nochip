@@ -125,9 +125,9 @@ CI runs both, so a run that passes ruff alone has not passed lint.
 
 ## Conventions that are not negotiable
 
-- Python only. No comments in source; reasoning goes in docstrings.
-- Tests are `<module>.test.py`. Arrange, blank line, one act, blank line, assert.
-  No section labels and nothing inside a test body explaining itself.
+- Python only. No comments in source, and a docstring counts as one.
+- Tests are `<module>.test.py`. Arrange, act and assert,
+  each block opened by its bare marker, and nothing else inside a test body.
 - A check nobody has seen fail is not known to work. Drive every new check
   against input that should fail it before keeping it.
 - A digest edited to make a check pass is the failure this whole standard exists
@@ -155,7 +155,7 @@ instructions in and never returns.
 
 ## Before calling anything finished
 
-Every gate above, green, in this session. Then: does any new claim in a docstring
+Every gate above, green, in this session. Then: does any new claim in the record or the readme
 correspond to something a test actually drives, and has that test been seen to
 fail? If a question was closed, is it closed in both
 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) and
