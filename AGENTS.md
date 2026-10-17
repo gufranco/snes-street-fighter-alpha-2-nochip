@@ -111,14 +111,23 @@ redistribute what it did not write.
 ```sh
 uvx ruff@0.16.3 check .
 uvx ruff@0.16.3 format --check .
+uvx --python 3.12 mypy==1.14.1
 pnpm run format:check
-for module in *.test.py tools/*.test.py; do python3 "$module" || break; done
+uvx --python 3.12 --from coverage==7.6.10 coverage erase
+for module in *.test.py tools/*.test.py conformance/*.test.py; do uvx --python 3.12 --from coverage==7.6.10 coverage run -a "$module" || break; done
+uvx --python 3.12 --from coverage==7.6.10 coverage report
 ```
 
-The ruff version is pinned because a local install of a different version
-disagrees, and a report from a version nobody ships is worse than no report. The
-suite takes several minutes and 755 tests; a run that finishes faster than that
-did not run all of it.
+Every tool is pinned because a local install of a different version disagrees,
+and a report from a version nobody ships is worse than no report. The suite
+takes several minutes and 1,253 tests; a run that finishes faster than that did
+not run all of it.
+
+A test that needs a retail dump goes in `<module>.retail.test.py` beside the
+module, reports as skipped where the dump is absent, and is left out of the
+coverage measurement. Every other line is covered by a test that needs nothing
+the repository does not carry, so the 100% gate holds on a machine with no dump,
+which is what CI is.
 
 `pnpm`, never `npm`. The JSON and YAML formatter is a separate gate from ruff and
 CI runs both, so a run that passes ruff alone has not passed lint.

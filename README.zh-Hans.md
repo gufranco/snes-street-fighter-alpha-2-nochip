@@ -8,7 +8,7 @@
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-street-fighter-alpha-2-nochip)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**5,672** 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，**0** 个不同；**20** 个镜像各运行 **12,000** 帧，查表未命中 **0** 次；**1,185** 项测试；**100%** 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖
+**5,672** 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，**0** 个不同；**20** 个镜像各运行 **12,000** 帧，查表未命中 **0** 次；**1,253** 项测试；**100%** 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖
 
 ```python
 import hardware
@@ -554,7 +554,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-测试套件共 1,185 项测试，分布在 42 个模块中：676 项位于分析模块旁，491 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试在没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中。它只在有转储的机器上成立：没有转储时，每个补丁测试都会跳过，只有这些测试才会覆盖的代码行也就未被覆盖。
+测试套件共 1,253 项测试，分布在 48 个模块中：725 项位于分析模块旁，510 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试放在模块旁边的 `<module>.retail.test.py` 文件中，没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中，测量时不包括这些文件，因此在没有转储的机器上同样成立，CI 在每次推送时都会强制执行。
 
 构建在 Docker 中运行，使用固定版本的工具链、无网络、非 root 用户，从不在宿主机上运行。[`asm/`](asm) 中的汇编是唯一带注释的源码：入口和出口状态、寄存器宽度，以及每个还原出的地址的来源。
 

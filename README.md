@@ -8,7 +8,7 @@ English &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; [简体中文](REA
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-street-fighter-alpha-2-nochip)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**5,672** streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, **0** differing, **20** images run for **12,000** frames each with **0** lookup misses, **1,185** tests, a **100%** statement and branch coverage gate, no Python dependencies outside the standard library
+**5,672** streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, **0** differing, **20** images run for **12,000** frames each with **0** lookup misses, **1,253** tests, a **100%** statement and branch coverage gate, no Python dependencies outside the standard library
 
 ```python
 import hardware
@@ -550,7 +550,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-The suite is 1,185 tests across 42 modules: 676 beside the analysis modules, 491 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. Tests that need a retail dump report as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml). It holds only on a machine with the dumps: without them every patch test skips, and the lines only those tests reach go uncovered.
+The suite is 1,253 tests across 48 modules: 725 beside the analysis modules, 510 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
 
 Builds run in Docker with pinned toolchains, no network and a non-root user, never on the host. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 
