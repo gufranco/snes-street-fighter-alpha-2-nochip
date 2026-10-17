@@ -1,8 +1,8 @@
-[English](README.md) | [日本語](README.ja.md) | 简体中文 | [繁體中文（香港）](README.zh-HK.md)
-
 # 去除 S-DD1 的 Street Fighter Alpha 2
 
 一套工具，用于为 Super Nintendo 重建 Street Fighter Alpha 2 和 Street Fighter Zero 2，在设计上去掉 S-DD1 解压芯片，并以 snes9x 自己的解压器和你提供的零售版卡带为准进行校验。
+
+[English](README.md) &nbsp;|&nbsp; [日本語](README.ja.md) &nbsp;|&nbsp; 简体中文 &nbsp;|&nbsp; [繁體中文（香港）](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-street-fighter-alpha-2-nochip)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)
