@@ -143,6 +143,41 @@ class CheckTest(unittest.TestCase):
 
         self.assertTrue(any("key scan" in one for one in found))
 
+    def test_a_cartridge_that_is_there_and_decodes_whole_adds_no_finding(self) -> None:
+        # Arrange
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        rom = Path(directory.name) / "probe.sfc"
+        rom.write_bytes(bytes(0x400000))
+
+        # Act
+        found = gate.check("jp", entries=[(0x100000, 16)], wanted={}, retail=rom)
+
+        # Assert
+        self.assertEqual(found, [])
+
+
+class RegionSourceTest(unittest.TestCase):
+    def test_the_japanese_table_comes_back_in_source_order(self) -> None:
+        # Arrange
+        region = "jp"
+
+        # Act
+        listed = gate.table(region)
+
+        # Assert
+        self.assertEqual(listed, sorted(jpstreams.STREAMS))
+
+    def test_a_region_with_no_recorded_requests_asks_for_nothing(self) -> None:
+        # Arrange
+        region = "usa"
+
+        # Act
+        wanted = gate.requests(region)
+
+        # Assert
+        self.assertEqual(wanted, {})
+
 
 class CommandTest(unittest.TestCase):
     def run_with(self, argv: list[str], findings: list[str]) -> tuple[int, list[str]]:

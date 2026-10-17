@@ -161,6 +161,102 @@ class RealMapTest(unittest.TestCase):
             sdd1map.rebuild(self.retail, entries, gfx_size=64)
 
 
+ZERO_ROM = bytes(0x10000)
+
+
+def audit_of(following_source: int, length: int | None = 64) -> dict[str, int]:
+    entries = [
+        sdd1map.Entry(0, 0x100, 0, length),
+        sdd1map.Entry(1, following_source, 64, None),
+    ]
+    report: dict[str, int] = sdd1map.audit(ZERO_ROM, entries)
+    return report
+
+
+class AuditTest(unittest.TestCase):
+    def test_a_stream_of_unknown_length_is_skipped(self) -> None:
+        # Arrange
+        following = 0x300
+
+        # Act
+        report = audit_of(following, length=None)
+
+        # Assert
+        self.assertEqual(
+            report, {"measured": 0, "packed": 0, "padded": 0, "overrun": 0, "skipped": 1}
+        )
+
+    def test_a_neighbour_a_whole_bank_away_is_skipped(self) -> None:
+        # Arrange
+        following = 0x100 + sdd1map.BANK_SIZE
+
+        # Act
+        report = audit_of(following)
+
+        # Assert
+        self.assertEqual(
+            report, {"measured": 0, "packed": 0, "padded": 0, "overrun": 0, "skipped": 1}
+        )
+
+    def test_a_neighbour_starting_where_the_stream_ends_is_packed(self) -> None:
+        # Arrange
+        following = sdd1.decompress(ZERO_ROM, 0x100, 64).end
+
+        # Act
+        report = audit_of(following)
+
+        # Assert
+        self.assertEqual(
+            report, {"measured": 1, "packed": 1, "padded": 0, "overrun": 0, "skipped": 0}
+        )
+
+    def test_a_neighbour_starting_before_the_stream_ends_is_an_overrun(self) -> None:
+        # Arrange
+        following = sdd1.decompress(ZERO_ROM, 0x100, 64).end - 2
+
+        # Act
+        report = audit_of(following)
+
+        # Assert
+        self.assertEqual(
+            report, {"measured": 1, "packed": 0, "padded": 0, "overrun": 1, "skipped": 0}
+        )
+
+
+class RebuildTest(unittest.TestCase):
+    def test_an_entry_of_unknown_length_is_refused(self) -> None:
+        # Arrange
+        entries = [sdd1map.Entry(0, 0x100, 0, None)]
+
+        # Act
+        with self.assertRaises(ValueError) as caught:
+            sdd1map.rebuild(ZERO_ROM, entries)
+
+        # Assert
+        self.assertEqual(str(caught.exception), "cannot rebuild while any stream length is unknown")
+
+    def test_a_declared_size_too_small_for_a_stream_is_refused(self) -> None:
+        # Arrange
+        entries = [sdd1map.Entry(0, 0x100, 0, 64), sdd1map.Entry(1, 0x300, 64, 128)]
+
+        # Act
+        with self.assertRaises(ValueError) as caught:
+            sdd1map.rebuild(ZERO_ROM, entries, gfx_size=64)
+
+        # Assert
+        self.assertEqual(str(caught.exception), "stream 1 runs past the end of a 64 byte blob")
+
+    def test_a_declared_size_sets_the_length_of_the_blob(self) -> None:
+        # Arrange
+        entries = [sdd1map.Entry(0, 0x100, 0, 64)]
+
+        # Act
+        blob = sdd1map.rebuild(ZERO_ROM, entries, gfx_size=256)
+
+        # Assert
+        self.assertEqual(len(blob), 256)
+
+
 class CommandTest(unittest.TestCase):
     ROM = bytes(0x400000)
 

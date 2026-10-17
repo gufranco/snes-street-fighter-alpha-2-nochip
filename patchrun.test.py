@@ -1,5 +1,6 @@
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, ClassVar, override
@@ -317,6 +318,130 @@ class WalkTest(unittest.TestCase):
         said, failures = self.walk_with(outcomes, want)
 
         self.assertEqual((failures, len(said)), (count, patchrun.EXAMPLE_LIMIT))
+
+
+ENTRY_FILE = 0x1ACD84
+RETURN_AT_ONCE = bytes.fromhex("6b")
+REWRITE_BANK_AND_CONTROL = bytes.fromhex("a90c8f044300a9018f0043006b")
+
+
+def image_with(routine: bytes) -> bytes:
+    image = bytearray(rombuild.IMAGE_SIZE)
+    image[ENTRY_FILE : ENTRY_FILE + len(routine)] = routine
+    return bytes(image)
+
+
+class TriggerTest(unittest.TestCase):
+    def test_writing_the_trigger_snapshots_what_the_channel_registers_hold(self) -> None:
+        # Arrange
+        memory = patchrun.SnesMemory(bytes(rombuild.IMAGE_SIZE))
+        memory.write8(0x4302, 0x56)
+
+        # Act
+        memory.write8(0x420B, 0x01)
+
+        # Assert
+        self.assertEqual((len(memory.triggered), memory.triggered[0x4302]), (0x80, 0x56))
+
+    def test_a_write_elsewhere_takes_no_snapshot(self) -> None:
+        # Arrange
+        memory = patchrun.SnesMemory(bytes(rombuild.IMAGE_SIZE))
+
+        # Act
+        memory.write8(0x4302, 0x56)
+
+        # Assert
+        self.assertIsNone(memory.triggered)
+
+
+class DmaSourceTest(unittest.TestCase):
+    def test_the_source_is_read_as_low_high_and_bank(self) -> None:
+        # Arrange
+        snapshot = {0x4302: 0x56, 0x4303: 0x34, 0x4304: 0xD2}
+
+        # Act
+        source = patchrun.dma_source(snapshot)
+
+        # Assert
+        self.assertEqual(source, 0xD23456)
+
+    def test_another_channel_is_read_from_its_own_registers(self) -> None:
+        # Arrange
+        snapshot = {0x4312: 0x78, 0x4313: 0x9A, 0x4314: 0xC1}
+
+        # Act
+        source = patchrun.dma_source(snapshot, channel=0x10)
+
+        # Assert
+        self.assertEqual(source, 0xC19A78)
+
+
+class SyntheticTranslationTest(unittest.TestCase):
+    def test_a_routine_that_returns_at_once_leaves_the_source_in_its_window(self) -> None:
+        # Arrange
+        memory = patchrun.SnesMemory(image_with(RETURN_AT_ONCE))
+
+        # Act
+        outcome = patchrun.translate(memory, 0x123456)
+
+        # Assert
+        self.assertEqual((outcome.destination, outcome.dmap), (0xD23456, 0x09))
+
+    def test_the_destination_is_what_the_routine_leaves_in_the_source_registers(self) -> None:
+        # Arrange
+        memory = patchrun.SnesMemory(image_with(REWRITE_BANK_AND_CONTROL))
+
+        # Act
+        outcome = patchrun.translate(memory, 0x123456)
+
+        # Assert
+        self.assertEqual(outcome.destination, 0x0C3456)
+
+    def test_the_control_byte_is_what_the_routine_leaves_in_it(self) -> None:
+        # Arrange
+        memory = patchrun.SnesMemory(image_with(REWRITE_BANK_AND_CONTROL))
+
+        # Act
+        outcome = patchrun.translate(memory, 0x123456)
+
+        # Assert
+        self.assertEqual(outcome.dmap, 0x01)
+
+    def test_a_register_the_caller_names_is_set_before_the_routine_runs(self) -> None:
+        # Arrange
+        memory = patchrun.SnesMemory(image_with(RETURN_AT_ONCE))
+
+        # Act
+        outcome = patchrun.translate(memory, 0x123456, y=0x70)
+
+        # Assert
+        self.assertEqual(outcome.cpu.y, 0x70)
+
+
+class SyntheticRunTest(unittest.TestCase):
+    def run_on(self, workdir: Path) -> tuple[int, list[str]]:
+        tagged = bytearray(8192)
+        for position, target in ((0x100, 0), (0x300, 64)):
+            tagged[position : position + 4] = b"SDD1"
+            tagged[position + 4 : position + 8] = target.to_bytes(4, "little")
+        paths = [workdir / "image.sfc", workdir / "patched.sfc", workdir / "tagged.sfc"]
+        paths[0].write_bytes(image_with(RETURN_AT_ONCE))
+        paths[1].write_bytes(bytes(rombuild.ORIGINAL_SIZE))
+        paths[2].write_bytes(bytes(tagged))
+        said: list[str] = []
+        code = patchrun.main(["patchrun.py", *map(str, paths)], say=said.append)
+        return code, said
+
+    def test_a_routine_that_moves_nothing_fails_every_stream(self) -> None:
+        # Arrange
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+
+        # Act
+        code, said = self.run_on(Path(directory.name))
+
+        # Assert
+        self.assertEqual((code, said[-1]), (1, "  executed 2 streams, 2 failures"))
 
 
 if __name__ == "__main__":

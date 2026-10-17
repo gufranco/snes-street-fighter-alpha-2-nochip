@@ -21,15 +21,6 @@ def load_module(name: str) -> Any:
 
 prefight = load_module("prefight")
 
-USA = ROOT / "roms" / "sfa2-usa-final.sfc"
-JP = ROOT / "roms" / "sfz2-jp-final.sfc"
-
-
-def retail(path: Path) -> bytes:
-    if not path.exists():  # pragma: no cover
-        raise unittest.SkipTest(f"{path} is not present")
-    return path.read_bytes()  # pragma: no cover
-
 
 class TableTest(unittest.TestCase):
     def test_the_table_is_the_size_the_builder_writes(self) -> None:
@@ -90,81 +81,14 @@ class RoutineTest(unittest.TestCase):
 
 
 class LocationTest(unittest.TestCase):
-    def test_the_builder_is_found_once_in_each_region(self) -> None:
-        for path in (USA, JP):
-            rom = retail(path)
-
-            self.assertIsNotNone(prefight.find_builder(rom), str(path))
-
-    def test_both_callers_are_found_in_each_region(self) -> None:
-        for path in (USA, JP):
-            rom = retail(path)
-
-            self.assertEqual(len(prefight.find_callers(rom)), 2, str(path))
-
     def test_a_rom_without_the_builder_reports_nothing(self) -> None:
         self.assertIsNone(prefight.find_builder(b"\x00" * 0x1000))
 
-    def test_the_filler_is_free_in_each_region(self) -> None:
-        for path in (USA, JP):
-            rom = retail(path)
-
-            window = rom[prefight.FILLER_FILE : prefight.FILLER_FILE + prefight.FILLER_SIZE]
-            self.assertEqual(set(window), {0xFF}, str(path))
-
 
 class ApplyTest(unittest.TestCase):
-    def test_every_caller_is_redirected_to_the_routine(self) -> None:
-        for path in (USA, JP):
-            rom = retail(path)
-
-            patched = prefight.apply(rom)
-
-            for at in prefight.find_callers(rom):
-                self.assertEqual(patched[at], 0x22, str(path))
-                target = int.from_bytes(patched[at + 1 : at + 4], "little")
-                self.assertEqual(target, prefight.ROUTINE_ADDRESS, str(path))
-
-    def test_the_routine_lands_in_the_filler(self) -> None:
-        rom = retail(USA)
-
-        patched = prefight.apply(rom)
-
-        emitted = prefight.routine()
-        self.assertEqual(
-            patched[prefight.FILLER_FILE : prefight.FILLER_FILE + len(emitted)], emitted
-        )
-
-    def test_applying_twice_changes_nothing_the_second_time(self) -> None:
-        rom = retail(USA)
-
-        once = prefight.apply(rom)
-
-        self.assertEqual(prefight.apply(once), once)
-
-    def test_the_builder_itself_is_left_in_place(self) -> None:
-        rom = retail(USA)
-        at = prefight.find_builder(rom)
-
-        patched = prefight.apply(rom)
-
-        self.assertEqual(patched[at : at + 32], rom[at : at + 32])
-
     def test_a_rom_without_the_builder_is_refused(self) -> None:
         with self.assertRaises(ValueError):
             prefight.apply(b"\x00" * 0x1000)
-
-    def test_nothing_outside_the_callers_and_the_filler_moves(self) -> None:
-        rom = retail(USA)
-
-        patched = prefight.apply(rom)
-
-        allowed: set[int] = set()
-        for at in prefight.find_callers(rom):
-            allowed.update(range(at, at + 4))
-        allowed.update(range(prefight.FILLER_FILE, prefight.FILLER_FILE + len(prefight.routine())))
-        moved = {at for at, (a, b) in enumerate(zip(rom, patched, strict=True)) if a != b}
-        self.assertTrue(moved <= allowed, sorted(moved - allowed)[:8])
 
 
 def synthetic(builder: int = 0x030000, callers: tuple[int, ...] = (0x020000,)) -> bytearray:

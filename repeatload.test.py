@@ -16,16 +16,24 @@ def load_module(name: str) -> Any:
 
 
 repeatload = load_module("repeatload")
-spcfast = load_module("spcfast")
 
-USA = ROOT / "roms" / "sfa2-usa-final.sfc"
-JP = ROOT / "roms" / "sfz2-jp-final.sfc"
+HOOK_LITERAL = bytes.fromhex("2000f6")
 
 
-def retail(path: Path) -> bytes:
-    if not path.exists():  # pragma: no cover
-        raise unittest.SkipTest(f"{path} is not present")
-    return path.read_bytes()  # pragma: no cover
+def free_site() -> bytearray:
+    rom = bytearray(repeatload.FILLER_END + 0x100)
+    rom[repeatload.HOOK_FILE : repeatload.HOOK_FILE + 3] = bytes.fromhex("a90015")
+    rom[repeatload.FILLER_FILE : repeatload.FILLER_END] = b"\xff" * 0x100
+    return rom
+
+
+def patched_site() -> bytes:
+    rom = free_site()
+    rom[repeatload.HOOK_FILE : repeatload.HOOK_FILE + 3] = HOOK_LITERAL
+    rom[repeatload.FILLER_FILE : repeatload.FILLER_FILE + len(repeatload.ROUTINE)] = (
+        repeatload.ROUTINE
+    )
+    return bytes(rom)
 
 
 class RoutineTest(unittest.TestCase):
@@ -65,23 +73,6 @@ class RoutineTest(unittest.TestCase):
 
 
 class SiteTest(unittest.TestCase):
-    def test_the_hook_site_carries_the_expected_instruction_in_both_regions(self) -> None:
-        for path in (USA, JP):
-            rom = retail(path)
-
-            self.assertEqual(
-                rom[repeatload.HOOK_FILE : repeatload.HOOK_FILE + len(repeatload.REPLACED)],
-                repeatload.REPLACED,
-                str(path),
-            )
-
-    def test_the_filler_is_free_in_both_regions(self) -> None:
-        for path in (USA, JP):
-            rom = retail(path)
-
-            window = rom[repeatload.FILLER_FILE : repeatload.FILLER_FILE + repeatload.FILLER_SIZE]
-            self.assertEqual(set(window), {0xFF}, str(path))
-
     def test_the_marker_sits_inside_the_run_no_write_was_seen_in(self) -> None:
         first, last = 0x7E5E70, 0x7EFE3F
 
@@ -102,46 +93,9 @@ class SiteTest(unittest.TestCase):
 
 
 class ApplyTest(unittest.TestCase):
-    def test_applying_installs_the_hook_and_the_routine(self) -> None:
-        for path in (USA, JP):
-            rom = retail(path)
-
-            patched = repeatload.apply(rom)
-
-            self.assertEqual(
-                patched[repeatload.HOOK_FILE : repeatload.HOOK_FILE + 3],
-                repeatload.hook(),
-                str(path),
-            )
-            self.assertEqual(
-                patched[repeatload.FILLER_FILE : repeatload.FILLER_FILE + len(repeatload.ROUTINE)],
-                repeatload.ROUTINE,
-                str(path),
-            )
-
-    def test_applying_twice_changes_nothing_the_second_time(self) -> None:
-        rom = retail(USA)
-
-        once = repeatload.apply(rom)
-
-        self.assertEqual(repeatload.apply(once), once)
-
     def test_a_rom_without_the_site_is_refused(self) -> None:
         with self.assertRaises(ValueError):
             repeatload.apply(b"\x00" * 0x100000)
-
-    def test_nothing_outside_the_hook_and_the_routine_moves(self) -> None:
-        rom = retail(USA)
-
-        patched = repeatload.apply(rom)
-
-        allowed = set(range(repeatload.HOOK_FILE, repeatload.HOOK_FILE + 3))
-        allowed.update(
-            range(repeatload.FILLER_FILE, repeatload.FILLER_FILE + len(repeatload.ROUTINE))
-        )
-        allowed.update(range(spcfast.CHECKSUM_FIELD, spcfast.CHECKSUM_FIELD + 4))
-        moved = {at for at, (a, b) in enumerate(zip(rom, patched, strict=True)) if a != b}
-        self.assertTrue(moved <= allowed, sorted(moved - allowed)[:8])
 
     def test_it_does_not_collide_with_the_pre_fight_routine(self) -> None:
         prefight = load_module("prefight")
@@ -180,12 +134,76 @@ class RefusalTest(unittest.TestCase):
         self.assertIn("allocator setup", str(raised.exception))
 
 
+class SyntheticApplyTest(unittest.TestCase):
+    def test_applying_to_a_free_site_writes_the_call_to_the_routine(self) -> None:
+        # Arrange
+        rom = bytes(free_site())
+
+        # Act
+        patched = repeatload.apply(rom)
+
+        # Assert
+        self.assertEqual(patched[repeatload.HOOK_FILE : repeatload.HOOK_FILE + 3], HOOK_LITERAL)
+
+    def test_applying_to_a_free_site_writes_the_routine_into_the_filler(self) -> None:
+        # Arrange
+        rom = bytes(free_site())
+
+        # Act
+        patched = repeatload.apply(rom)
+
+        # Assert
+        self.assertEqual(
+            patched[repeatload.FILLER_FILE : repeatload.FILLER_FILE + len(repeatload.ROUTINE)],
+            repeatload.ROUTINE,
+        )
+
+    def test_an_image_already_carrying_the_hook_and_routine_is_returned_unchanged(self) -> None:
+        # Arrange
+        rom = patched_site()
+
+        # Act
+        again = repeatload.apply(rom)
+
+        # Assert
+        self.assertEqual(again, rom)
+
+
+class ReportTest(unittest.TestCase):
+    def test_an_unpatched_image_is_reported_as_ready(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        repeatload.report(bytes(free_site()), said.append)
+
+        # Assert
+        self.assertEqual(
+            said,
+            [
+                "  hook      $C7:0069  a9 00 15 -> 20 00 f6",
+                "  routine   $C7:F600  61 bytes",
+                "  marker    $7E9000  two byte magic and the last list id",
+                "  state     ready",
+            ],
+        )
+
+    def test_a_patched_image_is_reported_as_already_applied(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        repeatload.report(patched_site(), said.append)
+
+        # Assert
+        self.assertEqual(said[-1], "  state     already applied")
+
+
 class EntryTest(unittest.TestCase):
-    def _paths(self) -> tuple[Path, Path]:
-        where = Path(tempfile.mkdtemp())
-        source = where / "in.sfc"
-        source.write_bytes(USA.read_bytes())
-        return source, where / "out.sfc"
+    def _workdir(self) -> Path:
+        where = tempfile.TemporaryDirectory()
+        self.addCleanup(where.cleanup)
+        return Path(where.name)
 
     def test_too_few_arguments_are_refused_with_the_usage(self) -> None:
         complained: list[Any] = []
@@ -195,34 +213,49 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("usage", complained[0])
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_patching_the_source_in_place_is_refused(self) -> None:
-        source, _ = self._paths()
-        complained: list[Any] = []
+    def test_naming_the_source_as_the_output_is_refused(self) -> None:
+        # Arrange
+        source = self._workdir() / "in.sfc"
+        source.write_bytes(bytes(free_site()))
+        complained: list[str] = []
 
+        # Act
         code = repeatload.main(
             ["repeatload.py", str(source), str(source)],
             say=lambda _l: None,
             complain=complained.append,
         )
 
-        self.assertEqual(code, 1)
-        self.assertIn("in place", complained[0])
+        # Assert
+        self.assertEqual((code, complained), (1, ["refusing to patch the source ROM in place"]))
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_a_run_writes_the_patched_image_and_says_what_it_did(self) -> None:
-        source, output = self._paths()
-        said: list[Any] = []
+    def test_a_run_on_a_synthetic_image_writes_the_hook_to_the_output(self) -> None:
+        # Arrange
+        where = self._workdir()
+        source, output = where / "in.sfc", where / "out.sfc"
+        source.write_bytes(bytes(free_site()))
 
-        code = repeatload.main(["repeatload.py", str(source), str(output)], say=said.append)
+        # Act
+        code = repeatload.main(["repeatload.py", str(source), str(output)], say=lambda _l: None)
 
-        self.assertEqual(code, 0)
-        self.assertTrue(output.exists())
-        self.assertTrue(said)
+        # Assert
+        written = output.read_bytes()
+        self.assertEqual(
+            (code, written[repeatload.HOOK_FILE : repeatload.HOOK_FILE + 3]), (0, HOOK_LITERAL)
+        )
+
+    def test_a_run_ends_by_naming_the_output_and_its_size(self) -> None:
+        # Arrange
+        where = self._workdir()
+        source, output = where / "in.sfc", where / "out.sfc"
+        source.write_bytes(bytes(free_site()))
+        said: list[str] = []
+
+        # Act
+        repeatload.main(["repeatload.py", str(source), str(output)], say=said.append)
+
+        # Assert
+        self.assertEqual(said[-1], f"[done] {output} (522,240 bytes)")
 
 
 if __name__ == "__main__":

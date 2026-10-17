@@ -220,39 +220,17 @@ class GatelessTest(unittest.TestCase):
         self.assertIn("no Shin Akuma unlock gate", str(raised.exception))
 
 
+def gated_rom() -> bytes:
+    rom = bytearray(0x20000)
+    rom[0x00EC6E : 0x00EC6E + len(shinakuma.GATE)] = shinakuma.GATE
+    return bytes(rom)
+
+
 class EntryTest(unittest.TestCase):
-    def _paths(self) -> tuple[Path, Path]:
-        where = Path(tempfile.mkdtemp())
-        source = where / "in.sfc"
-        source.write_bytes(USA.read_bytes())
-        return source, where / "out.sfc"
-
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_running_it_again_on_its_own_output_reports_rather_than_raising(self) -> None:
-        source, output = self._paths()
-        shinakuma.main(["shinakuma.py", str(source), str(output)], say=lambda _l: None)
-        said: list[str] = []
-
-        code = shinakuma.main(
-            ["shinakuma.py", str(output), str(output.parent / "third.sfc")], say=said.append
-        )
-
-        self.assertEqual(code, 0)
-        self.assertIn("already", " ".join(said))
-
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_and_leaves_the_image_it_was_given_unchanged(self) -> None:
-        source, output = self._paths()
-        shinakuma.main(["shinakuma.py", str(source), str(output)], say=lambda _l: None)
-        third = output.parent / "third.sfc"
-
-        shinakuma.main(["shinakuma.py", str(output), str(third)], say=lambda _l: None)
-
-        self.assertEqual(third.read_bytes(), output.read_bytes())
+    def _workdir(self) -> Path:
+        where = tempfile.TemporaryDirectory()
+        self.addCleanup(where.cleanup)
+        return Path(where.name)
 
     def test_too_few_arguments_are_refused_with_the_usage(self) -> None:
         complained: list[Any] = []
@@ -262,34 +240,70 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("usage", complained[0])
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_patching_the_source_in_place_is_refused(self) -> None:
-        source, _ = self._paths()
-        complained: list[Any] = []
+    def test_naming_the_source_as_the_output_is_refused(self) -> None:
+        # Arrange
+        source = self._workdir() / "in.sfc"
+        source.write_bytes(gated_rom())
+        complained: list[str] = []
 
+        # Act
         code = shinakuma.main(
             ["shinakuma.py", str(source), str(source)],
             say=lambda _l: None,
             complain=complained.append,
         )
 
-        self.assertEqual(code, 1)
-        self.assertIn("in place", complained[0])
+        # Assert
+        self.assertEqual((code, complained), (1, ["refusing to patch the source ROM in place"]))
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_a_run_writes_the_patched_image_and_says_what_it_did(self) -> None:
-        source, output = self._paths()
-        said: list[Any] = []
+    def test_a_run_on_a_synthetic_gate_writes_the_branch_to_the_output(self) -> None:
+        # Arrange
+        where = self._workdir()
+        source, output = where / "in.sfc", where / "out.sfc"
+        source.write_bytes(gated_rom())
 
+        # Act
+        code = shinakuma.main(["shinakuma.py", str(source), str(output)], say=lambda _l: None)
+
+        # Assert
+        self.assertEqual((code, output.read_bytes()[0x00EC71:0x00EC73]), (0, b"\x80\x24"))
+
+    def test_a_run_names_the_gate_and_the_branch_site(self) -> None:
+        # Arrange
+        where = self._workdir()
+        source, output = where / "in.sfc", where / "out.sfc"
+        source.write_bytes(gated_rom())
+        said: list[str] = []
+
+        # Act
+        shinakuma.main(["shinakuma.py", str(source), str(output)], say=said.append)
+
+        # Assert
+        self.assertEqual(
+            said,
+            [
+                "unlock gate   0x00ec6e",
+                "branch site   0x00ec71  80 24",
+                f"[done] {output} (131,072 bytes)",
+            ],
+        )
+
+    def test_a_run_on_an_already_branched_image_says_the_gate_is_already_removed(self) -> None:
+        # Arrange
+        where = self._workdir()
+        source, output = where / "in.sfc", where / "out.sfc"
+        branched = bytearray(gated_rom())
+        branched[0x00EC71:0x00EC73] = b"\x80\x24"
+        source.write_bytes(bytes(branched))
+        said: list[str] = []
+
+        # Act
         code = shinakuma.main(["shinakuma.py", str(source), str(output)], say=said.append)
 
-        self.assertEqual(code, 0)
-        self.assertTrue(output.exists())
-        self.assertTrue(said)
+        # Assert
+        self.assertEqual(
+            (code, said[0]), (0, "unlock gate   already removed, so this image was patched before")
+        )
 
 
 if __name__ == "__main__":

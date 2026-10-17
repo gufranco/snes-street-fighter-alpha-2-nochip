@@ -1,8 +1,9 @@
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -130,7 +131,84 @@ class AgainstTheCartridgeTest(unittest.TestCase):
         self.assertGreater(found.withAnyRepeat, found.noiseWithAnyRepeat)
 
 
+def a_cartridge_on_disk(case: unittest.TestCase, name: str, size: int) -> Path:
+    folder = tempfile.TemporaryDirectory()
+    case.addCleanup(folder.cleanup)
+    where = Path(folder.name) / name
+    where.write_bytes(bytes(size))
+    return where
+
+
+class TableTest(unittest.TestCase):
+    def test_a_dump_named_for_the_usa_is_measured_against_the_usa_table(self) -> None:
+        # Arrange
+        wanted = load_module("usastreams", ROOT / "usastreams.py").STREAMS
+
+        # Act
+        found = tile_shape.table_for(Path("sfa2-usa-final.sfc"))
+
+        # Assert
+        self.assertEqual(found, wanted)
+
+    def test_any_other_name_is_measured_against_the_japanese_table(self) -> None:
+        # Arrange
+        wanted = load_module("jpstreams", ROOT / "jpstreams.py").STREAMS
+
+        # Act
+        found = tile_shape.table_for("sfz2-jp-final.sfc")
+
+        # Assert
+        self.assertEqual(found, wanted)
+
+
+class AgainstASyntheticCartridgeTest(unittest.TestCase):
+    @override
+    def setUp(self) -> None:
+        self.where = a_cartridge_on_disk(self, "synthetic.sfc", 4096)
+
+    def test_a_stream_of_whole_tiles_and_one_that_is_not_are_counted_apart(self) -> None:
+        # Arrange
+        table = [(0, 512), (0, 520)]
+
+        # Act
+        found = tile_shape.against(self.where, table=table)
+
+        # Assert
+        self.assertEqual((found.aligned, found.unaligned), (1, 1))
+
+    def test_a_stream_smaller_than_the_smallest_sheet_is_not_measured(self) -> None:
+        # Arrange
+        table = [(0, 511)]
+
+        # Act
+        found = tile_shape.against(self.where, table=table)
+
+        # Assert
+        self.assertEqual((found.aligned, found.unaligned), (0, 0))
+
+    def test_the_limit_stops_the_survey_once_that_many_streams_are_measured(self) -> None:
+        # Arrange
+        table = [(0, 512), (0, 512), (0, 512)]
+
+        # Act
+        found = tile_shape.against(self.where, limit=2, table=table)
+
+        # Assert
+        self.assertEqual((found.aligned, found.unaligned), (2, 0))
+
+
 class EntryTest(unittest.TestCase):
+    def test_a_run_over_a_cartridge_reports_how_many_streams_are_whole_tiles(self) -> None:
+        # Arrange
+        where = a_cartridge_on_disk(self, "synthetic.sfc", 0x8000)
+        said: list[str] = []
+
+        # Act
+        code = tile_shape.main([str(where), "1"], say=said.append)
+
+        # Assert
+        self.assertEqual((code, said[0]), (0, "  1 streams are a whole number of 32 byte tiles"))
+
     @NEEDS_A_DUMP  # pragma: no cover
     def test_a_run_from_the_command_line_reports_what_it_measured(self) -> None:
         self.assertEqual(tile_shape.main([str(USA), "60"]), 0)

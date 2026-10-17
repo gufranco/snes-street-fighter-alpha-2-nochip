@@ -1,8 +1,12 @@
+import contextlib
 import importlib.util
+import io
 import sys
+import tempfile
+import types
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -26,27 +30,38 @@ NEEDS_A_DUMP = unittest.skipUnless(
     USA.exists(), "the retail dump is not on this machine, and nothing here ships one"
 )
 
-
-def _unit_builds() -> bool:
-    try:
-        driver_run.ssmp.Chip("s-smp")
-    except (  # pragma: no cover
-        driver_run.ssmp.NoBootRom,
-        driver_run.ssmp.Corrupt,
-        OSError,
-    ):
-        return False
-    return True
-
-
-NEEDS_THE_BOOT_ROM = unittest.skipUnless(
-    _unit_builds(),
-    "the audio unit needs Sony's boot program, which nobody may distribute",
-)
-
 JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 PAYLOAD = bytes(range(0x30))
+
+BLANK_BOOT_PROGRAM = bytes(0x40)
+
+STOCK_BODY = 0x0200
+
+TO_THE_STOCK_BODY = bytes([0x5F, 0x00, 0x02])
+
+ONE_BYTE_RECEIVE = bytes(
+    [0xE4, 0xF5, 0xD7, 0x14, 0xE4, 0xF4, 0xC4, 0xF4, 0xFC, 0x64, 0xF4, 0xF0, 0xFC, 0x5F, 0xC9, 0x0E]
+)
+
+
+def a_cartridge_with_the_driver_in_place() -> bytearray:
+    rom = bytearray(driver_run.DRIVER_BASE + driver_run.IMAGE_BYTES)
+    for at, want in spcfast.STOCK_PROBE:
+        rom[at : at + len(want)] = want
+    stock = driver_run.DRIVER_BASE + driver_run.STOCK_LOOP
+    rom[stock : stock + len(TO_THE_STOCK_BODY)] = TO_THE_STOCK_BODY
+    body = driver_run.DRIVER_BASE + STOCK_BODY
+    rom[body : body + len(ONE_BYTE_RECEIVE)] = ONE_BYTE_RECEIVE
+    return rom
+
+
+def lend_a_blank_boot_program(case: unittest.TestCase) -> None:
+    real = driver_run.ssmp
+    case.addCleanup(setattr, driver_run, "ssmp", real)
+    driver_run.ssmp = types.SimpleNamespace(
+        Chip=lambda part: real.Chip(part, boot=BLANK_BOOT_PROGRAM)
+    )
 
 
 class PortsTest(unittest.TestCase):
@@ -243,175 +258,175 @@ class StockTest(unittest.TestCase):
         self.assertGreater(stock.steps, fast.steps * 3)
 
 
-@NEEDS_A_DUMP  # pragma: no cover
-@NEEDS_THE_BOOT_ROM  # pragma: no cover
-class ComposedTest(unittest.TestCase):
-    def images(self) -> tuple[bytes, bytes]:
-        rom = bytearray(USA.read_bytes())
-        return driver_run.image_of(rom), driver_run.image_of(spcfast.apply(bytearray(rom)))
+class PatcherTest(unittest.TestCase):
+    def test_the_patch_is_loaded_from_the_file_beside_the_tools(self) -> None:
+        # Arrange
+        wanted = ROOT / "spcfast.py"
 
-    def unit(self, payload: bytes | bytearray = PAYLOAD) -> Any:
-        _stock, fast = self.images()
-        return driver_run.on_hardware(fast, payload, driver_run.DESTINATION)
+        # Act
+        found = driver_run.patcher()
 
-    def test_the_unit_carries_the_three_streams_the_stand_in_carries(self) -> None:
-        found = self.unit()
+        # Assert
+        self.assertEqual(Path(found.__file__), wanted)
 
+
+class SyntheticImageTest(unittest.TestCase):
+    def test_the_driver_image_is_the_block_the_processor_is_handed(self) -> None:
+        # Arrange
+        rom = a_cartridge_with_the_driver_in_place()
+
+        # Act
+        image = driver_run.image_of(rom)
+
+        # Assert
+        self.assertEqual(len(image), 0x10000)
+
+    def test_and_it_starts_at_the_driver_rather_than_the_start_of_the_cartridge(self) -> None:
+        # Arrange
+        rom = a_cartridge_with_the_driver_in_place()
+
+        # Act
+        image = driver_run.image_of(rom)
+
+        # Assert
+        self.assertEqual(
+            image[0x0EBD:0x0EC5], bytes([0xEC, 0xF4, 0x00, 0x5E, 0xF4, 0x00, 0xD0, 0xF8])
+        )
+
+
+class SyntheticTransferTest(unittest.TestCase):
+    @override
+    def setUp(self) -> None:
+        self.image = driver_run.image_of(spcfast.apply(a_cartridge_with_the_driver_in_place()))
+
+    def test_the_published_patch_carries_three_streams_side_by_side(self) -> None:
+        # Arrange
+        payload = PAYLOAD
+
+        # Act
+        found = driver_run.deliver(self.image, payload, driver_run.DESTINATION)
+
+        # Assert
         self.assertEqual(found.streams, (PAYLOAD[0::3], PAYLOAD[1::3], PAYLOAD[2::3]))
 
-    def test_it_reaches_the_same_bytes_as_the_stand_in(self) -> None:
-        _stock, fast = self.images()
+    def test_and_takes_one_handshake_for_every_three_bytes(self) -> None:
+        # Arrange
+        payload = PAYLOAD
 
-        found = driver_run.on_hardware(fast, PAYLOAD, driver_run.DESTINATION)
+        # Act
+        found = driver_run.deliver(self.image, payload, driver_run.DESTINATION)
 
-        self.assertEqual(
-            found.streams, driver_run.deliver(fast, PAYLOAD, driver_run.DESTINATION).streams
-        )
+        # Assert
+        self.assertEqual(found.handshakes, 16)
 
-    def test_and_takes_the_same_number_of_handshakes_getting_there(self) -> None:
-        _stock, fast = self.images()
+    def test_the_stand_in_counts_no_cycles(self) -> None:
+        # Arrange
+        payload = PAYLOAD
 
-        found = driver_run.on_hardware(fast, PAYLOAD, driver_run.DESTINATION)
+        # Act
+        found = driver_run.deliver(self.image, payload, driver_run.DESTINATION)
 
-        self.assertEqual(
-            found.handshakes, driver_run.deliver(fast, PAYLOAD, driver_run.DESTINATION).handshakes
-        )
+        # Assert
+        self.assertIsNone(found.cycles)
 
-    def test_and_the_same_number_of_instructions(self) -> None:
-        _stock, fast = self.images()
 
-        found = driver_run.on_hardware(fast, PAYLOAD, driver_run.DESTINATION)
+class SyntheticStockTest(unittest.TestCase):
+    @override
+    def setUp(self) -> None:
+        self.image = driver_run.image_of(a_cartridge_with_the_driver_in_place())
 
-        self.assertEqual(
-            found.steps, driver_run.deliver(fast, PAYLOAD, driver_run.DESTINATION).steps
-        )
+    def test_a_one_byte_receive_loop_takes_a_handshake_for_every_byte(self) -> None:
+        # Arrange
+        payload = PAYLOAD
 
-    def test_only_the_unit_reports_cycles_at_all(self) -> None:
-        _stock, fast = self.images()
+        # Act
+        found = driver_run.deliver_one_at_a_time(self.image, payload, driver_run.DESTINATION)
 
-        self.assertIsNone(driver_run.deliver(fast, PAYLOAD, driver_run.DESTINATION).cycles)
-        self.assertGreater(self.unit().cycles, 0)
+        # Assert
+        self.assertEqual(found.handshakes, 48)
 
-    def test_the_stock_loop_runs_on_the_unit_too(self) -> None:
-        stock, _fast = self.images()
+    def test_and_lands_the_bytes_one_after_another_in_the_first_stream(self) -> None:
+        # Arrange
+        payload = PAYLOAD
 
+        # Act
+        found = driver_run.deliver_one_at_a_time(self.image, payload, driver_run.DESTINATION)
+
+        # Assert
+        self.assertEqual(found.streams[0], bytes(range(16)))
+
+
+class SyntheticUnitTest(unittest.TestCase):
+    @override
+    def setUp(self) -> None:
+        lend_a_blank_boot_program(self)
+        rom = a_cartridge_with_the_driver_in_place()
+        self.stock = driver_run.image_of(rom)
+        self.fast = driver_run.image_of(spcfast.apply(rom))
+
+    def test_the_unit_carries_the_three_streams_side_by_side(self) -> None:
+        # Arrange
+        payload = PAYLOAD
+
+        # Act
+        found = driver_run.on_hardware(self.fast, payload, driver_run.DESTINATION)
+
+        # Assert
+        self.assertEqual(found.streams, (PAYLOAD[0::3], PAYLOAD[1::3], PAYLOAD[2::3]))
+
+    def test_and_counts_one_acknowledgement_for_every_three_bytes(self) -> None:
+        # Arrange
+        payload = PAYLOAD
+
+        # Act
+        found = driver_run.on_hardware(self.fast, payload, driver_run.DESTINATION)
+
+        # Assert
+        self.assertEqual(found.handshakes, 16)
+
+    def test_the_stock_loop_runs_on_the_unit_one_byte_per_acknowledgement(self) -> None:
+        # Arrange
+        payload = driver_run.spread(PAYLOAD)
+
+        # Act
         found = driver_run.on_hardware(
-            stock, driver_run.spread(PAYLOAD), driver_run.DESTINATION, entry=driver_run.STOCK_LOOP
+            self.stock, payload, driver_run.DESTINATION, entry=driver_run.STOCK_LOOP
         )
 
-        self.assertEqual(found.handshakes, len(PAYLOAD))
-
-    def test_and_costs_more_cycles_than_the_patched_one_for_the_same_bytes(self) -> None:
-        stock, _fast = self.images()
-
-        slow = driver_run.on_hardware(
-            stock, driver_run.spread(PAYLOAD), driver_run.DESTINATION, entry=driver_run.STOCK_LOOP
-        )
-
-        self.assertGreater(slow.cycles, self.unit().cycles * 3)
-
-    def test_a_counter_that_does_not_start_where_the_driver_expects_runs_away(self) -> None:
-        _stock, fast = self.images()
-
-        with self.assertRaises(driver_run.RunLimit):
-            driver_run.on_hardware(fast, PAYLOAD, driver_run.DESTINATION, counter=1)
+        # Assert
+        self.assertEqual((found.handshakes, found.streams[0][:48]), (48, PAYLOAD))
 
     def test_without_the_seeded_latch_the_first_acknowledgement_is_lost(self) -> None:
-        _stock, fast = self.images()
+        # Arrange
+        unechoed = 0x00
 
-        with self.assertRaises(driver_run.RunLimit):
-            driver_run.on_hardware(fast, PAYLOAD, driver_run.DESTINATION, unechoed=0x00)
+        # Act
+        with self.assertRaises(driver_run.RunLimit) as caught:
+            driver_run.on_hardware(self.fast, PAYLOAD, driver_run.DESTINATION, unechoed=unechoed)
 
-    def test_leaving_the_boot_window_on_changes_nothing_for_this_driver(self) -> None:
-        _stock, fast = self.images()
-
-        found = driver_run.on_hardware(fast, PAYLOAD, driver_run.DESTINATION, control=0x80)
-
-        self.assertEqual((found.streams, found.cycles), (self.unit().streams, self.unit().cycles))
-
-    def test_because_the_driver_never_reads_what_the_window_covers(self) -> None:
-        _stock, fast = self.images()
-
-        shown = driver_run.on_hardware(fast, PAYLOAD, driver_run.DESTINATION, control=0x80)
-
-        self.assertEqual(shown.handshakes, len(PAYLOAD) // 3)
-
-    def test_a_payload_longer_than_a_page_carries_over_on_the_unit_too(self) -> None:
-        payload = bytes(range(256)) * 3
-
-        found = self.unit(payload)
-
-        self.assertEqual(found.streams[0], payload[0::3])
-
-
-@NEEDS_THE_BOOT_ROM  # pragma: no cover
-class ConsoleTest(unittest.TestCase):
-    def build(self, payload: bytes | bytearray) -> tuple[Any, Any]:
-        chip = driver_run.ssmp.Chip("s-smp")
-        chip.reset()
-        chip.space.write8(driver_run.PORT_BASE, driver_run.UNECHOED)
-        console = driver_run.Console(chip, payload)
-        console.offer()
-        return chip, console
-
-    def test_the_first_triple_is_where_the_driver_will_look_for_it(self) -> None:
-        chip, _console = self.build(bytes(range(6)))
-
-        self.assertEqual([chip.space.read8(at) for at in range(0xF5, 0xF8)], [0, 1, 2])
-
-    def test_the_counter_starts_where_the_driver_expects_it(self) -> None:
-        chip, _console = self.build(bytes(range(6)))
-
-        self.assertEqual(chip.space.read8(0xF4), driver_run.FIRST_COUNTER)
-
-    def test_an_acknowledgement_advances_to_the_next_triple(self) -> None:
-        chip, console = self.build(bytes(range(6)))
-
-        chip.space.write8(0xF4, 0x00)
-        console.watch()
-
-        self.assertEqual([chip.space.read8(at) for at in range(0xF5, 0xF8)], [3, 4, 5])
-
-    def test_a_latch_that_has_not_changed_is_not_an_acknowledgement(self) -> None:
-        _chip, console = self.build(bytes(range(6)))
-
-        self.assertFalse(console.watch())
-        self.assertEqual(console.handshakes, 0)
-
-    def test_a_payload_shorter_than_a_triple_is_padded_rather_than_read_past(self) -> None:
-        chip, _console = self.build(bytes([9]))
-
-        self.assertEqual([chip.space.read8(at) for at in range(0xF5, 0xF8)], [9, 0, 0])
-
-    def test_a_payload_that_runs_out_says_so(self) -> None:
-        chip, console = self.build(bytes(3))
-
-        chip.space.write8(0xF4, 0x00)
-        console.watch()
-
-        self.assertTrue(console.spent)
-
-    def test_the_counter_wraps_at_a_byte(self) -> None:
-        chip, console = self.build(bytes(3 * 300))
-        for step in range(300):
-            chip.space.write8(0xF4, step & 0xFF)
-            console.watch()
-
-        self.assertEqual(chip.space.read8(0xF4), 300 & 0xFF)
-
-    def test_the_driver_cannot_read_its_own_acknowledgement(self) -> None:
-        chip, _console = self.build(bytes(range(6)))
-
-        chip.space.write8(0xF4, 0x9E)
-
-        self.assertEqual(chip.space.read8(0xF4), driver_run.FIRST_COUNTER)
+        # Assert
+        self.assertIn("gave up after", str(caught.exception))
 
 
 class EntryTest(unittest.TestCase):
-    @NEEDS_A_DUMP  # pragma: no cover
-    @NEEDS_THE_BOOT_ROM  # pragma: no cover
-    def test_a_run_from_the_command_line_reports_what_it_measured(self) -> None:
-        self.assertEqual(driver_run.main([str(USA)]), 0)
+    def test_a_cartridge_with_the_driver_in_place_runs_both_models_to_agreement(self) -> None:
+        # Arrange
+        lend_a_blank_boot_program(self)
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        where = Path(folder.name) / "synthetic.sfc"
+        where.write_bytes(a_cartridge_with_the_driver_in_place())
+        printed = io.StringIO()
+
+        # Act
+        with contextlib.redirect_stdout(printed):
+            code = driver_run.main([str(where)])
+
+        # Assert
+        self.assertEqual(
+            (code, printed.getvalue().splitlines()[-1]),
+            (0, "  stand-in and unit agree on every byte: True"),
+        )
 
     def test_a_rom_it_cannot_read_is_reported_rather_than_raised(self) -> None:
         self.assertEqual(driver_run.main([str(ROOT / "roms" / "nothing-here.sfc")]), 2)

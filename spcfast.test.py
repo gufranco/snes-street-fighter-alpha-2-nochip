@@ -259,12 +259,54 @@ class FrameHookTest(unittest.TestCase):
         self.assertEqual(len(spcfast.FRAME_HOOK_SITES), 2)
 
 
+def stock_rom() -> bytes:
+    rom = bytearray(0x400000)
+    for at, want in spcfast.STOCK_PROBE:
+        rom[at : at + len(want)] = want
+    return bytes(rom)
+
+
+class PatchSizeTest(unittest.TestCase):
+    def test_the_patch_is_the_four_hundred_and_twelve_bytes_the_readme_states(self) -> None:
+        # Arrange
+        expected = 412
+
+        # Act
+        size = spcfast.patch_bytes()
+
+        # Assert
+        self.assertEqual(size, expected)
+
+
+class BlankGateTest(unittest.TestCase):
+    def test_only_gates_inside_the_sound_bank_are_found(self) -> None:
+        # Arrange
+        rom = bytearray(0x090000)
+        for at in (0x060000, 0x070100, 0x075000, 0x080000):
+            rom[at : at + 8] = bytes.fromhex("af12420029c0f0f8")
+
+        # Act
+        found = spcfast.find_blank_gates(bytes(rom))
+
+        # Assert
+        self.assertEqual(found, [0x070100, 0x075000])
+
+    def test_an_image_with_no_gate_has_none(self) -> None:
+        # Arrange
+        rom = bytes(0x080000)
+
+        # Act
+        found = spcfast.find_blank_gates(rom)
+
+        # Assert
+        self.assertEqual(found, [])
+
+
 class EntryTest(unittest.TestCase):
-    def _paths(self) -> tuple[Path, Path]:
-        where = Path(tempfile.mkdtemp())
-        source = where / "in.sfc"
-        source.write_bytes(USA.read_bytes())
-        return source, where / "out.sfc"
+    def _workdir(self) -> Path:
+        where = tempfile.TemporaryDirectory()
+        self.addCleanup(where.cleanup)
+        return Path(where.name)
 
     def test_too_few_arguments_are_refused_with_the_usage(self) -> None:
         complained: list[Any] = []
@@ -274,34 +316,54 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("usage", complained[0])
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_patching_the_source_in_place_is_refused(self) -> None:
-        source, _ = self._paths()
-        complained: list[Any] = []
+    def test_naming_the_source_as_the_output_is_refused(self) -> None:
+        # Arrange
+        source = self._workdir() / "in.sfc"
+        source.write_bytes(stock_rom())
+        complained: list[str] = []
 
+        # Act
         code = spcfast.main(
             ["spcfast.py", str(source), str(source)],
             say=lambda _l: None,
             complain=complained.append,
         )
 
-        self.assertEqual(code, 1)
-        self.assertIn("in place", complained[0])
+        # Assert
+        self.assertEqual((code, complained), (1, ["refusing to patch the source ROM in place"]))
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_a_run_writes_the_patched_image_and_says_what_it_did(self) -> None:
-        source, output = self._paths()
-        said: list[Any] = []
+    def test_a_run_on_a_synthetic_stock_image_posts_the_three_byte_kind(self) -> None:
+        # Arrange
+        where = self._workdir()
+        source, output = where / "in.sfc", where / "out.sfc"
+        source.write_bytes(stock_rom())
 
-        code = spcfast.main(["spcfast.py", str(source), str(output)], say=said.append)
+        # Act
+        code = spcfast.main(["spcfast.py", str(source), str(output)], say=lambda _l: None)
 
-        self.assertEqual(code, 0)
-        self.assertTrue(output.exists())
-        self.assertTrue(said)
+        # Assert
+        self.assertEqual((code, output.read_bytes()[0x07046D]), (0, 0x03))
+
+    def test_a_run_says_where_the_driver_is_and_what_it_retired(self) -> None:
+        # Arrange
+        where = self._workdir()
+        source, output = where / "in.sfc", where / "out.sfc"
+        source.write_bytes(stock_rom())
+        said: list[str] = []
+
+        # Act
+        spcfast.main(["spcfast.py", str(source), str(output)], say=said.append)
+
+        # Assert
+        self.assertEqual(
+            said,
+            [
+                "  driver        0x072b13  two bytes per handshake",
+                "  blank gates   1 sites retired",
+                "  patch         412 bytes in 27 runs",
+                f"[done] {output} (4,194,304 bytes)",
+            ],
+        )
 
 
 if __name__ == "__main__":

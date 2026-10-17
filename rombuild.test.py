@@ -454,6 +454,28 @@ class ReclaimTest(unittest.TestCase):
         self.assertEqual(rombuild.reclaimed_regions(self.ROM, [entry], lambda *_a: Consumed()), [])
 
 
+class MergeTest(unittest.TestCase):
+    def test_two_overlapping_regions_in_one_bank_become_one(self) -> None:
+        # Arrange
+        regions = [region(0x41, 0x0080, 0x0200), region(0x41, 0x0000, 0x0100)]
+
+        # Act
+        merged = rombuild.merge(regions)
+
+        # Assert
+        self.assertEqual(merged, [region(0x41, 0x0000, 0x0200)])
+
+    def test_a_region_inside_another_leaves_the_outer_end(self) -> None:
+        # Arrange
+        regions = [region(0x41, 0x0000, 0x0400), region(0x41, 0x0100, 0x0200)]
+
+        # Act
+        merged = rombuild.merge(regions)
+
+        # Assert
+        self.assertEqual(merged, [region(0x41, 0x0000, 0x0400)])
+
+
 class ExtraPlacementTest(unittest.TestCase):
     def test_it_lands_where_the_caller_named(self) -> None:
         payload = bytes(range(16))

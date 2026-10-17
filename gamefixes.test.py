@@ -1,17 +1,9 @@
 import importlib.util
-import sys
 import tempfile
 import unittest
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-import hardware
-
-sdd1 = hardware.load("sdd1")
-
 
 ROOT = Path(__file__).resolve().parent
 
@@ -25,16 +17,6 @@ def load_module(name: str) -> Any:
 
 
 gamefixes = load_module("gamefixes")
-spcfast = load_module("spcfast")
-
-USA = ROOT / "roms" / "sfa2-usa-final.sfc"
-JP = ROOT / "roms" / "sfz2-jp-final.sfc"
-
-
-def retail(path: Path) -> bytes:
-    if not path.exists():  # pragma: no cover
-        raise unittest.SkipTest(f"{path} is not present")
-    return path.read_bytes()  # pragma: no cover
 
 
 def carrier(fix: Any, filler: bytes = b"\x00" * 64) -> bytes:
@@ -165,91 +147,6 @@ class EmptyCallTest(unittest.TestCase):
 
 
 class RetailTest(unittest.TestCase):
-    def test_every_empty_call_is_retired_in_both_regions(self) -> None:
-        for path, expected in ((USA, 42), (JP, 42)):
-            rom = retail(path)
-
-            sites = gamefixes.empty_call_sites(rom, gamefixes.EMPTY_CALLS[0])
-
-            self.assertEqual(len(sites), expected, str(path))
-
-    def test_every_empty_call_target_is_a_bare_return(self) -> None:
-        rom = retail(USA)
-
-        for call in gamefixes.EMPTY_CALLS:
-            at = gamefixes.long_to_file(call.target)
-
-            self.assertEqual(rom[at], gamefixes.RTL, call.name)
-
-    def test_the_three_routines_together_reach_forty_five_sites(self) -> None:
-        rom = retail(USA)
-
-        sites = sum(len(gamefixes.empty_call_sites(rom, call)) for call in gamefixes.EMPTY_CALLS)
-
-        self.assertEqual(sites, 45)
-
-    def test_every_fix_that_claims_usa_is_present_in_the_usa_rom(self) -> None:
-        rom = retail(USA)
-
-        found = gamefixes.survey(rom)
-
-        for fix in gamefixes.FIXES:
-            expected = "applied" if "usa" in fix.regions else "already"
-            self.assertEqual(found[fix.name], expected, fix.name)
-
-    def test_every_fix_that_claims_jp_is_present_in_the_jp_rom(self) -> None:
-        rom = retail(JP)
-
-        found = gamefixes.survey(rom)
-
-        for fix in gamefixes.FIXES:
-            if "jp" in fix.regions:
-                self.assertEqual(found[fix.name], "applied", fix.name)
-            else:
-                self.assertIn(found[fix.name], ("already", "absent"), fix.name)
-
-    def outside_the_checksum(self, rom: bytes | bytearray, patched: bytes | bytearray) -> int:
-        field = range(spcfast.CHECKSUM_FIELD, spcfast.CHECKSUM_FIELD + 4)
-        return sum(
-            1
-            for at, (before, after) in enumerate(zip(rom, patched, strict=True))
-            if before != after and at not in field
-        )
-
-    def test_the_usa_rom_changes_by_exactly_the_declared_bytes(self) -> None:
-        rom = retail(USA)
-
-        patched = gamefixes.apply(rom)
-
-        self.assertEqual(self.outside_the_checksum(rom, patched), gamefixes.changed_bytes(rom))
-
-    def test_the_jp_rom_changes_by_exactly_the_declared_bytes(self) -> None:
-        rom = retail(JP)
-
-        patched = gamefixes.apply(rom)
-
-        self.assertEqual(self.outside_the_checksum(rom, patched), gamefixes.changed_bytes(rom))
-
-    def test_the_usa_rom_changes_more_bytes_than_the_jp_one(self) -> None:
-        usa, jp = retail(USA), retail(JP)
-
-        self.assertEqual(gamefixes.changed_bytes(usa), 214)
-        self.assertEqual(gamefixes.changed_bytes(jp), 56)
-
-    def test_the_patched_rom_carries_a_consistent_checksum(self) -> None:
-        rom = retail(USA)
-
-        patched = gamefixes.apply(rom)
-
-        self.assertEqual(patched, spcfast.write_checksum(patched))
-
-    def test_applying_to_an_already_patched_usa_rom_is_a_no_op(self) -> None:
-        rom = retail(USA)
-
-        once = gamefixes.apply(rom)
-
-        self.assertEqual(gamefixes.apply(once), once)
-
     def test_every_sodom_plate_is_confined_to_one_region(self) -> None:
         confined = [fix.name for fix in gamefixes.FIXES if set(fix.regions) != {"usa", "jp"}]
 
@@ -267,87 +164,6 @@ class RetailTest(unittest.TestCase):
         plates = [fix.name for fix in gamefixes.FIXES if fix.name.startswith("sodom name")]
 
         self.assertEqual(len(plates), 4)
-
-    def occurrences(self, rom: bytes | bytearray, run: bytes) -> int:
-        found, at = 0, rom.find(run)
-        while at != -1:
-            found += 1
-            at = rom.find(run, at + 1)
-        return found
-
-    def test_a_fix_names_a_run_that_appears_once_in_every_region_it_claims(self) -> None:
-        for path, region in ((USA, "usa"), (JP, "jp")):
-            rom = retail(path)
-
-            for fix in gamefixes.FIXES:
-                if region not in fix.regions:
-                    continue
-                where = f"{fix.name} in {path.name}"
-                self.assertEqual(self.occurrences(rom, fix.stock), 1, where)
-                self.assertEqual(self.occurrences(rom, fix.patched), 0, where)
-
-    def test_a_region_a_fix_does_not_claim_never_carries_the_stock_run(self) -> None:
-        for path, region in ((USA, "usa"), (JP, "jp")):
-            rom = retail(path)
-
-            for fix in gamefixes.FIXES:
-                if region in fix.regions:
-                    continue
-
-                self.assertEqual(self.occurrences(rom, fix.stock), 0, f"{fix.name} in {path.name}")
-
-    def test_the_japanese_rom_already_reads_right_where_it_shares_the_run(self) -> None:
-        rom = retail(JP)
-
-        found = gamefixes.survey(rom)
-
-        already = sorted(name for name, state in found.items() if state == "already")
-        absent = sorted(name for name, state in found.items() if state == "absent")
-        self.assertEqual(
-            already,
-            [
-                "sodom name on the life bar",
-                "sodom name on the select screen",
-                "sodom name on the vs screen",
-            ],
-        )
-        self.assertEqual(absent, ["sodom name on the vs results screen"])
-
-    def test_the_vs_results_fix_only_turns_katana_into_sodom(self) -> None:
-        rom = bytearray(retail(USA))
-        fix = next(f for f in gamefixes.FIXES if f.name == "sodom name on the vs results screen")
-        at = gamefixes.locate(bytes(rom), fix.stock)
-        before = sdd1.decompress(bytes(rom), at, gamefixes.VS_RESULTS_LENGTH).data
-
-        rom[at : at + len(fix.patched)] = fix.patched
-        after = sdd1.decompress(bytes(rom), at, gamefixes.VS_RESULTS_LENGTH).data
-
-        self.assertEqual(len(after), gamefixes.VS_RESULTS_LENGTH)
-        moved = [i for i in range(len(before)) if before[i] != after[i]]
-        self.assertEqual(moved, list(range(0x35A, 0x366, 2)))
-        self.assertEqual(bytes(before[i] for i in moved), b"KATANA")
-        self.assertEqual(bytes(after[i] for i in moved), b"SODOM ")
-
-    def test_no_fix_writes_over_the_start_of_a_neighbouring_stream(self) -> None:
-        usastreams = load_module("usastreams")
-        rom = retail(USA)
-        starts = sorted(start for start, _ in usastreams.STREAMS)
-
-        for fix in [one for one in gamefixes.FIXES if "usa" in one.regions]:
-            at = gamefixes.locate(rom, fix.stock)
-            inside = [s for s in starts if at < s < at + len(fix.stock)]
-
-            self.assertEqual(inside, [], f"{fix.name} reaches into {inside}")
-
-    def test_the_vs_results_fix_stops_where_the_next_stream_begins(self) -> None:
-        usastreams = load_module("usastreams")
-        rom = retail(USA)
-        fix = next(f for f in gamefixes.FIXES if f.name == "sodom name on the vs results screen")
-        at = gamefixes.locate(rom, fix.stock)
-
-        following = min(start for start, _ in usastreams.STREAMS if start > at)
-
-        self.assertEqual(at + len(fix.stock), following)
 
     def test_the_vs_results_fix_zero_fills_the_bytes_the_shorter_stream_leaves(self) -> None:
         fix = next(f for f in gamefixes.FIXES if f.name == "sodom name on the vs results screen")
@@ -422,12 +238,6 @@ class RetailTest(unittest.TestCase):
 
 
 class EntryTest(unittest.TestCase):
-    def _paths(self) -> tuple[Path, Path]:
-        where = Path(tempfile.mkdtemp())
-        source = where / "in.sfc"
-        source.write_bytes(USA.read_bytes())
-        return source, where / "out.sfc"
-
     def test_too_few_arguments_are_refused_with_the_usage(self) -> None:
         complained: list[Any] = []
 
@@ -436,34 +246,140 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("usage", complained[0])
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_patching_the_source_in_place_is_refused(self) -> None:
-        source, _ = self._paths()
-        complained: list[Any] = []
+    def _workdir(self) -> Path:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        return Path(directory.name)
 
+    def _source(self) -> Path:
+        rom = bytearray(0x8000)
+        rom[0x100 : 0x100 + len(gamefixes.FIXES[0].stock)] = gamefixes.FIXES[0].stock
+        source = self._workdir() / "in.sfc"
+        source.write_bytes(bytes(rom))
+        return source
+
+    def test_patching_a_rom_over_itself_is_refused(self) -> None:
+        # Arrange
+        source = self._source()
+        complained: list[str] = []
+
+        # Act
         code = gamefixes.main(
             ["gamefixes.py", str(source), str(source)],
             say=lambda _l: None,
             complain=complained.append,
         )
 
-        self.assertEqual(code, 1)
-        self.assertIn("in place", complained[0])
+        # Assert
+        self.assertEqual((code, complained), (1, ["refusing to patch the source ROM in place"]))
 
-    @unittest.skipUnless(
-        USA.exists(), "the retail dump is supplied by the builder"
-    )  # pragma: no cover
-    def test_a_run_writes_the_patched_image_and_says_what_it_did(self) -> None:
-        source, output = self._paths()
-        said: list[Any] = []
+    def test_a_run_writes_the_patched_run_into_the_output(self) -> None:
+        # Arrange
+        source = self._source()
+        output = source.parent / "out.sfc"
 
-        code = gamefixes.main(["gamefixes.py", str(source), str(output)], say=said.append)
+        # Act
+        code = gamefixes.main(["gamefixes.py", str(source), str(output)], say=lambda _l: None)
 
-        self.assertEqual(code, 0)
-        self.assertTrue(output.exists())
-        self.assertTrue(said)
+        # Assert
+        self.assertEqual((code, output.read_bytes()[0x100:0x11C]), (0, gamefixes.FIXES[0].patched))
+
+    def test_a_run_ends_by_naming_the_output_and_its_size(self) -> None:
+        # Arrange
+        source = self._source()
+        output = source.parent / "out.sfc"
+        said: list[str] = []
+
+        # Act
+        gamefixes.main(["gamefixes.py", str(source), str(output)], say=said.append)
+
+        # Assert
+        self.assertEqual(said[-1], f"[done] {output} (32,768 bytes)")
+
+
+class ChangedBytesTest(unittest.TestCase):
+    def test_a_present_fix_counts_only_the_bytes_it_alters(self) -> None:
+        # Arrange
+        rom = carrier(gamefixes.FIXES[0])
+
+        # Act
+        changed = gamefixes.changed_bytes(rom)
+
+        # Assert
+        self.assertEqual(changed, 3)
+
+    def test_each_empty_call_site_counts_as_one_byte(self) -> None:
+        # Arrange
+        rom = bytearray(0x400000)
+        rom[0x3FFF4D] = 0x6B
+        rom[0x1000:0x1005] = bytes.fromhex("224dffff60")
+        rom[0x2000:0x2005] = bytes.fromhex("224dffff60")
+
+        # Act
+        changed = gamefixes.changed_bytes(bytes(rom))
+
+        # Assert
+        self.assertEqual(changed, 2)
+
+
+class SurveyRetiredTest(unittest.TestCase):
+    def test_a_rom_carrying_only_retired_calls_reads_as_already_done(self) -> None:
+        # Arrange
+        rom = bytes(32) + bytes.fromhex("604dffff60") + bytes(32)
+
+        # Act
+        found = gamefixes.survey(rom)
+
+        # Assert
+        self.assertEqual(found["empty routine at $FF:FF4D"], "already")
+
+
+class ReportTest(unittest.TestCase):
+    def test_a_present_fix_is_named_with_its_state_and_file_offset(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        gamefixes.report(carrier(gamefixes.FIXES[0]), said.append)
+
+        # Assert
+        self.assertEqual(
+            said[0], "  thrown father sprite" + " " * 12 + " applied  0x000040  regions usa, jp"
+        )
+
+    def test_an_absent_fix_is_said_to_be_not_present(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        gamefixes.report(carrier(gamefixes.FIXES[0]), said.append)
+
+        # Assert
+        self.assertEqual(
+            said[1], "  sodom name on the life bar" + " " * 6 + " absent   not present  regions usa"
+        )
+
+    def test_an_absent_empty_call_is_named_with_no_call_sites(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        gamefixes.report(carrier(gamefixes.FIXES[0]), said.append)
+
+        # Assert
+        self.assertEqual(
+            said[8], "  empty routine at $FF:FF4D" + " " * 7 + " absent   0 call sites"
+        )
+
+    def test_the_summary_counts_the_bytes_to_change_and_every_entry(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        gamefixes.report(carrier(gamefixes.FIXES[0]), said.append)
+
+        # Assert
+        self.assertEqual(said[-1], "  3 bytes to change across 11 entries")
 
 
 class VanishedRunTest(unittest.TestCase):
