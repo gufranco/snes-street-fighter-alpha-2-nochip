@@ -166,7 +166,7 @@ def main(
     patched = apply(rom)
     output.write_bytes(patched)
 
-    say(f"  driver        {DRIVER_BASE + RECEIVE_LOOP:#08x}  two bytes per handshake")
+    say(f"  driver        {DRIVER_BASE + RECEIVE_LOOP:#08x}  three bytes per handshake")
     say(f"  blank gates   {len(find_blank_gates(rom))} sites retired")
     say(f"  patch         {patch_bytes()} bytes in {len(runs_for(rom))} runs")
     say(f"[done] {output} ({len(patched):,} bytes)")

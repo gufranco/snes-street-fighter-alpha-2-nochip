@@ -358,7 +358,7 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(
             said,
             [
-                "  driver        0x072b13  two bytes per handshake",
+                "  driver        0x072b13  three bytes per handshake",
                 "  blank gates   1 sites retired",
                 "  patch         412 bytes in 27 runs",
                 f"[done] {output} (4,194,304 bytes)",
