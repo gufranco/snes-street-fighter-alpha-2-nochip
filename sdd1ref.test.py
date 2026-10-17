@@ -1,18 +1,14 @@
 import importlib.util
-import random
-import shutil
-import subprocess
 import sys
 import unittest
 from pathlib import Path
-from typing import Any, override
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
 
 sdd1 = hardware.load("sdd1")
-dump = hardware.load("romimage").dump
 
 
 ROOT = Path(__file__).resolve().parent
@@ -27,18 +23,6 @@ def load_module(name: str) -> Any:
 
 
 ref = load_module("sdd1ref")
-
-STAR_OCEAN = ROOT / "roms" / "star-ocean-jp-original.sfc"
-ALPHA2 = ROOT / "roms" / "sfa2-usa-final.sfc"
-
-
-def docker_available() -> bool:
-    if not shutil.which("docker"):  # pragma: no cover
-        return False
-    return (
-        subprocess.run(["docker", "info"], capture_output=True, text=True, check=False).returncode
-        == 0
-    )
 
 
 class WireFormatTest(unittest.TestCase):
@@ -80,50 +64,6 @@ class WireFormatTest(unittest.TestCase):
     def test_an_offset_outside_the_rom_is_rejected(self) -> None:
         with self.assertRaises(ValueError):
             ref.encode_request(b"\x00" * 16, [(16, 4)])
-
-
-@unittest.skipUnless(docker_available(), "docker is not available")  # pragma: no cover
-@unittest.skipUnless(
-    STAR_OCEAN.exists() and ALPHA2.exists(), "reference roms are not present"
-)  # pragma: no cover
-class DifferentialTest(unittest.TestCase):
-    @classmethod
-    @override
-    def setUpClass(cls) -> None:
-        if ref.build_image() != 0:
-            raise unittest.SkipTest("reference image failed to build")
-
-    def assert_agrees(self, rom: bytes | bytearray, cases: list[tuple[int, int]]) -> None:
-        expected = ref.reference_outputs(rom, cases)
-
-        for (offset, length), want in zip(cases, expected, strict=True):
-            got = sdd1.decompress(rom, offset, length).data
-            self.assertEqual(got, want, f"mismatch at offset {offset:#x}")
-
-    def test_it_agrees_with_the_c_reference_on_arbitrary_star_ocean_offsets(self) -> None:
-        rom = dump.read(STAR_OCEAN)
-        rng = random.Random(20260813)
-        cases = [
-            (rng.randrange(len(rom) - 65536), rng.choice([1, 2, 15, 64, 832, 4096]))
-            for _ in range(400)
-        ]
-
-        self.assert_agrees(rom, cases)
-
-    def test_it_agrees_with_the_c_reference_on_every_header_configuration(self) -> None:
-        rom = bytearray(dump.read(ALPHA2)[:262144])
-        cases = []
-        for index in range(16):
-            offset = 4096 * (index + 1)
-            rom[offset] = (index & 0x0F) << 4
-            cases.append((offset, 2048))
-
-        self.assert_agrees(bytes(rom), cases)
-
-    def test_it_agrees_with_the_c_reference_on_a_full_64k_block(self) -> None:
-        rom = dump.read(STAR_OCEAN)
-
-        self.assert_agrees(rom, [(0x101010, 0)])
 
 
 class ShellOutTest(unittest.TestCase):
