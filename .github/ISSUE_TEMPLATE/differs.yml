@@ -1,3 +1,4 @@
+---
 name: The rebuilt cartridge differs from the retail one
 description: Something plays, draws or sounds different from the cartridge it came from
 labels: ["bug", "fidelity"]

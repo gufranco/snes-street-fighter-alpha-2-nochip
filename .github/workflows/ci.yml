@@ -1,3 +1,4 @@
+---
 name: ci
 
 on:
@@ -49,14 +50,16 @@ jobs:
       - name: Install mypy
         run: pipx install mypy==1.14.1
 
-      # Strict, with every optional error class the checker offers. The
-      # configuration lives in pyproject.toml so this run and a local one are
-      # the same run.
-      - name: Check types
+      - name: Check types, strictly, as configured in pyproject.toml
         run: mypy
 
       - name: Lint the workflows
         uses: raven-actions/actionlint@v2
+
+      - name: Lint every YAML file
+        run: |
+          pipx install yamllint==1.38.0
+          yamllint --strict .
 
       - name: Lint the shell scripts
         run: |
@@ -122,9 +125,7 @@ jobs:
       - name: Install release tooling
         run: pnpm install --frozen-lockfile
 
-      # npm's signature verification has no equivalent here, so what is checked
-      # is the advisory database rather than the provenance of each tarball.
-      - name: Check the release tooling against known advisories
+      - name: Check the release tooling against known advisories, since npm signatures cannot be
         run: pnpm audit --audit-level=high
 
       - name: Release

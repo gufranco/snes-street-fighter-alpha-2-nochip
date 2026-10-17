@@ -1,0 +1,21 @@
+---
+extends: default
+ignore: |
+  pnpm-lock.yaml
+  node_modules/
+  mos65xx-python/
+  snes-sdd1-python/
+  sony-spc700-python/
+  snes-mapper-python/
+  sony-s-dsp-python/
+  snes-rom-image-python/
+  sony-s-smp-python/
+  snes-graphics-python/
+  snes-driver-python/
+  build/
+  dist/
+rules:
+  truthy:
+    check-keys: false
+  line-length:
+    max: 100

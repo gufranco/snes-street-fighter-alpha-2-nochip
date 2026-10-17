@@ -113,6 +113,7 @@ uvx ruff@0.16.3 check .
 uvx ruff@0.16.3 format --check .
 uvx --python 3.12 mypy==1.14.1
 pnpm run format:check
+uvx yamllint==1.38.0 --strict .
 uvx --python 3.12 --from coverage==7.6.10 coverage erase
 for module in *.test.py tools/*.test.py conformance/*.test.py; do uvx --python 3.12 --from coverage==7.6.10 coverage run -a "$module" || break; done
 uvx --python 3.12 --from coverage==7.6.10 coverage report
