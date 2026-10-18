@@ -1,4 +1,3 @@
-# No ROM data, ever. Not the retail dumps, not anything built from them.
 roms/
 build/
 dist/
@@ -11,7 +10,6 @@ validated-v3/
 *.bin
 *.ppm
 
-# Local scratch
 emu-stock/
 __pycache__/
 .ruff_cache/
