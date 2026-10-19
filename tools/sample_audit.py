@@ -119,7 +119,7 @@ def _prepare(ram: bytearray, directory: int, sample: int) -> Any:
     memory = sdsp.Memory()
     for address, value in enumerate(ram):
         memory.write8(address, value)
-    chip = sdsp.Chip("s-dsp", memory)
+    chip = sdsp.Chip("s-dsp", memory).reset()
     chip.write(REG_FLG, 0x00)
     chip.write(REG_MVOLL, FULL_VOLUME)
     chip.write(REG_MVOLR, FULL_VOLUME)
