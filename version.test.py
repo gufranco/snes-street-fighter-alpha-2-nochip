@@ -40,6 +40,16 @@ class StampedNameTest(unittest.TestCase):
     def test_a_development_build_is_marked_as_one(self) -> None:
         self.assertEqual(version.stamped("x", "0.0.0"), "x-v0.0.0-dev.sfc")
 
+    def test_another_extension_replaces_the_default_one(self) -> None:
+        # Arrange
+        release = "1.2.3"
+
+        # Act
+        name = version.stamped("x", release, ".smc")
+
+        # Assert
+        self.assertEqual(name, "x-v1.2.3.smc")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

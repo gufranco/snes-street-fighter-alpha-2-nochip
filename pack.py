@@ -67,11 +67,67 @@ REGIONS = {
 DIST = ROOT / "dist"
 MANIFEST = "SHA256SUMS"
 
+SD2SNES_CHIPSET = 0x43
+SD2SNES_EXTENSION = ".smc"
+COPIER_HEADER = bytes(0x200)
+
 
 def output_name(region: str, release: str | None = None) -> str:
     found = version.stamped(f"{REGIONS[region].title}-nochip", release)
     assert isinstance(found, str)
     return found
+
+
+HEADER_ALIGNMENT = 0x8000
+HEADER_OFFSET = 0x7FC0
+HEADER_IDENTITY = rewrite.MAP_MODE + 1
+
+
+def header_copies(image: bytes | bytearray) -> list[int]:
+    anchor = rewrite.anchor_of(image)
+    if anchor is None:
+        return []
+    identity = bytes(image[anchor : anchor + HEADER_IDENTITY])
+    return [
+        at
+        for at in range(HEADER_OFFSET, len(image), HEADER_ALIGNMENT)
+        if image[at : at + HEADER_IDENTITY] == identity
+    ]
+
+
+def unify_headers(image: bytes | bytearray) -> bytes:
+    copies = header_copies(image)
+    if not copies:
+        return bytes(image)
+    anchor = rewrite.anchor_of(image)
+    block = bytes(image[anchor : anchor + rewrite.HEADER_BYTES])
+    unified = bytearray(image)
+    for at in copies:
+        unified[at : at + len(block)] = block
+    return bytes(unified)
+
+
+def sd2snes_name(region: str, release: str | None = None) -> str:
+    title = f"{REGIONS[region].title}-nochip-sd2snes"
+    found = version.stamped(title, release, SD2SNES_EXTENSION)
+    assert isinstance(found, str)
+    return found
+
+
+def for_sd2snes(image: bytes | bytearray) -> bytes:
+    places = rewrite.mirrors(image)
+    if not places:
+        raise rewrite.NoHeader("no cartridge header at any documented position")
+    declared = bytearray(image)
+    for at in places:
+        declared[at + rewrite.CHIPSET] = SD2SNES_CHIPSET
+    value = rewrite.checksum(declared, places)
+    complement = value ^ 0xFFFF
+    field = bytes((complement & 0xFF, complement >> 8, value & 0xFF, value >> 8))
+    for at in places:
+        start = at + rewrite.CHECKSUM_COMPLEMENT
+        declared[start : start + len(field)] = field
+    return COPIER_HEADER + bytes(declared)
 
 
 def manifest_line(name: str, image: bytes | bytearray) -> str:
@@ -139,7 +195,7 @@ def build(region: str, workdir: Path) -> bytes:
     extra = ((prefight.TABLE_ADDRESS, prefight.table()),)
     image = rombuild.build(bypass, entries_for(region), extra=extra).image
     assert isinstance(image, bytes)
-    declared = rewrite.declare_rom_only(image)
+    declared = rewrite.declare_rom_only(unify_headers(image))
     assert isinstance(declared, bytes)
     return declared
 
@@ -151,6 +207,7 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
     dist: Path | None = None,
+    derive: Callable[[bytes], bytes] = for_sd2snes,
 ) -> int:
     complain = say if complain is None else complain
     make = build if make is None else make
@@ -189,10 +246,13 @@ def main(
         except AssemblyFailed as failure:
             complain(str(failure))
             return 1
-        name = output_name(region)
-        (dist / name).write_bytes(image)
-        lines.append(manifest_line(name, image))
-        say(f"  {name}  {len(image):,} bytes")
+        for name, written in (
+            (output_name(region), image),
+            (sd2snes_name(region), derive(image)),
+        ):
+            (dist / name).write_bytes(written)
+            lines.append(manifest_line(name, written))
+            say(f"  {name}  {len(written):,} bytes")
 
     (dist / MANIFEST).write_text("\n".join(lines) + "\n")
     say(f"  {MANIFEST}  {len(lines)} images")

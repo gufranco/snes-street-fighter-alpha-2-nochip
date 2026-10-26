@@ -38,6 +38,29 @@ class BuildTest(unittest.TestCase):
 
         self.assertEqual(len(image), pack.rombuild.IMAGE_SIZE)
 
+    def test_all_six_header_copies_declare_no_chip_and_agree(self) -> None:
+        # Arrange
+        places = (0x7FC0, 0xFFC0, 0x407FC0, 0x40FFC0, 0x607FC0, 0xA07FC0)
+
+        # Act
+        image = pack.build("usa", self._workdir())
+
+        # Assert
+        self.assertEqual([image[at + 0x16] for at in places], [0x00] * 6)
+        self.assertEqual(len({image[at : at + 0x20] for at in places}), 1)
+
+    def test_the_sd2snes_form_declares_the_chip_in_all_six_and_is_the_size_it_wants(self) -> None:
+        # Arrange
+        places = (0x7FC0, 0xFFC0, 0x407FC0, 0x40FFC0, 0x607FC0, 0xA07FC0)
+
+        # Act
+        derived = pack.for_sd2snes(pack.build("usa", self._workdir()))
+
+        # Assert
+        self.assertEqual(len(derived), 0xC00200)
+        self.assertEqual([derived[0x200 + at + 0x16] for at in places], [0x43] * 6)
+        self.assertEqual(len({derived[0x200 + at : 0x200 + at + 0x20] for at in places}), 1)
+
     def test_the_same_dump_twice_produces_the_same_image(self) -> None:
         first = pack.build("usa", self._workdir())
         second = pack.build("usa", self._workdir())

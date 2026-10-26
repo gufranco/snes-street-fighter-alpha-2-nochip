@@ -4,7 +4,7 @@ UNRELEASED = "0.0.0"
 EXTENSION = ".sfc"
 
 
-def stamped(name: str, release: str | None = None) -> str:
+def stamped(name: str, release: str | None = None, extension: str = EXTENSION) -> str:
     release = VERSION if release is None else release
     suffix = "-dev" if release == UNRELEASED else ""
-    return f"{name}-v{release}{suffix}{EXTENSION}"
+    return f"{name}-v{release}{suffix}{extension}"

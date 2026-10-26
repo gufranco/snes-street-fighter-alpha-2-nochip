@@ -237,7 +237,10 @@ class EntryTest(unittest.TestCase):
         self.assertIn("asar said no", complained[0])
 
     def test_a_whole_run_writes_an_image_and_a_manifest(self) -> None:
+        # Arrange
         said: list[Any] = []
+
+        # Act
         with tempfile.TemporaryDirectory() as tmp, a_dump_in_place():
             code = pack.main(
                 ["pack.py", "usa"],
@@ -245,13 +248,192 @@ class EntryTest(unittest.TestCase):
                 gate_check=lambda _region: [],
                 say=said.append,
                 dist=tmp,
+                derive=lambda image: b"\x01" * 16 + image,
             )
-
-            self.assertEqual(code, 0)
             written = (Path(tmp) / pack.MANIFEST).read_text()
 
+        # Assert
+        self.assertEqual(code, 0)
         self.assertIn(pack.output_name("usa"), written)
         self.assertIn("64 bytes", " ".join(said))
+
+    def test_the_same_run_writes_the_sd2snes_form_beside_it(self) -> None:
+        # Arrange
+        said: list[Any] = []
+
+        # Act
+        with tempfile.TemporaryDirectory() as tmp, a_dump_in_place():
+            pack.main(
+                ["pack.py", "usa"],
+                make=lambda _region, _workdir: b"\x00" * 64,
+                gate_check=lambda _region: [],
+                say=said.append,
+                dist=tmp,
+                derive=lambda image: b"\x01" * 16 + image,
+            )
+            derived = (Path(tmp) / pack.sd2snes_name("usa")).read_bytes()
+            listed = (Path(tmp) / pack.MANIFEST).read_text().splitlines()
+
+        # Assert
+        self.assertEqual(derived, b"\x01" * 16 + b"\x00" * 64)
+        self.assertEqual(len(listed), 2)
+        self.assertIn("80 bytes", " ".join(said))
+        self.assertIn("2 images", said[-1])
+
+
+def headed_image() -> bytearray:
+    image = bytearray(0x10000)
+    for anchor in (0x7FC0, 0xFFC0):
+        image[anchor : anchor + 21] = b"SYNTHETIC SD2SNES IMG"
+        image[anchor + pack.rewrite.MAP_MODE] = 0x32
+        image[anchor + pack.rewrite.ROM_SIZE] = 0x06
+    return image
+
+
+def with_a_stale_copy() -> bytearray:
+    image = headed_image()
+    image[0xFFC0 + 0x16] = 0x43
+    image[0xFFC0 + 0x17] = 0x0C
+    image[0xFFC0 + 0x1C : 0xFFC0 + 0x20] = b"\x66\x24\x99\xdb"
+    return image
+
+
+class UnifyHeadersTest(unittest.TestCase):
+    def test_a_copy_differing_only_past_the_map_byte_is_found(self) -> None:
+        # Arrange
+        image = with_a_stale_copy()
+
+        # Act
+        copies = pack.header_copies(image)
+
+        # Assert
+        self.assertEqual(copies, [0x7FC0, 0xFFC0])
+
+    def test_every_copy_ends_up_carrying_the_same_header(self) -> None:
+        # Arrange
+        image = with_a_stale_copy()
+
+        # Act
+        unified = pack.unify_headers(image)
+
+        # Assert
+        self.assertEqual(unified[0x7FC0:0x7FE0], unified[0xFFC0:0xFFE0])
+
+    def test_so_the_rewrite_then_reaches_both_of_them(self) -> None:
+        # Arrange
+        image = with_a_stale_copy()
+
+        # Act
+        declared = pack.rewrite.declare_rom_only(pack.unify_headers(image))
+
+        # Assert
+        self.assertEqual([declared[at + 0x16] for at in (0x7FC0, 0xFFC0)], [0x00, 0x00])
+
+    def test_a_title_away_from_a_bank_end_is_not_a_header(self) -> None:
+        # Arrange
+        image = with_a_stale_copy()
+        image[0x1234 : 0x1234 + 22] = image[0x7FC0 : 0x7FC0 + 22]
+
+        # Act
+        copies = pack.header_copies(image)
+
+        # Assert
+        self.assertEqual(copies, [0x7FC0, 0xFFC0])
+
+    def test_an_image_with_no_header_is_left_alone(self) -> None:
+        # Arrange
+        image = bytes(0x10000)
+
+        # Act
+        unified = pack.unify_headers(image)
+
+        # Assert
+        self.assertEqual(unified, image)
+
+
+class Sd2snesNameTest(unittest.TestCase):
+    def test_the_name_says_which_cartridge_it_is_for(self) -> None:
+        # Arrange
+        release = "1.6.0"
+
+        # Act
+        name = pack.sd2snes_name("usa", release)
+
+        # Assert
+        self.assertEqual(name, "sfa2-usa-nochip-sd2snes-v1.6.0.smc")
+
+
+class Sd2snesFormTest(unittest.TestCase):
+    def test_a_512_byte_copier_header_comes_first(self) -> None:
+        # Arrange
+        image = headed_image()
+
+        # Act
+        derived = pack.for_sd2snes(image)
+
+        # Assert
+        self.assertEqual(len(derived), 0x10000 + 512)
+        self.assertEqual(derived[:512], bytes(512))
+
+    def test_every_header_copy_declares_the_chip_the_firmware_keys_on(self) -> None:
+        # Arrange
+        image = headed_image()
+
+        # Act
+        body = pack.for_sd2snes(image)[512:]
+
+        # Assert
+        self.assertEqual([body[at + 0x16] for at in (0x7FC0, 0xFFC0)], [0x43, 0x43])
+
+    def test_the_map_byte_is_left_as_it_was(self) -> None:
+        # Arrange
+        image = headed_image()
+
+        # Act
+        body = pack.for_sd2snes(image)[512:]
+
+        # Assert
+        self.assertEqual([body[at + 0x15] for at in (0x7FC0, 0xFFC0)], [0x32, 0x32])
+
+    def test_every_copy_carries_a_checksum_that_matches_the_bytes(self) -> None:
+        # Arrange
+        image = headed_image()
+
+        # Act
+        body = pack.for_sd2snes(image)[512:]
+
+        # Assert
+        for at in (0x7FC0, 0xFFC0):
+            complement = body[at + 0x1C] | body[at + 0x1D] << 8
+            value = body[at + 0x1E] | body[at + 0x1F] << 8
+            self.assertEqual(value, pack.rewrite.checksum(body, [0x7FC0, 0xFFC0]))
+            self.assertEqual(complement ^ value, 0xFFFF)
+
+    def test_nothing_outside_the_chip_and_checksum_fields_changes(self) -> None:
+        # Arrange
+        image = headed_image()
+        touched = {
+            at + offset for at in (0x7FC0, 0xFFC0) for offset in (0x16, 0x1C, 0x1D, 0x1E, 0x1F)
+        }
+
+        # Act
+        body = pack.for_sd2snes(image)[512:]
+
+        # Assert
+        moved = {at for at in range(len(image)) if body[at] != image[at]}
+        self.assertLessEqual(moved, touched)
+
+    def test_an_image_with_no_header_is_refused(self) -> None:
+        # Arrange
+        image = bytes(0x10000)
+
+        # Act
+        def attempt() -> bytes:
+            derived: bytes = pack.for_sd2snes(image)
+            return derived
+
+        # Assert
+        self.assertRaises(pack.rewrite.NoHeader, attempt)
 
 
 if __name__ == "__main__":
