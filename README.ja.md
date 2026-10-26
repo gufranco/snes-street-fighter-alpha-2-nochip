@@ -1,14 +1,28 @@
+<div align="center">
+
 # S-DD1なしのStreet Fighter Alpha 2
 
-スーパーファミコン用のStreet Fighter Alpha 2とStreet Fighter Zero 2を、S-DD1展開チップを設計から取り除いた形で再構築するツール群です。snes9x自身の展開器と、利用者が用意する市販カートリッジを基準に検証しています。
+<strong>スーパーファミコン用のStreet Fighter Alpha 2とStreet Fighter Zero 2を、S-DD1展開チップを設計から取り除いた形で再構築するツール群です。snes9x自身の展開器と、利用者が用意する市販カートリッジを基準に検証しています。</strong>
 
-[English](README.md) | 日本語 | [简体中文](README.zh-Hans.md) | [繁體中文（香港）](README.zh-HK.md)
+[English](README.md) | 日本語 | [简体中文](README.zh-Hans.md) | [繁體中文 (香港)](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-street-fighter-alpha-2-nochip)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**5,672**本のストリームを展開してsnes9xの`sdd1emu.cpp`とバイト単位で比較し、相違は**0**件です。**20**本のイメージをそれぞれ**12,000**フレーム実行し、参照ミスは**0**件です。テストは**1,253**件、ステートメントとブランチの**100%**カバレッジゲートがあり、標準ライブラリ以外のPython依存はありません。
+</div>
+
+<p align="center">
+  <a href="#install">インストール</a> |
+  <a href="#the-interface">インターフェース</a> |
+  <a href="#is-it-right">正しいか</a> |
+  <a href="#working-on-it">開発に参加する</a> |
+  <a href="https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues">Issue</a>
+</p>
+
+---
+
+5,672本のストリームを展開してsnes9xの`sdd1emu.cpp`とバイト単位で比較し、相違は0件です。20本のイメージをそれぞれ12,000フレーム実行し、参照ミスは0件です。テストは1,253件、ステートメントとブランチの100%カバレッジゲートがあり、標準ライブラリ以外のPython依存はありません。
 
 ```python
 import hardware
@@ -31,6 +45,8 @@ $C0:8000 is file offset 0x0600000
 
 この例は、固定されたカートリッジマップに対し、5つのコンソールアドレスが192バンクのイメージのどこに対応するかを問い合わせます。192バンクは、このプロジェクトが構築する96 Mbitのチップなしイメージのサイズです。ファイルはハーフバンクの2つのプレーンを持ちます。バンク`$00`はオフセット0でバンク0の上位半分を読みます。バンク`$40`は自身の記憶領域の両半分を公開します。バンク`$C0`は記憶領域を持ちません。その2つの半分はバンク`$80`と`$00`の下位半分です。これにより、展開済みグラフィックスが`$40`-`$7D`を埋める一方で、元の4 MBのROMは`$C0`-`$FF`で読める状態を保ちます。
 
+<a id="install"></a>
+
 ## インストール
 
 | 要件 | バージョン |
@@ -46,7 +62,8 @@ cd snes-street-fighter-alpha-2-nochip
 python3 doctor.py
 ```
 
-このプロジェクトが照合の基準とするモデルはすべて独立したリポジトリで、ルートにサブモジュールとして固定されています。そのため`--recurse-submodules`は必須です。これを付けずに作ったクローンは`git submodule update --init --recursive`で修復できます。download-zipリンクから得たソースアーカイブにはサブモジュールの内容が含まれず、修復できないため、クローンしてください。
+> [!IMPORTANT]
+> このプロジェクトが照合の基準とするモデルはすべて独立したリポジトリで、ルートにサブモジュールとして固定されています。そのため`--recurse-submodules`は必須です。これを付けずに作ったクローンは`git submodule update --init --recursive`で修復できます。download-zipリンクから得たソースアーカイブにはサブモジュールの内容が含まれず、修復できないため、クローンしてください。
 
 ドクターは、マシン、固定された各モデルのバージョン、`roms/`内の各ダンプの状態とSHA-256、展開器がデコードできるか、`docker`がパス上にあるか、各モデル自身のドクターが出す報告を表示します。`roms/`にないダンプは、合格しなかったチェックとして数えます。報告は1行で終わり、終了コードは1つ目の形式なら0、2つ目なら1です。
 
@@ -58,6 +75,8 @@ python3 doctor.py
 バグ報告には出力全体を貼り付けてください。
 
 リリースは[Semantic Versioning](https://semver.org/)に従い、semantic-releaseがコミット履歴から作成します。各リリースにはタグが付き、[リリースページ](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)に掲載されます。リリースにイメージは含まれません。[`pack.py`](pack.py)が書き出す各イメージは、ファイル名にバージョンを含みます。
+
+<a id="the-interface"></a>
 
 ## インターフェース
 
@@ -290,6 +309,22 @@ Street Fighter Alpha 2は、グラフィックスの大半を圧縮して保持�
 
 バイパスが配置より先なのは、バイパスが読む圧縮データを配置が回収するためです。ヘッダーが最後なのは、完成イメージのチェックサムを計算するためです。
 
+```mermaid
+graph TD
+    dump[("市販カートリッジのダンプ、4 MB")] --> spcfast["spcfast.py：1回のハンドシェイクで3バイト"]
+    spcfast --> shinakuma["shinakuma.py：真・豪鬼の解禁"]
+    shinakuma --> gamefixes["gamefixes.py：11件の修正"]
+    gamefixes --> repeatload["repeatload.py：読み込み済みのサンプルリストを省略"]
+    repeatload --> bypass["build.py：バイパスをDockerでアセンブル"]
+    bypass --> cart[("4 MBパッチ済みカートリッジ、チップは引き続き必要")]
+    bypass --> prefight["prefight.py：呼び出し元を格納済みテーブルへ"]
+    tables[("凍結済みストリームテーブル")] --> gate["gate.py：不正なテーブルを拒否"]
+    gate --> rombuild
+    prefight --> rombuild["rombuild.py：展開、配置、参照テーブルの構築"]
+    rombuild --> header["ヘッダーをチップなしに書き換え"]
+    header --> image[("96 Mbitのチップ不要イメージ")]
+```
+
 ### チップと、それを置き換えるもの
 
 S-DD1はメモリをマッピングしますが、Alpha 2はこの機能を使わず、バンク`$C0`から`$FF`が4 MBを線形に公開したままです。S-DD1は展開も行います。CPUが`$4801`に0以外のバイトを書き込み、A-busアドレスが固定されたチャネルでDMAを開始すると、チップは生のバイトをコピーする代わりにストリームをデコードして転送先へ書き込みます。`$4801`は自動でクリアされるため、ゲームはストリームごとにこれを再設定します。
@@ -480,6 +515,8 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 
 キャラクターの巡回だけではスキップに到達しません。どのキャラクターも異なるリストを読み込むためです。`--fights`は試合に入って戻ります。読み込み済みのリストを要求する方法はこれしかありません。
 
+<a id="the-models-underneath"></a>
+
 ## 基盤となるモデル
 
 ある部品が何をするかについての主張は、すべてインポートパス上のモデルが行い、ここでは行いません。各モデルは独立したリポジトリで、ルートにサブモジュールとして固定されています。どのモデルにも[`hardware.py`](hardware.py)を通じてのみアクセスします。`hardware.load(name)`はパッケージを返すか、チェックアウトを埋めるコマンドを含む`hardware.ModelMissing`を送出します。一覧にない名前は`hardware.UnknownPackage`を送出します。
@@ -497,6 +534,8 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | `snesdriver` | [snes-driver-python](https://github.com/gufranco/snes-driver-python) | カートリッジがコードのどこでチップとやり取りするか |
 
 モデルは汚れた状態で始まります。メモリとレジスタは任意ですが再現可能な値を持ち、ここでクリアされたマシンを必要とする処理は自分でそれを設定します。
+
+<a id="is-it-right"></a>
 
 ## 正しいか
 
@@ -535,6 +574,8 @@ FXPAK ProはFPGAでS-DD1をエミュレートしており、4 MB形式がそこ�
 
 `tools/freeze_spcfast.py --check`は、[`spcfast.py`](spcfast.py)内の固定されたパッチが、いまもアセンブラの出力をバイト単位で再現することを確認します。ソース間の相違は[`conformance/divergences.json`](conformance/divergences.json)にあり、[`conformance/divergences.test.py`](conformance/divergences.test.py)がそれを[`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md)と一致させています。
 
+<a id="working-on-it"></a>
+
 ## 開発に参加する
 
 | 必要なもの | 場所 |
@@ -544,6 +585,7 @@ FXPAK ProはFPGAでS-DD1をエミュレートしており、4 MB形式がそこ�
 | このリポジトリがファミリーの他のリポジトリと共有する標準 | [FAMILY.md](FAMILY.md) |
 | バグ報告とおかしな画面 | [GitHub Issues](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues) |
 | セキュリティ報告 | [SECURITY.md](SECURITY.md) |
+| 行動規範 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
 ```bash
 uvx ruff@0.16.3 format --check .
@@ -558,7 +600,24 @@ python3 doctor.py
 
 ビルドは、固定されたツールチェーン、ネットワークなし、非rootユーザーでDocker内で実行し、ホストでは決して実行しません。[`asm/`](asm)内のアセンブリは、コメントを含む唯一のソースです。コメントには、入口と出口の状態、レジスタ幅、復元した各アドレスの出所が書かれています。
 
-おかしな画面は最も役立つ報告です。ここにあるチェックでは見つけられない唯一の不具合だからです。どのイメージとリージョンかを書き、そのフレームをキャプチャしてください。カートリッジやそこからデコードしたものは決して添付せず、ダウンロードできる場所へのリンクも決して載せないでください。ダイジェストは、ファイルそのものを含まずにファイルを識別できます。
+<details>
+<summary><strong>プロジェクト構成</strong></summary>
+
+| パス | 内容 |
+|:--|:--|
+| [`asm/`](asm) | 65816とSPC700のアセンブリによるパッチです。バイパス、変換ルーチン、高速アップロードを含み、asar 1.81を実行するコンテナも置いています |
+| [`tools/`](tools) | 16個のツールです。ダンプの識別、ストリームとイメージの検証、イメージマトリクス、オーディオ比較、日本版ストリームの探索を行います |
+| [`emu/`](emu) | イメージマトリクスを実行するエミュレータハーネスです。snes9x 1.63にウィンドウ方式のマップを加えて構築します |
+| [`ref/`](ref) | snes9x 1.63の`sdd1emu.cpp`を展開の基準としてビルドするコンテナです |
+| [`conformance/`](conformance) | 相違の記録と、それを[`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md)と一致させるテストです |
+| [`scripts/`](scripts) | [`version.py`](version.py)と[`CITATION.cff`](CITATION.cff)にバージョンを書き込むリリーススクリプトです |
+| ルート | 24個のモジュールです。パッチ、イメージビルダー、ゲート、ドクター、凍結済みストリームテーブルがあります |
+| 9個のサブモジュール | [基盤となるモデル](#the-models-underneath)に記載の固定されたモデルです |
+
+</details>
+
+> [!CAUTION]
+> おかしな画面は最も役立つ報告です。ここにあるチェックでは見つけられない唯一の不具合だからです。どのイメージとリージョンかを書き、そのフレームをキャプチャしてください。カートリッジやそこからデコードしたものは決して添付せず、ダウンロードできる場所へのリンクも決して載せないでください。ダイジェストは、ファイルそのものを含まずにファイルを識別できます。
 
 ## 参考資料
 

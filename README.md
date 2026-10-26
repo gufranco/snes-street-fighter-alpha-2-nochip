@@ -1,14 +1,28 @@
+<div align="center">
+
 # Street Fighter Alpha 2 without the S-DD1
 
-Tooling that rebuilds Street Fighter Alpha 2 and Street Fighter Zero 2 for the Super Nintendo with the S-DD1 decompression chip designed out, held to snes9x's own decompressor and to the retail cartridges you supply.
+<strong>Tooling that rebuilds Street Fighter Alpha 2 and Street Fighter Zero 2 for the Super Nintendo with the S-DD1 decompression chip designed out, held to snes9x's own decompressor and to the retail cartridges you supply.</strong>
 
-English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁體中文（香港）](README.zh-HK.md)
+English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁體中文 (香港)](README.zh-HK.md)
 
 [![CI](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-street-fighter-alpha-2-nochip)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**5,672** streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, **0** differing, **20** images run for **12,000** frames each with **0** lookup misses, **1,253** tests, a **100%** statement and branch coverage gate, no Python dependencies outside the standard library
+</div>
+
+<p align="center">
+  <a href="#install">Install</a> |
+  <a href="#the-interface">Interface</a> |
+  <a href="#is-it-right">Is it right</a> |
+  <a href="#working-on-it">Working on it</a> |
+  <a href="https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues">Issues</a>
+</p>
+
+---
+
+5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,253 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
 
 ```python
 import hardware
@@ -46,7 +60,8 @@ cd snes-street-fighter-alpha-2-nochip
 python3 doctor.py
 ```
 
-Every model this project measures itself against is its own repository, pinned as a submodule at the root, so `--recurse-submodules` is required. A clone made without it is repaired with `git submodule update --init --recursive`. A source archive from the download-zip link carries no submodule content and cannot be repaired, so clone instead.
+> [!IMPORTANT]
+> Every model this project measures itself against is its own repository, pinned as a submodule at the root, so `--recurse-submodules` is required. A clone made without it is repaired with `git submodule update --init --recursive`. A source archive from the download-zip link carries no submodule content and cannot be repaired, so clone instead.
 
 The doctor prints the machine, the version of every pinned model, the state and SHA-256 of each dump in `roms/`, whether the decompressor decodes, whether `docker` is on the path, and the report each model's own doctor gives. A dump that is not in `roms/` counts as a check that did not pass. The report ends with one line, and the exit code is 0 for the first form and 1 for the second:
 
@@ -289,6 +304,22 @@ The pause before every fight sits in the sound driver, which hands samples to th
 8. The header is rewritten to declare a plain ROM with no chip.
 
 The bypass comes before the layout because the layout reclaims the compressed data the bypass reads. The header comes last because it checksums the finished image.
+
+```mermaid
+graph TD
+    dump[("Retail dump, 4 MB")] --> spcfast["spcfast.py: three bytes per handshake"]
+    spcfast --> shinakuma["shinakuma.py: Shin Akuma unlock"]
+    shinakuma --> gamefixes["gamefixes.py: eleven corrections"]
+    gamefixes --> repeatload["repeatload.py: skip a loaded sample list"]
+    repeatload --> bypass["build.py: bypass assembled in Docker"]
+    bypass --> cart[("4 MB patched cartridge, still needs the chip")]
+    bypass --> prefight["prefight.py: callers moved to the stored table"]
+    tables[("Frozen stream table")] --> gate["gate.py: refuses a bad table"]
+    gate --> rombuild
+    prefight --> rombuild["rombuild.py: decompress, lay out, build the lookups"]
+    rombuild --> header["Header rewritten to declare no chip"]
+    header --> image[("96 Mbit chip-free image")]
+```
 
 ### The chip, and what replaces it
 
@@ -540,6 +571,7 @@ The FXPAK Pro emulates the S-DD1 in its FPGA, which is why the 4 MB form runs th
 | The standard this repository shares with the rest of the family | [FAMILY.md](FAMILY.md) |
 | Bug reports and wrong screens | [GitHub Issues](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues) |
 | Security reports | [SECURITY.md](SECURITY.md) |
+| Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
 ```bash
 uvx ruff@0.16.3 format --check .
@@ -554,7 +586,24 @@ The suite is 1,253 tests across 49 modules: 725 beside the analysis modules, 510
 
 Builds run in Docker with pinned toolchains, no network and a non-root user, never on the host. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 
-A wrong screen is the most useful report, because it is the one failure the checks here cannot find. Say which image and region, and capture the frame. Never attach a cartridge or anything decoded out of one, and never link to where one can be downloaded. A digest identifies a file without carrying it.
+<details>
+<summary><strong>Project structure</strong></summary>
+
+| Path | Holds |
+|:--|:--|
+| [`asm/`](asm) | The patches in 65816 and SPC700 assembly, among them the bypass, the translate routine and the fast upload, with the container that runs asar 1.81 |
+| [`tools/`](tools) | Sixteen tools: dump identification, stream and image verification, the image matrix, audio comparison and the Japanese stream search |
+| [`emu/`](emu) | The emulator harness the image matrix runs on, built on snes9x 1.63 with the windowed map added |
+| [`ref/`](ref) | The container that builds snes9x 1.63's `sdd1emu.cpp` as the decompression reference |
+| [`conformance/`](conformance) | The divergences record and the test that holds it to [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) |
+| [`scripts/`](scripts) | The release script that stamps [`version.py`](version.py) and [`CITATION.cff`](CITATION.cff) |
+| The root | Twenty-four modules: the patches, the image builder, the gate, the doctor and the frozen stream tables |
+| Nine submodules | The pinned models listed under [The models underneath](#the-models-underneath) |
+
+</details>
+
+> [!CAUTION]
+> A wrong screen is the most useful report, because it is the one failure the checks here cannot find. Say which image and region, and capture the frame. Never attach a cartridge or anything decoded out of one, and never link to where one can be downloaded. A digest identifies a file without carrying it.
 
 ## References
 

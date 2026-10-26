@@ -1,14 +1,28 @@
+<div align="center">
+
 # 不用 S-DD1 的 Street Fighter Alpha 2
 
-一套工具，用來為 Super Nintendo 重新建構 Street Fighter Alpha 2 與 Street Fighter Zero 2，從設計上去掉 S-DD1 解壓晶片，並以 snes9x 本身的解壓器和你自備的零售版卡帶作為驗證標準。
+<strong>一套工具，用來為 Super Nintendo 重新建構 Street Fighter Alpha 2 與 Street Fighter Zero 2，從設計上去掉 S-DD1 解壓晶片，並以 snes9x 本身的解壓器和你自備的零售版卡帶作為驗證標準。</strong>
 
-[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | 繁體中文（香港）
+[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | 繁體中文 (香港)
 
 [![CI](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml/badge.svg)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/gufranco/snes-street-fighter-alpha-2-nochip)](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**5,672** 個數據流經解壓後與 snes9x 的 `sdd1emu.cpp` 逐位元組比較，**0** 個有差異；**20** 個映像檔各執行 **12,000** 幀，查找未命中 **0** 次；**1,253** 個測試；**100%** 語句及分支覆蓋率關卡檢查；除標準庫外不依賴任何 Python 套件
+</div>
+
+<p align="center">
+  <a href="#install">安裝</a> |
+  <a href="#the-interface">介面</a> |
+  <a href="#is-it-right">是否正確</a> |
+  <a href="#working-on-it">參與開發</a> |
+  <a href="https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues">問題回報</a>
+</p>
+
+---
+
+5,672 個數據流經解壓後與 snes9x 的 `sdd1emu.cpp` 逐位元組比較，0 個有差異；20 個映像檔各執行 12,000 幀，查找未命中 0 次；1,253 個測試；100% 語句及分支覆蓋率關卡檢查；除標準庫外不依賴任何 Python 套件。
 
 ```python
 import hardware
@@ -31,6 +45,8 @@ $C0:8000 is file offset 0x0600000
 
 這個示例向已固定版本的卡帶映射查詢五個主機位址在 192 個 bank 的映像檔中落在哪裏，這正是本項目建構的 96 Mbit 無晶片映像檔的大小。檔案以兩個平面存放半個 bank。Bank `$00` 在偏移 0 讀取 bank 0 的高半部。Bank `$40` 公開其自身儲存的兩個半部。Bank `$C0` 沒有自己的儲存：它的兩個半部是 bank `$80` 與 `$00` 的低半部，原本 4 MB 的 ROM 因此仍可在 `$C0`-`$FF` 讀取，而解壓後的圖像則填滿 `$40`-`$7D`。
 
+<a id="install"></a>
+
 ## 安裝
 
 | 需求 | 版本 |
@@ -46,7 +62,8 @@ cd snes-street-fighter-alpha-2-nochip
 python3 doctor.py
 ```
 
-本項目用作比對標準的每個模型都是獨立的儲存庫，以子模組形式固定在根目錄，所以必須使用 `--recurse-submodules`。沒有加上它的複製可用 `git submodule update --init --recursive` 修復。經下載 zip 連結取得的原始碼封存檔不含子模組內容，無法修復，因此請改用複製。
+> [!IMPORTANT]
+> 本項目用作比對標準的每個模型都是獨立的儲存庫，以子模組形式固定在根目錄，所以必須使用 `--recurse-submodules`。沒有加上它的複製可用 `git submodule update --init --recursive` 修復。經下載 zip 連結取得的原始碼封存檔不含子模組內容，無法修復，因此請改用複製。
 
 診斷腳本會列印機器資訊、每個已固定模型的版本、`roms/` 中每個傾印的狀態與 SHA-256、解壓器能否解碼、`docker` 是否在路徑上，以及每個模型自身診斷腳本給出的報告。不在 `roms/` 中的傾印算作一項未通過的檢查。報告以一行結束，第一種形式的退出碼為 0，第二種為 1：
 
@@ -58,6 +75,8 @@ python3 doctor.py
 提交錯誤報告時，請貼上完整輸出。
 
 發佈版本遵循[語義化版本](https://semver.org/)，由 semantic-release 根據提交歷史切出。每個發佈版本都有標籤，並列在[發佈頁面](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/releases)。發佈版本不附帶映像檔：[`pack.py`](pack.py) 寫出的每個映像檔都在檔案名稱中帶有版本號。
+
+<a id="the-interface"></a>
 
 ## 介面
 
@@ -290,6 +309,22 @@ Street Fighter Alpha 2 的大部分圖像以壓縮形式存放。零售版卡帶
 
 旁路排在排列之前，因為排列會回收旁路所讀取的壓縮數據。標頭排在最後，因為它要計算完成映像檔的校驗和。
 
+```mermaid
+graph TD
+    dump[("零售卡帶傾印，4 MB")] --> spcfast["spcfast.py：每次握手傳送 3 個位元組"]
+    spcfast --> shinakuma["shinakuma.py：解鎖真豪鬼"]
+    shinakuma --> gamefixes["gamefixes.py：十一項修正"]
+    gamefixes --> repeatload["repeatload.py：略過已載入的取樣清單"]
+    repeatload --> bypass["build.py：在 Docker 內組譯旁路"]
+    bypass --> cart[("4 MB 修補卡帶，仍需晶片")]
+    bypass --> prefight["prefight.py：呼叫者改用預存的表"]
+    tables[("凍結的數據流表")] --> gate["gate.py：拒絕有問題的表"]
+    gate --> rombuild
+    prefight --> rombuild["rombuild.py：解壓、編排、建立查找表"]
+    rombuild --> header["標頭改寫為不含晶片"]
+    header --> image[("96 Mbit 無晶片映像檔")]
+```
+
 ### 晶片，以及取代它的東西
 
 S-DD1 負責記憶體映射，但 Alpha 2 從不使用這項功能，於是 bank `$C0` 至 `$FF` 以線性方式公開 4 MB。它也負責解壓：當 CPU 向 `$4801` 寫入非零位元組，並啟動一個通道 A-bus 位址固定的 DMA 時，晶片會把一個數據流解碼到目的地，而不是複製原始位元組。`$4801` 會自行清除，所以遊戲在每個數據流之前重新啟動它。
@@ -480,6 +515,8 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 
 單靠走訪角色永遠不會觸發跳過，因為每名角色載入的清單都不同。`--fights` 進入一場對戰再返回，這是請求一個已載入清單的唯一方法。
 
+<a id="the-models-underneath"></a>
+
 ## 底層模型
 
 關於某個部件行為的每項斷言，都由匯入路徑上的模型作出，從不在這裏作出。每個模型都是獨立的儲存庫，以子模組形式固定在根目錄，而 [`hardware.py`](hardware.py) 是存取它們的唯一途徑。`hardware.load(name)` 傳回該套件，或引發 `hardware.ModelMissing`，並附上填補該檢出的命令。不在清單中的名稱會引發 `hardware.UnknownPackage`。
@@ -497,6 +534,8 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | `snesdriver` | [snes-driver-python](https://github.com/gufranco/snes-driver-python) | 卡帶在程式碼的哪裏與其晶片通訊 |
 
 模型啟動時處於未清理狀態：記憶體和暫存器持有任意但可重現的值，這裏任何需要已清空機器的部分都會自行設定。
+
+<a id="is-it-right"></a>
 
 ## 是否正確
 
@@ -535,6 +574,8 @@ FXPAK Pro 在其 FPGA 中模擬 S-DD1，所以 4 MB 形式能在其上運行，�
 
 `tools/freeze_spcfast.py --check` 確認 [`spcfast.py`](spcfast.py) 中凍結的修補仍然逐位元組重現組譯器的輸出。各來源之間的分歧記錄在 [`conformance/divergences.json`](conformance/divergences.json)，並由 [`conformance/divergences.test.py`](conformance/divergences.test.py) 確保它與 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 一致。
 
+<a id="working-on-it"></a>
+
 ## 參與開發
 
 | 需要 | 位置 |
@@ -544,6 +585,7 @@ FXPAK Pro 在其 FPGA 中模擬 S-DD1，所以 4 MB 形式能在其上運行，�
 | 本儲存庫與同系列其他儲存庫共用的標準 | [FAMILY.md](FAMILY.md) |
 | 錯誤報告與出錯的畫面 | [GitHub Issues](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues) |
 | 安全報告 | [SECURITY.md](SECURITY.md) |
+| 行為守則 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
 ```bash
 uvx ruff@0.16.3 format --check .
@@ -558,7 +600,24 @@ python3 doctor.py
 
 建構在 Docker 中以已固定版本的工具鏈、無網絡和非 root 用戶執行，從不在主機上執行。[`asm/`](asm) 中的組合語言是唯一帶有註解的原始碼：進入與退出狀態、暫存器寬度，以及每個還原位址的來源。
 
-出錯的畫面是最有用的報告，因為這是這裏的檢查唯一找不到的失敗。請說明是哪個映像檔和地區，並擷取該幀。切勿附上卡帶或任何從卡帶解碼出來的內容，也切勿連結到可下載卡帶的地方。摘要能識別檔案而不攜帶檔案。
+<details>
+<summary><strong>專案結構</strong></summary>
+
+| 路徑 | 內容 |
+|:--|:--|
+| [`asm/`](asm) | 以 65816 和 SPC700 組合語言寫成的修補，包括旁路、轉換程序和快速上傳，以及執行 asar 1.81 的容器 |
+| [`tools/`](tools) | 十六個工具：傾印識別、數據流與映像檔驗證、映像檔矩陣、音效比較和日版數據流搜尋 |
+| [`emu/`](emu) | 映像檔矩陣所用的模擬器測試框架，以 snes9x 1.63 建構，並加入窗口式映射 |
+| [`ref/`](ref) | 建構 snes9x 1.63 的 `sdd1emu.cpp` 作為解壓基準的容器 |
+| [`conformance/`](conformance) | 來源分歧紀錄，以及令它與 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 保持一致的測試 |
+| [`scripts/`](scripts) | 為 [`version.py`](version.py) 和 [`CITATION.cff`](CITATION.cff) 寫入版本號的發佈腳本 |
+| 根目錄 | 二十四個模組：修補、映像檔建構器、關卡、診斷工具和凍結的數據流表 |
+| 九個子模組 | [底層模型](#the-models-underneath)所列的固定版本模型 |
+
+</details>
+
+> [!CAUTION]
+> 出錯的畫面是最有用的報告，因為這是這裏的檢查唯一找不到的失敗。請說明是哪個映像檔和地區，並擷取該幀。切勿附上卡帶或任何從卡帶解碼出來的內容，也切勿連結到可下載卡帶的地方。摘要能識別檔案而不攜帶檔案。
 
 ## 參考資料
 
