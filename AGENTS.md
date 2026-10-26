@@ -153,9 +153,10 @@ exclusions live here:
 - `BLE001` and `T201` in [`environment.py`](environment.py): a check that throws
   has to become a line in the report rather than end the run, and the printed
   report is the product.
-- The submodule paths in the coverage `omit` and the mypy `exclude`: each model
-  is measured and checked in its own repository against its own gate, so a
-  figure taken from here would mean nothing. `build/` holds generated and third
+- The submodule paths in the coverage `omit`, the mypy `exclude` and
+  [`.prettierignore`](.prettierignore): each model is measured and checked in
+  its own repository against its own gate, so a figure taken from here would
+  mean nothing, and a file a member ignores fails here if it is not ignored. `build/` holds generated and third
   party sources this project does not own.
 - The `if __name__ == "__main__":` coverage exclusion: the guard hands argv to a
   function that is tested directly, and importing the module to cover it would

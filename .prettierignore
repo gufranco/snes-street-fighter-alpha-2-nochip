@@ -3,10 +3,13 @@ node_modules/
 .coverage
 build/
 mos65xx-python/
+snes-driver-python/
+snes-graphics-python/
 snes-mapper-python/
 snes-rom-image-python/
 snes-sdd1-python/
 sony-s-dsp-python/
+sony-s-smp-python/
 sony-spc700-python/
 validated/
 validated-v2/
