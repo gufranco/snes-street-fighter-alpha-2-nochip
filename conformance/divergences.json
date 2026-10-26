@@ -9,6 +9,30 @@
   },
   "divergences": [
     {
+      "id": "the-guarded-upload-is-not-yet-seen-on-a-cartridge",
+      "parts": ["spcfast", "spc700", "ssmp"],
+      "severity": "high",
+      "status": "open",
+      "documentSays": "The S-SMP boot program reads the counter port a second time, at $FFE9 to $FFED, before it takes its new-block exit.",
+      "referenceDoes": "No emulator models a port read that lands during the other side's write, so a receive loop that trusts one read passes every emulated run.",
+      "packageFollows": "reference",
+      "reasoning": "Release 1.5.4 decided on one read. Issue #31 reports a black screen right after the Capcom logo on an SD2SNES Mk.II clone, an original SD2SNES and an SD2SNES Pro, and a Game Doctor SF7 that ran only without the fast upload; a retail ROM with nothing but the upload patch fails the same way. On the SPC700 model, one counter read that looks ahead leaves the 1.5.4 loops spinning forever, and the guarded loops deliver every byte. The model can only show that the guard handles the read it is handed; whether real ports tear in exactly this way, and whether the guard is the whole fix, only a cartridge can say.",
+      "wouldSettleIt": "A run of an image built with the guarded upload on any of the three cartridges in issue #31, reaching a fight, against the same cartridge failing with 1.5.4.",
+      "namedInDocument": "The guarded sample upload is not yet seen on a cartridge"
+    },
+    {
+      "id": "the-sd2snes-form-is-not-yet-seen-on-a-cartridge",
+      "parts": ["pack", "romimage"],
+      "severity": "medium",
+      "status": "open",
+      "documentSays": "The sd2snes firmware's smc_id in src/smc.c selects its 96 Mbit map, mapper 6, only for map byte $22 or $32 with chip $43 or $45; release v1.11.2 also needs the file to be exactly 0xC00200 bytes.",
+      "referenceDoes": "snes9x detects these images by title and size and ignores the chip byte.",
+      "packageFollows": "document",
+      "reasoning": "The .sfc declares chip $00, so the firmware falls back to plain LoROM and reads the graphics banks from the wrong offsets; mapper 6 in verilog/sd2snes_base/address.v places every address where this project's map does. The .smc form sets chip $43 in all six header copies and adds a 512 byte copier header. The hardware table's FXPAK Pro run of the .sfc, recorded before this was known, is not explained by the firmware source and is contradicted by the SD2SNES Pro report in issue #31.",
+      "wouldSettleIt": "The .smc reaching a fight on an SD2SNES or FXPAK Pro, with the firmware version noted, and the .sfc retried on the FXPAK Pro.",
+      "namedInDocument": "The sd2snes form is not yet seen on a cartridge"
+    },
+    {
       "id": "the-japanese-stream-table-cannot-be-proved-complete",
       "parts": ["sdd1", "jpstreams"],
       "severity": "medium",

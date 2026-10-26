@@ -88,13 +88,17 @@ python3 pack.py
 python3 pack.py jp
 ```
 
-[`tools/identify.py`](tools/identify.py) 根据 [`artifacts.manifest.json`](artifacts.manifest.json) 检查 `roms/` 中的每个转储。[`pack.py`](pack.py) 为指定的每个地区构建无芯片镜像，未指定时两个地区都构建，并连同一个 `SHA256SUMS` 清单写入 `dist/`：
+[`tools/identify.py`](tools/identify.py) 根据 [`artifacts.manifest.json`](artifacts.manifest.json) 检查 `roms/` 中的每个转储。[`pack.py`](pack.py) 为指定的每个地区构建无芯片镜像，未指定时两个地区都构建。每个镜像以两种形式写入 `dist/`，全部列在一个 `SHA256SUMS` 清单中：
 
 ```
-  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
   sfz2-jp-nochip-v<version>.sfc  12,582,912 bytes
-  SHA256SUMS  2 images
+  sfz2-jp-nochip-sd2snes-v<version>.smc  12,583,424 bytes
+  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
+  sfa2-usa-nochip-sd2snes-v<version>.smc  12,583,424 bytes
+  SHA256SUMS  4 images
 ```
+
+`.sfc` 不声明任何芯片。`.smc` 用于运行 SD2SNES 和 FXPAK Pro 的 sd2snes 固件。该固件只在头部声明芯片 `$43` 或 `$45` 时使用其 96 Mbit 映射，而 v1.11.2 版本还要求文件恰好为 12,583,424 字节。因此 `.smc` 在全部六个头部副本中声明芯片 `$43`，并以一个 512 字节的拷贝机头部开头。该头部之后是同一个镜像。
 
 [`pack.py`](pack.py) 在零售版转储上依次执行下面的每个补丁，在 Docker 中汇编旁路代码，加入赛前表，依据冻结的数据流表布置镜像，并改写文件头，声明为普通 ROM。写出任何内容之前，它会对每个地区的数据流表运行 [`gate.py`](gate.py)，一旦有发现就停止。
 
@@ -137,7 +141,7 @@ python3 pack.py jp
 
 | 模块 | 命令 | 修改内容 |
 |:--|:--|:--|
-| [`spcfast.py`](spcfast.py) | `spcfast.py <source-rom> <output-rom>` | 采样上传，412 字节，分 27 段 |
+| [`spcfast.py`](spcfast.py) | `spcfast.py <source-rom> <output-rom>` | 采样上传，420 字节，分 21 段 |
 | [`shinakuma.py`](shinakuma.py) | `shinakuma.py <source-rom> <output-rom>` | Shin Akuma 解锁，两个字节 |
 | [`gamefixes.py`](gamefixes.py) | `gamefixes.py <source-rom> <output-rom>` | [你得到什么](#what-you-get) 一节列出的十一项修正 |
 | [`repeatload.py`](repeatload.py) | `repeatload.py <source-rom> <output-rom>` | 跳过已加载的基础采样列表，使用位于 `$C7:F600` 的一段 61 字节例程 |
@@ -169,7 +173,7 @@ shinakuma: no Shin Akuma unlock gate found
 gamefixes: this ROM carries none of the sites these fixes name
 repeatload: the sound engine's allocator setup is not where this patch expects it
 prefight: no pre-fight table builder found
-412 27 24704
+420 21 24704
 8 3
 ```
 
@@ -237,7 +241,7 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)` 从 [`version.py`](version.py) 取得版本号写入名称，版本 `0.0.0` 会标上 `-dev`。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 返回一个地区的完成镜像，需要 Docker 和零售版转储。`pack.REGIONS` 列出每个地区的零售版转储和旁路补丁。汇编失败时抛出 `pack.AssemblyFailed`，其中带有 [`build.py`](build.py) 的输出。
+`pack.output_name(region, release=None)` 从 [`version.py`](version.py) 取得版本号写入名称，版本 `0.0.0` 会标上 `-dev`。`pack.sd2snes_name(region, release=None)` 以同样方式为 `.smc` 命名。`pack.for_sd2snes(image)` 返回完成镜像的这种形式，对没有头部的镜像抛出 `NoHeader`。`pack.unify_headers(image)` 把第一个头部复制到所有标题和映射字节与之相同、位于库末尾的副本上，使随后的改写覆盖全部六处。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 返回一个地区的完成镜像，需要 Docker 和零售版转储。`pack.REGIONS` 列出每个地区的零售版转储和旁路补丁。汇编失败时抛出 `pack.AssemblyFailed`，其中带有 [`build.py`](build.py) 的输出。
 
 ### 全部命令
 
@@ -396,6 +400,8 @@ Bank `$C0+k` 在 `$8000`-`$FFFF` 暴露 bank `k` 的低半部分，在 `$0000`-`
 
 三个目标指针彼此相距三分之一个数据块，因此存储索引每次加一，页进位每 256 次握手才发生一次。
 
+音频端口的两侧并非由同一时钟驱动，因此在主机写入端口的同时进行的读取，可能返回新旧位混合的值。接收方在计数器匹配时只读一次。在认定新数据块已经开始之前，它会再读一次，正如音频芯片的引导程序在 `$FFE9` 到 `$FFED` 所做的那样。在那里判断错误，是驱动程序唯一无法撤回的决定。在 SPC700 模型上，只要有一次看起来超前的计数器读取，没有第二次读取的循环就会永远空转，这正是卡带上报告的、[issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) 中 Capcom 标志之后的黑屏。第二次读取不会给传送字节的路径增加任何开销。
+
 游戏有七个上传程序，其中一个还驱动音频芯片掩膜 ROM 中的启动加载器，后者每次握手只接收一个字节。驱动根据每个数据块头中已有的类型字节进行分派：3 表示三字节传送，启动路径不受影响。这覆盖了 93% 的驱动流量。
 
 [`repeatload.py`](repeatload.py) 中的跳过逻辑，在完整走一遍角色阵容的过程中，为美版卡带节省 840,766 字节，为日版节省 303,340 字节。
@@ -411,6 +417,7 @@ Bank `$C0+k` 在 `$8000`-`$FFFF` 暴露 bank `k` 的低半部分，在 `$0000`-`
 | 形式 | 大小 | 是否需要芯片 | 写出者 |
 |:--|:--|:--|:--|
 | 96 Mbit 无芯片 | 12,582,912 字节 | 否 | [`pack.py`](pack.py)，以及 [`tools/rebuild_all.py`](tools/rebuild_all.py)，后者输出为 `*-free.sfc` |
+| 用于 sd2snes 固件的 96 Mbit 无芯片 | 12,583,424 字节 | 否，尽管头部声明了芯片 | [`pack.py`](pack.py)，输出为 `*-sd2snes-*.smc` |
 | 4 MB 已打补丁卡带 | 4,194,304 字节 | 是，适用于已经模拟 S-DD1 的硬件 | [`tools/rebuild_all.py`](tools/rebuild_all.py)，输出为 `*-bypass.sfc` |
 
 两者都带有更快的采样上传、Shin Akuma 解锁和各项修正。只有无芯片镜像带有赛前表。
@@ -492,6 +499,8 @@ python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Pat
 
 **日版构建只在模拟环境中运行过。** 它与美版的构造方式相同，并通过相同的检查。
 
+**带保护的采样上传和 `.smc` 尚未在卡带上见到运行。** 两者都是针对 [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) 的处理，在那里 1.5.4 在 SD2SNES 卡带和 SD2SNES Pro 上于 Capcom 标志之后黑屏。模型表明带保护的上传能挺过让 1.5.4 停住的撕裂读取，固件源码表明 `.smc` 会进入正确的映射。两者是否就是全部修复，只有卡带才能证明。
+
 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 列出了每个未解决的问题，以及能解决它的测量方法。
 
 ## 模拟器支持
@@ -570,6 +579,7 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | FXPAK Pro | 美版，96 Mbit 无芯片 | 可运行 |
 | FXPAK Pro | 美版，4 MB 已打补丁卡带 | 可运行 |
 | Super EverDrive | 美版，96 Mbit 无芯片 | 到达标题画面，见 @yoshinokentarou 发布的[照片](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1) |
+| SD2SNES、固件 1.11.2-br-2.17 的 SD2SNES Mk.II 仿制品，以及 SD2SNES Pro | 美版，96 Mbit 无芯片，1.5.4 | Capcom 标志之后黑屏，见 [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) 中的报告 |
 
 FXPAK Pro 在其 FPGA 中模拟 S-DD1，这就是 4 MB 形式能在其上运行的原因；对于无芯片镜像，这一模拟处于空闲状态。
 

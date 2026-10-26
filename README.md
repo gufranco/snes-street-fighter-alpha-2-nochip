@@ -84,13 +84,17 @@ python3 pack.py
 python3 pack.py jp
 ```
 
-[`tools/identify.py`](tools/identify.py) checks each dump in `roms/` against [`artifacts.manifest.json`](artifacts.manifest.json). [`pack.py`](pack.py) builds the chip-free image for each region named, or both when none is named, and writes them to `dist/` with a `SHA256SUMS` manifest:
+[`tools/identify.py`](tools/identify.py) checks each dump in `roms/` against [`artifacts.manifest.json`](artifacts.manifest.json). [`pack.py`](pack.py) builds the chip-free image for each region named, or both when none is named, writes each one twice to `dist/`, and lists all of them in a `SHA256SUMS` manifest:
 
 ```
-  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
   sfz2-jp-nochip-v<version>.sfc  12,582,912 bytes
-  SHA256SUMS  2 images
+  sfz2-jp-nochip-sd2snes-v<version>.smc  12,583,424 bytes
+  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
+  sfa2-usa-nochip-sd2snes-v<version>.smc  12,583,424 bytes
+  SHA256SUMS  4 images
 ```
+
+The `.sfc` declares no chip. The `.smc` is for the sd2snes firmware that runs the SD2SNES and the FXPAK Pro. That firmware uses its 96 Mbit map only for a header declaring chip `$43` or `$45`, and release v1.11.2 only for a file of exactly 12,583,424 bytes. So the `.smc` declares chip `$43` in all six header copies and starts with a 512 byte copier header. Everything after that header is the same image.
 
 [`pack.py`](pack.py) runs every patch below in order on the retail dump, assembles the bypass in Docker, adds the pre-fight table, lays out the image from the frozen stream table, and rewrites the header to declare a plain ROM. Before writing anything it runs [`gate.py`](gate.py) over each region's stream table and stops on any finding.
 
@@ -133,7 +137,7 @@ Each patch is a module with an `apply(rom)` call and a command line. `apply` tak
 
 | Module | Command | What it changes |
 |:--|:--|:--|
-| [`spcfast.py`](spcfast.py) | `spcfast.py <source-rom> <output-rom>` | The sample upload, 412 bytes in 27 runs |
+| [`spcfast.py`](spcfast.py) | `spcfast.py <source-rom> <output-rom>` | The sample upload, 420 bytes in 21 runs |
 | [`shinakuma.py`](shinakuma.py) | `shinakuma.py <source-rom> <output-rom>` | The Shin Akuma unlock, two bytes |
 | [`gamefixes.py`](gamefixes.py) | `gamefixes.py <source-rom> <output-rom>` | The eleven corrections listed under [What you get](#what-you-get) |
 | [`repeatload.py`](repeatload.py) | `repeatload.py <source-rom> <output-rom>` | Skips a base sample list that is already loaded, with a 61 byte routine at `$C7:F600` |
@@ -165,7 +169,7 @@ shinakuma: no Shin Akuma unlock gate found
 gamefixes: this ROM carries none of the sites these fixes name
 repeatload: the sound engine's allocator setup is not where this patch expects it
 prefight: no pre-fight table builder found
-412 27 24704
+420 21 24704
 8 3
 ```
 
@@ -233,7 +237,7 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)` stamps the version from [`version.py`](version.py), and version `0.0.0` is marked `-dev`. `pack.manifest_line(name, image)` is one line of `SHA256SUMS`. `pack.build(region, workdir)` returns the finished image for one region and needs Docker and the retail dump. `pack.REGIONS` names each region's retail dump and bypass patch. A failed assembly raises `pack.AssemblyFailed` carrying the output of [`build.py`](build.py).
+`pack.output_name(region, release=None)` stamps the version from [`version.py`](version.py), and version `0.0.0` is marked `-dev`. `pack.sd2snes_name(region, release=None)` names the `.smc` the same way. `pack.for_sd2snes(image)` returns that form of a finished image, and raises `NoHeader` for an image with no header. `pack.unify_headers(image)` copies the first header over every copy at a bank end that shares its title and map byte, so the rewrite that follows reaches all six. `pack.manifest_line(name, image)` is one line of `SHA256SUMS`. `pack.build(region, workdir)` returns the finished image for one region and needs Docker and the retail dump. `pack.REGIONS` names each region's retail dump and bypass patch. A failed assembly raises `pack.AssemblyFailed` carrying the output of [`build.py`](build.py).
 
 ### Every command
 
@@ -392,6 +396,8 @@ Because that driver lives in RAM it can be replaced. The shipped receiver carrie
 
 The three destination pointers sit a third of a block apart, so the store index steps by one and the page carry happens once per 256 handshakes.
 
+The two sides of an audio port are not clocked together, so a read that lands while the console writes the port can return a mixture of old and new bits. The receiver reads the counter once while it matches. It reads it a second time before it believes a new block has begun, as the audio chip's boot program does at `$FFE9` to `$FFED`. A wrong guess there is the one decision the driver never takes back. On the SPC700 model, one counter read that looks ahead leaves a loop without that second read spinning forever, which is the black screen after the Capcom logo reported on cartridges in [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31). The second read costs nothing on the path that moves bytes.
+
 The game has seven uploaders, and one of them also drives the audio chip's mask-ROM boot loader, which takes one byte per handshake. The driver dispatches on the kind byte already present in each block header: 3 means triples, and the boot path is untouched. That covers 93% of the driver traffic.
 
 The skip in [`repeatload.py`](repeatload.py) saves 840,766 bytes on the USA cartridge and 303,340 on the Japanese one across a full roster tour.
@@ -405,6 +411,7 @@ Before every fight the game spends 27 frames computing a 24,704 byte table that 
 | Form | Size | Needs the chip | Written by |
 |:--|:--|:--|:--|
 | 96 Mbit chip-free | 12,582,912 bytes | No | [`pack.py`](pack.py), and [`tools/rebuild_all.py`](tools/rebuild_all.py) as `*-free.sfc` |
+| 96 Mbit chip-free for sd2snes firmware | 12,583,424 bytes | No, though the header declares it | [`pack.py`](pack.py) as `*-sd2snes-*.smc` |
 | 4 MB patched cartridge | 4,194,304 bytes | Yes, for hardware that already emulates the S-DD1 | [`tools/rebuild_all.py`](tools/rebuild_all.py) as `*-bypass.sfc` |
 
 Both carry the faster sample upload, the Shin Akuma unlock and the corrections. Only the chip-free image carries the pre-fight table.
@@ -484,6 +491,8 @@ This route builds the USA image without the pre-fight table, from the stream map
 
 **The Japanese build has only been run under emulation.** It is the same construction as the USA one and passes the same checks.
 
+**The guarded sample upload and the `.smc` are not yet seen on a cartridge.** Both answer [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31), where 1.5.4 shows a black screen after the Capcom logo on SD2SNES cartridges and an SD2SNES Pro. The model shows the guarded upload surviving the torn read that stops 1.5.4, and the firmware source shows the `.smc` reaching the right map. Only a cartridge can show that either is the whole fix.
+
 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) lists every open question with the measurement that would close it.
 
 ## Emulator support
@@ -558,6 +567,7 @@ Every image carrying the sound patch is also driven through all eighteen fighter
 | FXPAK Pro | USA, 96 Mbit chip-free | Runs |
 | FXPAK Pro | USA, 4 MB patched cartridge | Runs |
 | Super EverDrive | USA, 96 Mbit chip-free | Title screen, in a [photograph](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1) by @yoshinokentarou |
+| SD2SNES, an SD2SNES Mk.II clone on firmware 1.11.2-br-2.17, and an SD2SNES Pro | USA, 96 Mbit chip-free, 1.5.4 | Black screen after the Capcom logo, reported in [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) |
 
 The FXPAK Pro emulates the S-DD1 in its FPGA, which is why the 4 MB form runs there, and that emulation is idle for the chip-free image.
 

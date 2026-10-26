@@ -14,6 +14,43 @@ Every entry below is also in
 [`conformance/divergences.json`](conformance/divergences.json) with its status
 and severity, so a program can read what a person reads here.
 
+## The guarded sample upload is not yet seen on a cartridge
+
+Release 1.5.4 decided whether a new block had begun on a single read of the
+counter port. The two sides of an audio port are not clocked together, so a read
+that lands during the other side's write can return a mixture of old and new
+bits, and no emulator models that. Issue #31 reports a black screen right after
+the Capcom logo on an SD2SNES Mk.II clone, an original SD2SNES and an SD2SNES
+Pro, and a Game Doctor SF7 that ran only without the fast upload. A retail ROM
+with nothing but the upload patch fails the same way.
+
+The receive loops now read the counter a second time before believing a new
+block has begun, as the audio unit's boot program does at `$FFE9` to `$FFED`. On
+the SPC700 model, one read that looks ahead leaves the 1.5.4 loops spinning
+forever, and the guarded loops deliver every byte. That shows the guard handles
+the read it is handed. It does not show that real ports tear in exactly this way,
+or that the guard is the whole fix.
+
+**What would settle it:** an image built with the guarded upload reaching a fight
+on any of the three cartridges in issue #31, against the same cartridge failing
+with 1.5.4.
+
+## The sd2snes form is not yet seen on a cartridge
+
+The sd2snes firmware picks its 96 Mbit map only for map byte `$22` or `$32` with
+chip `$43` or `$45`, and release v1.11.2 also needs the file to be exactly
+`0xC00200` bytes. The `.sfc` declares chip `$00`, so that firmware reads the
+graphics banks from the wrong offsets. The `.smc` beside it sets chip `$43` in
+all six header copies and adds a 512 byte copier header. The firmware's map for
+it places every address where this project's map does.
+
+The hardware table's FXPAK Pro run of the `.sfc` was recorded before this was
+known. The firmware source does not explain it, and the SD2SNES Pro report in
+issue #31 contradicts it.
+
+**What would settle it:** the `.smc` reaching a fight on an SD2SNES or FXPAK Pro,
+with the firmware version noted, and the `.sfc` retried on the FXPAK Pro.
+
 ## The Japanese stream table cannot be proved complete
 
 A stream nobody asks for cannot be found by asking. The table was built by

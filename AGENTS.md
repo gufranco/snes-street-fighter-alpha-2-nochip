@@ -56,8 +56,9 @@ package is re-derived here and measured, or it is not taken.
 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) is the list, and
 [`conformance/divergences.json`](conformance/divergences.json) is the same list
 in a form a program reads. The two must agree. The short version: the Japanese
-stream table is converged rather than proved complete, and two corrections are
-read from the disassembly rather than seen on screen.
+stream table is converged rather than proved complete, two corrections are read
+from the disassembly rather than seen on screen, and the guarded sample upload
+and the sd2snes form both wait on a cartridge run.
 
 ## The order matters
 

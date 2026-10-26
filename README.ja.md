@@ -88,13 +88,17 @@ python3 pack.py
 python3 pack.py jp
 ```
 
-[`tools/identify.py`](tools/identify.py)は、`roms/`内の各ダンプを[`artifacts.manifest.json`](artifacts.manifest.json)と照合します。[`pack.py`](pack.py)は、指定された各リージョンのチップなしイメージを構築します。何も指定しなければ両方を構築し、`SHA256SUMS`マニフェストとともに`dist/`へ書き出します。
+[`tools/identify.py`](tools/identify.py)は、`roms/`内の各ダンプを[`artifacts.manifest.json`](artifacts.manifest.json)と照合します。[`pack.py`](pack.py)は、指定された各リージョンのチップなしイメージを構築します。何も指定しなければ両方を構築します。各イメージを2つの形で`dist/`へ書き出し、すべてを`SHA256SUMS`マニフェストに記載します。
 
 ```
-  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
   sfz2-jp-nochip-v<version>.sfc  12,582,912 bytes
-  SHA256SUMS  2 images
+  sfz2-jp-nochip-sd2snes-v<version>.smc  12,583,424 bytes
+  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
+  sfa2-usa-nochip-sd2snes-v<version>.smc  12,583,424 bytes
+  SHA256SUMS  4 images
 ```
+
+`.sfc`はチップを宣言しません。`.smc`は、SD2SNESとFXPAK Proを動かすsd2snesファームウェア向けです。このファームウェアが96 Mbitマップを使うのは、ヘッダーがチップ`$43`または`$45`を宣言している場合だけで、リリースv1.11.2ではさらにファイルがちょうど12,583,424バイトである必要があります。そのため`.smc`は6つのヘッダーコピーすべてでチップ`$43`を宣言し、先頭に512バイトのコピーヤーヘッダーを持ちます。そのヘッダーの後ろは同じイメージです。
 
 [`pack.py`](pack.py)は、市販ダンプに対して下記のパッチを順に実行し、Dockerでバイパスをアセンブルし、試合前テーブルを追加し、固定されたストリームテーブルからイメージを配置し、プレーンなROMを宣言するようヘッダーを書き換えます。何かを書き出す前に、各リージョンのストリームテーブルに対して[`gate.py`](gate.py)を実行し、指摘が1つでもあれば停止します。
 
@@ -137,7 +141,7 @@ python3 pack.py jp
 
 | モジュール | コマンド | 変更内容 |
 |:--|:--|:--|
-| [`spcfast.py`](spcfast.py) | `spcfast.py <source-rom> <output-rom>` | サンプル転送。27か所、412バイト |
+| [`spcfast.py`](spcfast.py) | `spcfast.py <source-rom> <output-rom>` | サンプル転送。21か所、420バイト |
 | [`shinakuma.py`](shinakuma.py) | `shinakuma.py <source-rom> <output-rom>` | 真・豪鬼の解禁。2バイト |
 | [`gamefixes.py`](gamefixes.py) | `gamefixes.py <source-rom> <output-rom>` | [得られるもの](#what-you-get)に記載の11件の修正 |
 | [`repeatload.py`](repeatload.py) | `repeatload.py <source-rom> <output-rom>` | 読み込み済みの基本サンプルリストをスキップします。`$C7:F600`の61バイトのルーチンを使います |
@@ -169,7 +173,7 @@ shinakuma: no Shin Akuma unlock gate found
 gamefixes: this ROM carries none of the sites these fixes name
 repeatload: the sound engine's allocator setup is not where this patch expects it
 prefight: no pre-fight table builder found
-412 27 24704
+420 21 24704
 8 3
 ```
 
@@ -237,7 +241,7 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)`は[`version.py`](version.py)のバージョンを付け、バージョン`0.0.0`には`-dev`を付けます。`pack.manifest_line(name, image)`は`SHA256SUMS`の1行です。`pack.build(region, workdir)`は1つのリージョンの完成イメージを返し、Dockerと市販ダンプを必要とします。`pack.REGIONS`は、各リージョンの市販ダンプとバイパスパッチを示します。アセンブルに失敗すると、[`build.py`](build.py)の出力を持つ`pack.AssemblyFailed`を送出します。
+`pack.output_name(region, release=None)`は[`version.py`](version.py)のバージョンを付け、バージョン`0.0.0`には`-dev`を付けます。`pack.sd2snes_name(region, release=None)`は`.smc`に同じ方法で名前を付けます。`pack.for_sd2snes(image)`は完成イメージのその形を返し、ヘッダーのないイメージには`NoHeader`を送出します。`pack.unify_headers(image)`は、タイトルとマップバイトが一致するバンク末尾のすべてのコピーに最初のヘッダーを上書きするため、続く書き換えが6つすべてに届きます。`pack.manifest_line(name, image)`は`SHA256SUMS`の1行です。`pack.build(region, workdir)`は1つのリージョンの完成イメージを返し、Dockerと市販ダンプを必要とします。`pack.REGIONS`は、各リージョンの市販ダンプとバイパスパッチを示します。アセンブルに失敗すると、[`build.py`](build.py)の出力を持つ`pack.AssemblyFailed`を送出します。
 
 ### すべてのコマンド
 
@@ -396,6 +400,8 @@ S-DD1はメモリをマッピングしますが、Alpha 2はこの機能を使�
 
 3つの転送先ポインタはブロックの3分の1ずつ離れているため、格納インデックスは1ずつ進み、ページの桁上がりはハンドシェイク256回に1回だけ発生します。
 
+オーディオポートの両側は同じクロックで動いていないため、本体がポートに書き込んでいる最中の読み取りは、古いビットと新しいビットが混ざった値を返すことがあります。受信側はカウンタが一致している間は1回だけ読みます。新しいブロックが始まったと判断する前には、オーディオチップのブートプログラムが`$FFE9`から`$FFED`で行うように、もう一度読みます。そこでの判断の誤りは、ドライバが二度と取り消さない唯一の判断です。SPC700モデルでは、先へ進んだように見えるカウンタの読み取りが1回あるだけで、2回目の読み取りのないループは永久に回り続けます。これが、カートリッジで報告された[issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31)のCapcomロゴ後の黒い画面です。2回目の読み取りは、バイトを運ぶ経路には何のコストもかけません。
+
 ゲームには転送ルーチンが7つあり、そのうち1つはオーディオチップのマスクROMブートローダーも駆動します。ブートローダーはハンドシェイク1回につき1バイトを受け取ります。ドライバーは各ブロックヘッダーにすでにある種別バイトで分岐します。3は3バイト単位を意味し、ブート経路には手を加えません。これでドライバーの通信量の93%をカバーします。
 
 [`repeatload.py`](repeatload.py)のスキップは、全キャラクターを一巡する間に、USA版カートリッジで840,766バイト、日本版で303,340バイトを節約します。
@@ -411,6 +417,7 @@ S-DD1はメモリをマッピングしますが、Alpha 2はこの機能を使�
 | 形式 | サイズ | チップが必要か | 出力元 |
 |:--|:--|:--|:--|
 | 96 Mbitのチップなし | 12,582,912バイト | いいえ | [`pack.py`](pack.py)、および[`tools/rebuild_all.py`](tools/rebuild_all.py)の`*-free.sfc` |
+| sd2snesファームウェア向け96 Mbitのチップなし | 12,583,424バイト | いいえ。ただしヘッダーは宣言しています | [`pack.py`](pack.py)の`*-sd2snes-*.smc` |
 | 4 MBのパッチ済みカートリッジ | 4,194,304バイト | はい。S-DD1をすでにエミュレートしているハードウェア向けです | [`tools/rebuild_all.py`](tools/rebuild_all.py)の`*-bypass.sfc` |
 
 どちらも、高速化したサンプル転送、真・豪鬼の解禁、修正を含みます。試合前テーブルを含むのはチップなしイメージだけです。
@@ -492,6 +499,8 @@ python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Pat
 
 **日本版ビルドはエミュレーション下でしか実行されていません。** USA版と同じ構成で、同じチェックに合格します。
 
+**ガード付きのサンプル転送と`.smc`は、まだカートリッジで確認されていません。** どちらも[issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31)への対応です。そこでは1.5.4が、SD2SNESカートリッジとSD2SNES ProでCapcomロゴの後に黒い画面になります。モデルは、1.5.4を止める途切れた読み取りをガード付きの転送が乗り越えることを示し、ファームウェアのソースは`.smc`が正しいマップに届くことを示しています。どちらかが修正のすべてであるかは、カートリッジでしか示せません。
+
 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md)は、未解決の問いすべてを、それを解決する測定とともに列挙しています。
 
 ## エミュレータ対応
@@ -570,6 +579,7 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | FXPAK Pro | USA版、96 Mbitのチップなし | 動作します |
 | FXPAK Pro | USA版、4 MBのパッチ済みカートリッジ | 動作します |
 | Super EverDrive | USA版、96 Mbitのチップなし | タイトル画面まで。@yoshinokentarou氏の[写真](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1)があります |
+| SD2SNES、ファームウェア1.11.2-br-2.17のSD2SNES Mk.II互換機、SD2SNES Pro | USA版、96 Mbitのチップなし、1.5.4 | Capcomロゴの後に黒い画面。[issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31)で報告 |
 
 FXPAK ProはFPGAでS-DD1をエミュレートしており、4 MB形式がそこで動作するのはそのためです。チップなしイメージではそのエミュレーションは使われません。
 
