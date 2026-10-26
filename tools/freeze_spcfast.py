@@ -63,6 +63,25 @@ def differing_runs(before: bytes | bytearray, after: bytes | bytearray) -> list[
     return found
 
 
+WIDEST_SHARED_GAP = 4
+
+
+def close_gaps(
+    runs: list[tuple[int, bytes]], after: bytes | bytearray, widest: int = WIDEST_SHARED_GAP
+) -> list[tuple[int, bytes]]:
+    closed: list[tuple[int, bytes]] = []
+    for at, data in runs:
+        if closed:
+            start, kept = closed[-1]
+            end = start + len(kept)
+            spans_checksum = any(index in CHECKSUM_FIELD for index in range(end, at))
+            if at - end <= widest and not spans_checksum:
+                closed[-1] = (start, bytes(after[start : at + len(data)]))
+                continue
+        closed.append((at, data))
+    return closed
+
+
 def render(runs: list[tuple[int, bytes]]) -> str:
     lines = ["PATCH = ("]
     for at, data in runs:
@@ -169,7 +188,8 @@ def main(
 
     assembled = {region: build(region) for region in RETAIL}
     runs = {
-        region: differing_runs(read(RETAIL[region]), image) for region, image in assembled.items()
+        region: close_gaps(differing_runs(read(RETAIL[region]), image), image)
+        for region, image in assembled.items()
     }
 
     shared = [run for run in runs["jp"] if run in runs["usa"]]

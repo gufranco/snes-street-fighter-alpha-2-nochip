@@ -60,22 +60,14 @@ PATCH = (
             "80e968fa60"
         ),
     ),
-    (0x072B13, bytes.fromhex("eb")),
-    (0x072B15, bytes.fromhex("d0fce4e66803f04c7e")),
-    (0x072B1F, bytes.fromhex("d00de4f5cb")),
     (
-        0x072B25,
+        0x072B13,
         bytes.fromhex(
-            "d714fcd0f3ab152fef10e72f237ef4f00410fa2f1be4f5d714f8f6e4f7cbf4d7ca7dd7c8fcd0e6ab15ab"
-            "c9abcb2fde"
+            "ebf4d0fc7ef4d00de4f5cbf4d714fcd0f3ab152fef10ed7ef410e92f25000000e4f5d714f8f6e4f7cbf4"
+            "d7ca7dd7c8fcd006ab15abc9abcb7ef4f0e410fa7ef410f6baf6da14ebf4e4f5c4e6cbf4f01b6803d0ac"
+            "ebf4d0fc1a14baf67a14dac87af6daca8d00cbf4fc2fcd"
         ),
     ),
-    (0x072B55, bytes.fromhex("e4")),
-    (
-        0x072B57,
-        bytes.fromhex("ebf7da14ebf4e4f5c4e6cbf46800f0172faa1a14baf67a14dac87af6daca8d00cb"),
-    ),
-    (0x072B79, bytes.fromhex("fc2fb6")),
 )
 
 

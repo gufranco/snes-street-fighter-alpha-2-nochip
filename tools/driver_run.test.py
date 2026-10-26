@@ -330,6 +330,76 @@ class SyntheticTransferTest(unittest.TestCase):
         self.assertIsNone(found.cycles)
 
 
+PATCHED_BYTE_LOOP = 0x0EC1
+
+TORN_HANDSHAKE = 5
+
+LOOKS_AHEAD = 0x40
+
+
+class TornOnce:
+    def __init__(self, payload: bytes | bytearray) -> None:
+        self.inner = driver_run.Ports(payload)
+        self.torn = False
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.inner, name)
+
+    def write8(self, address: int, value: int) -> None:
+        self.inner.write8(address, value)
+
+    def read8(self, address: int) -> int:
+        found: int = self.inner.read8(address)
+        if address != driver_run.PORT_BASE or self.torn or self.inner.handshakes != TORN_HANDSHAKE:
+            return found
+        self.torn = True
+        return (found + LOOKS_AHEAD) & 0xFF
+
+
+def with_one_torn_read(image: bytes | bytearray, payload: bytes | bytearray) -> TornOnce:
+    ports = TornOnce(payload)
+    for address, value in enumerate(image):
+        ports.memory.write8(address, value)
+    driver_run.point(ports, driver_run.POINTER, driver_run.DESTINATION)
+    driver_run.point(ports, driver_run.SECOND_POINTER, driver_run.SECOND)
+    driver_run.point(ports, driver_run.THIRD_POINTER, driver_run.THIRD)
+    ports.offer()
+    return ports
+
+
+class TornReadTest(unittest.TestCase):
+    @override
+    def setUp(self) -> None:
+        self.image = driver_run.image_of(spcfast.apply(a_cartridge_with_the_driver_in_place()))
+
+    def test_a_torn_counter_read_does_not_end_a_three_byte_block(self) -> None:
+        # Arrange
+        ports = with_one_torn_read(self.image, PAYLOAD)
+
+        # Act
+        found = driver_run.run(ports, driver_run.FAST_LOOP, PAYLOAD, driver_run.DESTINATION)
+
+        # Assert
+        self.assertTrue(ports.torn)
+        self.assertEqual(found.streams, (PAYLOAD[0::3], PAYLOAD[1::3], PAYLOAD[2::3]))
+        self.assertEqual(found.handshakes, 16)
+
+    def test_nor_a_one_byte_block(self) -> None:
+        # Arrange
+        ports = with_one_torn_read(self.image, driver_run.spread(PAYLOAD))
+
+        # Act
+        found = driver_run.run(ports, PATCHED_BYTE_LOOP, PAYLOAD, driver_run.DESTINATION)
+
+        # Assert
+        landed = bytes(
+            ports.memory.read8(driver_run.DESTINATION + step) for step in range(len(PAYLOAD))
+        )
+        self.assertTrue(ports.torn)
+        self.assertEqual(landed, PAYLOAD)
+        self.assertEqual(found.handshakes, len(PAYLOAD))
+
+
 class SyntheticStockTest(unittest.TestCase):
     @override
     def setUp(self) -> None:

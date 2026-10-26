@@ -169,55 +169,76 @@ class RetailRomTest(unittest.TestCase):
 
         self.assertTrue(changed.issubset(allowed))
 
+    def listing_at(self, start: int, count: int) -> list[str]:
+        patched = spcfast.apply(self.usa)
+        base = spcfast.DRIVER_BASE
+        return [
+            i.text
+            for i in spc700.disassemble(patched[base : base + 0x10000], start, start, count=count)
+        ]
+
     def test_the_patched_block_start_waits_for_a_zero_counter(self) -> None:
-        patched = spcfast.apply(self.usa)
-        base = spcfast.DRIVER_BASE
-        listing = [
-            i.text
-            for i in spc700.disassemble(
-                patched[base : base + 0x10000],
-                spcfast.RECEIVE_LOOP,
-                spcfast.RECEIVE_LOOP,
-                count=3,
-            )
-        ]
+        # Arrange
+        start = spcfast.RECEIVE_LOOP
 
-        self.assertEqual(listing, ["mov y,$0f4", "bne $0ebd", "mov a,$0e6"])
+        # Act
+        listing = self.listing_at(start, 3)
 
-    def test_the_patched_dispatch_selects_on_the_kind_byte(self) -> None:
-        patched = spcfast.apply(self.usa)
-        base = spcfast.DRIVER_BASE
-        listing = [
-            i.text
-            for i in spc700.disassemble(patched[base : base + 0x10000], 0x0EC1, 0x0EC1, count=3)
-        ]
+        # Assert
+        self.assertEqual(listing, ["mov y,$0f4", "bne $0ebd", "cmp y,$0f4"])
 
-        self.assertEqual(listing[0], "mov a,$0e6")
-        self.assertEqual(listing[1], "cmp a,#$03")
-        self.assertTrue(listing[2].startswith("beq"))
+    def test_the_header_parse_selects_the_wait_on_the_kind_byte(self) -> None:
+        # Arrange
+        start = 0x0F0B
+
+        # Act
+        listing = self.listing_at(start, 3)
+
+        # Assert
+        self.assertEqual(listing, ["beq $0f28", "cmp a,#$03", "bne $0ebd"])
 
     def test_the_driver_echoes_only_after_reading_every_port(self) -> None:
+        # Arrange
+        start = 0x0EDD
+
+        # Act
+        listing = self.listing_at(start, 6)
+
+        # Assert
+        self.assertEqual(listing[2:5], ["mov x,$0f6", "mov a,$0f7", "mov $0f4,y"])
+
+    def test_the_one_byte_loop_reads_the_counter_again_before_a_new_block(self) -> None:
+        # Arrange
+        start = 0x0ED2
+
+        # Act
+        listing = self.listing_at(start, 4)
+
+        # Assert
+        self.assertEqual(listing, ["bpl $0ec1", "cmp y,$0f4", "bpl $0ec1", "bra $0eff"])
+
+    def test_and_so_does_the_three_byte_loop(self) -> None:
+        # Arrange
+        start = 0x0EF5
+
+        # Act
+        listing = self.listing_at(start, 5)
+
+        # Assert
+        self.assertEqual(
+            listing, ["cmp y,$0f4", "beq $0edd", "bpl $0ef5", "cmp y,$0f4", "bpl $0ef5"]
+        )
+
+    def test_the_three_byte_loop_ends_exactly_where_the_header_parse_begins(self) -> None:
+        # Arrange
         patched = spcfast.apply(self.usa)
         base = spcfast.DRIVER_BASE
-        listing = [
-            i.text
-            for i in spc700.disassemble(patched[base : base + 0x10000], 0x0EE4, 0x0EE4, count=6)
-        ]
 
-        self.assertEqual(listing[2], "mov x,$0f6")
-        self.assertEqual(listing[3], "mov a,$0f7")
-        self.assertEqual(listing[4], "mov $0f4,y")
+        # Act
+        walked = list(spc700.disassemble(patched[base : base + 0x10000], 0x0EF5, 0x0EF5, count=5))
 
-    def test_the_receive_loop_stops_before_the_header_parse(self) -> None:
-        patched = spcfast.apply(self.usa)
-        base = spcfast.DRIVER_BASE
-        end = 0x0EDC
-        for instruction in spc700.disassemble(
-            patched[base : base + 0x10000], 0x0EDC, 0x0EDC, count=14
-        ):
-            end = instruction.address + instruction.size
-
-        self.assertLessEqual(end, spcfast.BLOCK_HEADER)
+        # Assert
+        self.assertEqual(walked[-1].address + walked[-1].size, spcfast.BLOCK_HEADER)
 
     def test_the_transfer_leaves_only_the_length_on_the_caller_stack(self) -> None:
         patched = spcfast.apply(self.usa)
@@ -267,9 +288,9 @@ def stock_rom() -> bytes:
 
 
 class PatchSizeTest(unittest.TestCase):
-    def test_the_patch_is_the_four_hundred_and_twelve_bytes_the_readme_states(self) -> None:
+    def test_the_patch_is_the_four_hundred_and_twenty_bytes_the_readme_states(self) -> None:
         # Arrange
-        expected = 412
+        expected = 420
 
         # Act
         size = spcfast.patch_bytes()
@@ -360,7 +381,7 @@ class EntryTest(unittest.TestCase):
             [
                 "  driver        0x072b13  three bytes per handshake",
                 "  blank gates   1 sites retired",
-                "  patch         412 bytes in 27 runs",
+                "  patch         420 bytes in 21 runs",
                 f"[done] {output} (4,194,304 bytes)",
             ],
         )

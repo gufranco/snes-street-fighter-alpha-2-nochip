@@ -53,17 +53,31 @@
 ;   ffe4  inc y
 ;   ffe5  bne $ffda
 ;
-; Three things the driver does are pure overhead. It pushes and pops Y around
+; Two things the driver does are pure overhead. It pushes and pops Y around
 ; the port read only because it loads the counter into Y instead of comparing
 ; against it in place, and cmp y,dp does that comparison directly, needing no
-; scratch byte and no stack traffic. It reads each port twice and discards
-; disagreeing pairs, but an APU port is a single latched byte and a read of it
-; is atomic, so the second read can never differ. And it addresses the ports
-; absolutely at four cycles each when the driver's own direct page is zero,
-; which the surrounding code proves by reaching $0014 and $00E7 as direct page,
-; so the cheaper direct page form is available.
+; scratch byte and no stack traffic. And it addresses the ports absolutely at
+; four cycles each when the driver's own direct page is zero, which the
+; surrounding code proves by reaching $0014 and $00E7 as direct page, so the
+; cheaper direct page form is available.
 ;
-; Removing all three gives roughly 25 cycles per byte against 55.
+; A third looks like overhead and is not. The driver reads each port twice and
+; discards disagreeing pairs, because the two sides of an APU port are not
+; clocked together: a read that lands while the other side is writing can
+; return a mixture of the old and the new bits. No emulator models that, so a
+; loop that trusts one read passes every emulated run. On cartridges it lost
+; the transfer right after the Capcom logo, reported on an SD2SNES, an SD2SNES
+; Pro and a Game Doctor SF7 in issue #31. The boot ROM shows how little of the
+; guard is needed. It reads the counter once while the counter matches, and a
+; second time only before believing that a new block has begun, at $FFE9 to
+; $FFED, because that is the one decision a torn read makes wrongly and never
+; takes back. A torn read that looks behind only costs another pass of the
+; wait. A read that looks equal already holds every bit of the new counter, and
+; every uploader writes the counter after the bytes it releases: the stock byte
+; loop at $C7:024D stores $2141 and then $2140, and the triple loop below stores
+; $2141 to $2143 and then $2140. The loops below guard the same way.
+;
+; Removing the first two gives roughly 25 cycles per byte against 55.
 ;
 ; The wire protocol is deliberately left alone: still one data byte per
 ; handshake through $F5, still a counter stepping by one, still the same block
@@ -134,57 +148,6 @@ lorom
 !PORT_DEST_L    = $002142        ; the same pair, carrying the handshake count
                                  ; while the block opens
 !RESUME         = $04B5          ; CPU $C7:04B5, stock end-of-block path
-
-
-; ---------------------------------------------------------------------------
-; SPC700 side: the same protocol, at IPL speed.
-;
-; Entry:  Y = store index, which is also the counter value the CPU must post
-;         $14/$15 = destination pointer, set by the block header at $0EFF
-; Exit:   falls through to $0EED when the posted counter stops matching Y,
-;         the driver's existing end-of-block and new-block path, reached with
-;         the flags of the same comparison that path already expects
-;
-; The data port is read before the counter is echoed. The echo is what releases
-; the CPU to overwrite that port, so reading first is what keeps the byte valid.
-; ---------------------------------------------------------------------------
-
-arch spc700
-org !SPC_LOOP
-
-spc_receive_byte:
-    cmp   y,!PORT_COUNTER        ; has the CPU posted exactly our index?
-    bne   spc_block_edge         ; no: block finished, or a new block begins
-    mov   a,!PORT_DATA           ; the data byte, valid until we echo
-    mov   !PORT_COUNTER,y        ; echo the counter, releasing the CPU
-    mov   (!DEST_LOW)+y,a        ; store at the current index
-    inc   y
-    bne   spc_receive_byte
-    inc   !DEST_PAGE             ; index wrapped, carry into the page byte
-    bra   spc_receive_byte
-
-    nop                          ; pad to the stock routine's length so the
-    nop                          ; end-of-block path below keeps its address
-    nop                          ; and every branch into it stays correct
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-    nop
-
-spc_block_edge:
-    ; $0EED onwards is stock driver code and is deliberately left untouched
 
 
 ; ---------------------------------------------------------------------------
@@ -286,14 +249,10 @@ org $0EAB13                      ; SPC $0EBD, where a data block begins
 spc_block_start:
     mov   y,!PORT_COUNTER        ; the CPU posts zero to open the data phase.
     bne   spc_block_start        ; A load into Y sets the zero flag, so no
-                                 ; compare is needed, and the two bytes that
-                                 ; saves are what keeps this loop inside its
-                                 ; window. Y leaves here as the first index
-
-spc_dispatch:
-    mov   a,!KIND                ; the kind byte stashed by the header parse
-    cmp   a,#!THREE_BYTE
-    beq   spc_triple_setup
+                                 ; compare is needed. Y leaves here as the
+                                 ; first index. Only one-byte blocks wait here;
+                                 ; the header sends three-byte blocks to their
+                                 ; own wait below it
 
 spc_byte_loop:
     cmp   y,!PORT_COUNTER        ; has the CPU posted exactly our index?
@@ -307,16 +266,17 @@ spc_byte_loop:
     bra   spc_byte_loop
 
 spc_edge:
-    bpl   spc_dispatch           ; index still ahead of the counter, keep waiting
-    bra   spc_header             ; counter jumped, so a new block has begun
+    bpl   spc_byte_loop          ; index still ahead of the counter, keep waiting
+    cmp   y,!PORT_COUNTER        ; the counter looked as if it jumped. Read it
+    bpl   spc_byte_loop          ; again, as the boot ROM does at $FFED, so a
+    bra   spc_header             ; torn read cannot start a block that is not
+                                 ; there. Equal or still behind goes back round
 
-spc_triple_loop:
-    cmp   y,!PORT_COUNTER        ; the index is the counter, and steps by one
-    beq   .store                 ; while three bytes land per handshake
-    bpl   spc_triple_loop        ; index still ahead: the CPU has not posted yet
-    bra   spc_header             ; counter jumped, so a new block has begun
+    nop                          ; three spare bytes, never executed. They sit
+    nop                          ; after an unconditional branch so the triple
+    nop                          ; loop ends exactly at $0EFF and falls into it
 
-.store:
+spc_triple_store:
     mov   a,!PORT_DATA
     mov   (!DEST_LOW)+y,a        ; stream one
     mov   x,!PORT_DEST           ; stream two, parked in X
@@ -332,25 +292,40 @@ spc_triple_loop:
     mov   (!STREAM_TWO)+y,a      ; stream two
     inc   y
     bne   spc_triple_loop
-    inc   !DEST_PAGE             ; one index wrap moves all three streams on
-    inc   !STREAM_TWO+1
-    inc   !STREAM_THREE+1
-    bra   spc_triple_loop
+    inc   !DEST_PAGE             ; one index wrap moves all three streams on,
+    inc   !STREAM_TWO+1          ; and falls into the loop below, which saves
+    inc   !STREAM_THREE+1        ; the branch back
+
+spc_triple_loop:
+    cmp   y,!PORT_COUNTER        ; the index is the counter, and steps by one
+    beq   spc_triple_store       ; while three bytes land per handshake
+    bpl   spc_triple_loop        ; index still ahead: the CPU has not posted yet
+    cmp   y,!PORT_COUNTER        ; the counter looked as if it jumped: read it
+    bpl   spc_triple_loop        ; again before believing it, as above. Only a
+                                 ; second read that also jumped falls through
+                                 ; into the header parse at $0EFF
+
+spc_receive_end:
+assert spc_receive_end == $0EAB55, "the receive loops must end exactly where the header parse begins"
 
 
 org $0EAB55                      ; SPC $0EFF, where a block header is parsed
 
 spc_header:
-    mov   a,!PORT_DEST           ; destination low
-    mov   y,$f7                  ; destination high
-    movw  !DEST_LOW,ya
+    movw  ya,!PORT_DEST          ; destination, low from $F6 and high from $F7,
+    movw  !DEST_LOW,ya           ; in one word read that saves two bytes
     mov   y,!PORT_COUNTER        ; the counter that opened this header
-    mov   a,!PORT_DATA           ; the kind byte
-    mov   !KIND,a                ; stashed for the dispatch above
-    mov   !PORT_COUNTER,y        ; echo, releasing the CPU
-    cmp   a,#$00
-    beq   spc_driver_ready       ; kind zero ends the list
-    bra   spc_block_start
+    mov   a,!PORT_DATA           ; the kind byte. The load sets the zero flag,
+    mov   !KIND,a                ; and neither store below changes it, so no
+    mov   !PORT_COUNTER,y        ; compare against zero is needed. Echo, which
+    beq   spc_driver_ready       ; releases the CPU. Kind zero ends the list
+    cmp   a,#!THREE_BYTE
+    bne   spc_block_start        ; any other kind is one byte per handshake
+
+spc_triple_wait:
+    mov   y,!PORT_COUNTER        ; three-byte blocks wait for the opening zero
+    bne   spc_triple_wait        ; here, so the kind is tested once per block
+                                 ; and not on every pass of the wait
 
 spc_triple_setup:
     decw  !DEST_LOW              ; the index starts at one, so every stream base
@@ -364,6 +339,9 @@ spc_triple_setup:
     mov   !PORT_COUNTER,y        ; echo the opening counter
     inc   y
     bra   spc_triple_loop
+
+spc_header_end:
+assert spc_header_end == $0EAB7E, "the header parse must end exactly where the stock code resumes"
 
 org $0EAB7E                      ; SPC $0F28, stock code, a label only
 spc_driver_ready:

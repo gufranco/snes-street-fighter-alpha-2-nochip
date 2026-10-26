@@ -67,6 +67,50 @@ class DifferingRunsTest(unittest.TestCase):
         self.assertEqual(freeze.differing_runs(before, bytes(after)), [(0x007FDA, b"\x01\x02")])
 
 
+class CloseGapsTest(unittest.TestCase):
+    def test_a_byte_the_assembler_left_equal_is_carried_inside_the_run(self) -> None:
+        # Arrange
+        after = bytearray(64)
+        after[10:13] = b"\x01\x00\x02"
+
+        # Act
+        closed = freeze.close_gaps([(10, b"\x01"), (12, b"\x02")], bytes(after))
+
+        # Assert
+        self.assertEqual(closed, [(10, b"\x01\x00\x02")])
+
+    def test_a_gap_wider_than_the_limit_keeps_the_runs_apart(self) -> None:
+        # Arrange
+        runs = [(10, b"\x01"), (16, b"\x02")]
+
+        # Act
+        closed = freeze.close_gaps(runs, bytes(64))
+
+        # Assert
+        self.assertEqual(closed, runs)
+
+    def test_a_gap_over_the_checksum_field_keeps_the_runs_apart(self) -> None:
+        # Arrange
+        runs = [(0x007FDB, b"\x01"), (0x007FE0, b"\x02")]
+
+        # Act
+        closed = freeze.close_gaps(runs, bytes(0x8000))
+
+        # Assert
+        self.assertEqual(closed, runs)
+
+    def test_three_runs_with_small_gaps_become_one(self) -> None:
+        # Arrange
+        after = bytearray(64)
+        after[4:12] = b"\x01\x00\x02\x00\x00\x03\x00\x00"
+
+        # Act
+        closed = freeze.close_gaps([(4, b"\x01"), (6, b"\x02"), (9, b"\x03")], bytes(after))
+
+        # Assert
+        self.assertEqual(closed, [(4, b"\x01\x00\x02\x00\x00\x03")])
+
+
 class RenderTest(unittest.TestCase):
     def test_a_short_run_stays_on_one_line(self) -> None:
         rendered = freeze.render([(0x070222, bytes.fromhex("eaea"))])
