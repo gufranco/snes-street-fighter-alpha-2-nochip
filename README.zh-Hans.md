@@ -569,8 +569,11 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | Game Doctor SF7，128 Mbit DRAM | 美版，96 Mbit 无芯片 | 可运行 |
 | FXPAK Pro | 美版，96 Mbit 无芯片 | 可运行 |
 | FXPAK Pro | 美版，4 MB 已打补丁卡带 | 可运行 |
+| Super EverDrive | 美版，96 Mbit 无芯片 | 到达标题画面，见 @yoshinokentarou 发布的[照片](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1) |
 
 FXPAK Pro 在其 FPGA 中模拟 S-DD1，这就是 4 MB 形式能在其上运行的原因；对于无芯片镜像，这一模拟处于空闲状态。
+
+Super EverDrive 这一行仅以该照片为依据。这款卡带没有 S-DD1，画面上有 Capcom U.S.A. 的版权声明，且该帖子链接到本项目，由此可判断是美版无芯片镜像。标题画面之后的内容尚无人见到。
 
 `tools/freeze_spcfast.py --check` 确认 [`spcfast.py`](spcfast.py) 中冻结的补丁仍能逐字节重现汇编器的输出。各来源之间的分歧记录在 [`conformance/divergences.json`](conformance/divergences.json) 中，[`conformance/divergences.test.py`](conformance/divergences.test.py) 让它与 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 保持一致。
 
@@ -627,6 +630,12 @@ python3 doctor.py
 - Retroware，[The Curious Case of Street Fighter Alpha 2 on the SNES](https://articles.retroware.com/2021/03/08/the-curious-case-of-street-fighter-alpha-2-on-the-snes/)。
 - [snes9x](https://github.com/snes9xgit/snes9x) 1.63，`sdd1emu.cpp` 作为压缩算法的参考，`iplrom.cpp` 提供 S-SMP 启动 ROM 的代码清单。
 - [snes9x 议题 1081](https://github.com/snes9xgit/snes9x/issues/1081) 和 [拉取请求 1082](https://github.com/snes9xgit/snes9x/pull/1082)。
+
+报道过本项目的文章和帖子：
+
+- 吉野@連邦（[@yoshinokentarou](https://x.com/yoshinokentarou)），[X 上的帖子](https://x.com/yoshinokentarou/status/2111959864163664247)，2026-10-18，日文，附有美版镜像在 Super EverDrive 上运行的照片。
+- Junior Candido，[Street Fighter Alpha 2 de Super Nintendo ganha versão sem o chip S-DD1 e com pausa pré-luta bem menor](https://arkade.com.br/street-fighter-alpha-2-ganha-versao-para-super-nintendo-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor/)，Arkade，2026-10-20，葡萄牙文。
+- Sonymaster，[在 Adrenaline 论坛转载的同一篇文章](https://forum.adrenaline.com.br/threads/street-fighter-alpha-2-de-super-nintendo-ganha-versao-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor.721807/)，2026-10-21，葡萄牙文。
 
 Andreas Naive 逆向分析了 S-DD1 压缩算法。DarkAkuma 制作了 SNES Classic 补丁，其中的 `SDD1` 标签提供了美版数据流映射。neviksti 的 Star Ocean 无芯片转换版是解压器的事实依据，也是寻址规则的来源。bsnes 项目的反汇编器表是这里使用的两个反汇编器的来源。
 

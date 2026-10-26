@@ -557,8 +557,11 @@ Every image carrying the sound patch is also driven through all eighteen fighter
 | Game Doctor SF7, 128 Mbit DRAM | USA, 96 Mbit chip-free | Runs |
 | FXPAK Pro | USA, 96 Mbit chip-free | Runs |
 | FXPAK Pro | USA, 4 MB patched cartridge | Runs |
+| Super EverDrive | USA, 96 Mbit chip-free | Title screen, in a [photograph](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1) by @yoshinokentarou |
 
 The FXPAK Pro emulates the S-DD1 in its FPGA, which is why the 4 MB form runs there, and that emulation is idle for the chip-free image.
+
+The Super EverDrive row rests on the photograph alone. That cartridge has no S-DD1, the screen carries Capcom U.S.A.'s copyright line and the post links this project, which together point to the USA chip-free image. Nothing past the title screen has been seen there.
 
 `tools/freeze_spcfast.py --check` confirms the frozen patch in [`spcfast.py`](spcfast.py) still reproduces the assembler's output byte for byte. The divergences between sources are in [`conformance/divergences.json`](conformance/divergences.json), which [`conformance/divergences.test.py`](conformance/divergences.test.py) holds to [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
 
@@ -613,6 +616,12 @@ Builds run in Docker with pinned toolchains, no network and a non-root user, nev
 - Retroware, [The Curious Case of Street Fighter Alpha 2 on the SNES](https://articles.retroware.com/2021/03/08/the-curious-case-of-street-fighter-alpha-2-on-the-snes/).
 - [snes9x](https://github.com/snes9xgit/snes9x) 1.63, `sdd1emu.cpp` for the compression reference and `iplrom.cpp` for the S-SMP boot ROM listing.
 - [snes9x issue 1081](https://github.com/snes9xgit/snes9x/issues/1081) and [pull request 1082](https://github.com/snes9xgit/snes9x/pull/1082).
+
+Written about this project:
+
+- 吉野@連邦 ([@yoshinokentarou](https://x.com/yoshinokentarou)), [post on X](https://x.com/yoshinokentarou/status/2111959864163664247), 2026-10-18, in Japanese, with a photograph of the USA image on a Super EverDrive.
+- Junior Candido, [Street Fighter Alpha 2 de Super Nintendo ganha versão sem o chip S-DD1 e com pausa pré-luta bem menor](https://arkade.com.br/street-fighter-alpha-2-ganha-versao-para-super-nintendo-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor/), Arkade, 2026-10-20, in Portuguese.
+- Sonymaster, [the same article reposted on the Adrenaline forum](https://forum.adrenaline.com.br/threads/street-fighter-alpha-2-de-super-nintendo-ganha-versao-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor.721807/), 2026-10-21, in Portuguese.
 
 Andreas Naive reverse engineered the S-DD1 compression algorithm. DarkAkuma produced the SNES Classic patch whose `SDD1` tags gave the USA stream map. neviksti's Star Ocean chip-free conversion was the ground truth for the decompressor and the source of the addressing rule. The bsnes project's disassembler tables are the source of both disassemblers used here.
 

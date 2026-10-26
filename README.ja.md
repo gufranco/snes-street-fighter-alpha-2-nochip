@@ -569,8 +569,11 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | Game Doctor SF7、128 Mbit DRAM | USA版、96 Mbitのチップなし | 動作します |
 | FXPAK Pro | USA版、96 Mbitのチップなし | 動作します |
 | FXPAK Pro | USA版、4 MBのパッチ済みカートリッジ | 動作します |
+| Super EverDrive | USA版、96 Mbitのチップなし | タイトル画面まで。@yoshinokentarou氏の[写真](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1)があります |
 
 FXPAK ProはFPGAでS-DD1をエミュレートしており、4 MB形式がそこで動作するのはそのためです。チップなしイメージではそのエミュレーションは使われません。
+
+Super EverDriveの行の根拠はその写真だけです。このカートリッジにはS-DD1がなく、画面にはCapcom U.S.A.の著作権表示があり、投稿はこのプロジェクトにリンクしているため、USA版のチップなしイメージと判断できます。タイトル画面より先はまだ確認されていません。
 
 `tools/freeze_spcfast.py --check`は、[`spcfast.py`](spcfast.py)内の固定されたパッチが、いまもアセンブラの出力をバイト単位で再現することを確認します。ソース間の相違は[`conformance/divergences.json`](conformance/divergences.json)にあり、[`conformance/divergences.test.py`](conformance/divergences.test.py)がそれを[`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md)と一致させています。
 
@@ -627,6 +630,12 @@ python3 doctor.py
 - Retroware、[The Curious Case of Street Fighter Alpha 2 on the SNES](https://articles.retroware.com/2021/03/08/the-curious-case-of-street-fighter-alpha-2-on-the-snes/)。
 - [snes9x](https://github.com/snes9xgit/snes9x) 1.63。圧縮の基準として`sdd1emu.cpp`を、S-SMPブートROMのリストとして`iplrom.cpp`を使いました。
 - [snes9x issue 1081](https://github.com/snes9xgit/snes9x/issues/1081)と[プルリクエスト1082](https://github.com/snes9xgit/snes9x/pull/1082)。
+
+このプロジェクトを取り上げた記事と投稿：
+
+- 吉野@連邦氏（[@yoshinokentarou](https://x.com/yoshinokentarou)）の[Xへの投稿](https://x.com/yoshinokentarou/status/2111959864163664247)、2026年10月18日、日本語。Super EverDriveで動作するUSA版イメージの写真付きです。
+- Junior Candido氏、[Street Fighter Alpha 2 de Super Nintendo ganha versão sem o chip S-DD1 e com pausa pré-luta bem menor](https://arkade.com.br/street-fighter-alpha-2-ganha-versao-para-super-nintendo-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor/)、Arkade、2026年10月20日、ポルトガル語。
+- Sonymaster氏が[Adrenalineフォーラムに転載した同じ記事](https://forum.adrenaline.com.br/threads/street-fighter-alpha-2-de-super-nintendo-ganha-versao-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor.721807/)、2026年10月21日、ポルトガル語。
 
 Andreas Naive氏がS-DD1の圧縮アルゴリズムをリバースエンジニアリングしました。DarkAkuma氏は、その`SDD1`タグがUSA版のストリームマップを与えたSNES Classicパッチを作成しました。neviksti氏によるStar Oceanのチップなし変換は、展開器の正解データであり、アドレス指定規則の出所です。bsnesプロジェクトの逆アセンブラテーブルは、ここで使う両方の逆アセンブラの元になっています。
 

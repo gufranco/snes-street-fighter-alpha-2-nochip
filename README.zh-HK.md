@@ -569,8 +569,11 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | Game Doctor SF7，128 Mbit DRAM | 美國版，96 Mbit 無晶片 | 可運行 |
 | FXPAK Pro | 美國版，96 Mbit 無晶片 | 可運行 |
 | FXPAK Pro | 美國版，4 MB 已修補卡帶 | 可運行 |
+| Super EverDrive | 美國版，96 Mbit 無晶片 | 到達標題畫面，見 @yoshinokentarou 發佈的[相片](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1) |
 
 FXPAK Pro 在其 FPGA 中模擬 S-DD1，所以 4 MB 形式能在其上運行，而對無晶片映像檔而言，該模擬處於閒置狀態。
+
+Super EverDrive 這一行只以該相片為依據。這款卡帶沒有 S-DD1，畫面上有 Capcom U.S.A. 的版權聲明，而該帖文連結到本項目，由此可判斷是美國版無晶片映像檔。標題畫面之後的內容尚未有人見過。
 
 `tools/freeze_spcfast.py --check` 確認 [`spcfast.py`](spcfast.py) 中凍結的修補仍然逐位元組重現組譯器的輸出。各來源之間的分歧記錄在 [`conformance/divergences.json`](conformance/divergences.json)，並由 [`conformance/divergences.test.py`](conformance/divergences.test.py) 確保它與 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 一致。
 
@@ -627,6 +630,12 @@ python3 doctor.py
 - Retroware，[The Curious Case of Street Fighter Alpha 2 on the SNES](https://articles.retroware.com/2021/03/08/the-curious-case-of-street-fighter-alpha-2-on-the-snes/)。
 - [snes9x](https://github.com/snes9xgit/snes9x) 1.63，`sdd1emu.cpp` 作為壓縮參考，`iplrom.cpp` 作為 S-SMP 開機 ROM 列表。
 - [snes9x issue 1081](https://github.com/snes9xgit/snes9x/issues/1081) 與 [pull request 1082](https://github.com/snes9xgit/snes9x/pull/1082)。
+
+報道過本項目的文章和帖文：
+
+- 吉野@連邦（[@yoshinokentarou](https://x.com/yoshinokentarou)），[X 上的帖文](https://x.com/yoshinokentarou/status/2111959864163664247)，2026-10-18，日文，附有美國版映像檔在 Super EverDrive 上運行的相片。
+- Junior Candido，[Street Fighter Alpha 2 de Super Nintendo ganha versão sem o chip S-DD1 e com pausa pré-luta bem menor](https://arkade.com.br/street-fighter-alpha-2-ganha-versao-para-super-nintendo-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor/)，Arkade，2026-10-20，葡萄牙文。
+- Sonymaster，[在 Adrenaline 論壇轉載的同一篇文章](https://forum.adrenaline.com.br/threads/street-fighter-alpha-2-de-super-nintendo-ganha-versao-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor.721807/)，2026-10-21，葡萄牙文。
 
 Andreas Naive 逆向工程了 S-DD1 壓縮演算法。DarkAkuma 製作了 SNES Classic 修補，其 `SDD1` 標籤提供了美國版數據流映射。neviksti 的 Star Ocean 無晶片轉換是解壓器的基準真相，也是定址規則的來源。bsnes 項目的反組譯器表是這裏所用兩個反組譯器的來源。
 
