@@ -290,7 +290,17 @@ checks the ones a test can reach.
       Every file carries the same line of links between the four under its
       tagline and above its badges, keeps the English headings in the English
       order, and carries every code block byte for byte, so the worked example
-      checked in English is the one a reader of any language runs.
+      checked in English is the one a reader of any language runs. The Hong
+      Kong link reads `繁體中文 (香港)`, with one space and ASCII parentheses,
+      in every file.
+- [ ] The hero is one centered block: the title, the tagline in bold, the line
+      of language links and the badges. Under it, a centered row links the
+      install, interface, evidence and working sections and the issue tracker.
+- [ ] A link to a section of the same readme names the English heading's
+      anchor in every language. Each translation puts an `<a id>` of that name
+      above its translated heading, because GitHub derives an anchor from the
+      heading's own text, so an English anchor in a translated file leads
+      nowhere.
 - [ ] The readme is technical and plain. It documents the whole interface,
       each entry point with a call a reader can paste and the output it prints,
       and it says what the member does with the number that shows it rather than
@@ -298,10 +308,10 @@ checks the ones a test can reach.
       member's readme, would change what a reader does if it were deleted, and
       sits in a structure its content chose. A sentence that fails any of the
       three is filler, and filler is cut rather than reworded.
-- [ ] It opens with a line of numbers somebody ran, before any prose: what was
-      compared, how much of it failed, the test count, the coverage, and what it
-      costs to install. A count of what was compared with no result beside it is
-      half a claim.
+- [ ] Right under the hero, before any other prose, sits one plain sentence of
+      numbers somebody ran, with no bold: what was compared, how much of it
+      failed, the test count, the coverage, and what it costs to install. A
+      count of what was compared with no result beside it is half a claim.
 - [ ] No comment in any source file that no tool reads, and a docstring counts
       as one. A comment is the one part of a file nothing checks, so it is the
       one part free to drift, and once it has drifted it misleads every later
