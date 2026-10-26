@@ -428,12 +428,11 @@ class Sd2snesFormTest(unittest.TestCase):
         image = bytes(0x10000)
 
         # Act
-        def attempt() -> bytes:
-            derived: bytes = pack.for_sd2snes(image)
-            return derived
+        with self.assertRaises(pack.rewrite.NoHeader) as raised:
+            pack.for_sd2snes(image)
 
         # Assert
-        self.assertRaises(pack.rewrite.NoHeader, attempt)
+        self.assertIn("no cartridge header", str(raised.exception))
 
 
 if __name__ == "__main__":
