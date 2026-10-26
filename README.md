@@ -22,7 +22,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 
 ---
 
-5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,253 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
+5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,277 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
 
 ```python
 import hardware
@@ -392,7 +392,7 @@ Because that driver lives in RAM it can be replaced. The shipped receiver carrie
 | | Cycles per byte | Longest stall, Japan | Longest stall, USA |
 |:--|:--|:--|:--|
 | Retail | 55 | 2.60 s | 2.90 s |
-| This build | 16.3 | 0.72 s | 0.78 s |
+| This build | 16.3 | 0.72 s | 0.80 s |
 
 The three destination pointers sit a third of a block apart, so the store index steps by one and the page carry happens once per 256 handshakes.
 
@@ -553,8 +553,8 @@ The image matrix is two regions by four patch sets by two cartridge forms, sixte
 | Region | Patches | 4 MB cartridge | 96 Mbit chip-free |
 |:--|:--|:--|:--|
 | USA | None | 2.90 s | 3.13 s |
-| USA | Fast upload | 0.78 s | 0.77 s |
-| USA | Both | 0.78 s | 0.77 s |
+| USA | Fast upload | 0.78 s | 0.78 s |
+| USA | Both | 0.78 s | 0.80 s |
 | Japan | None | 2.60 s | 2.60 s |
 | Japan | Fast upload | 0.72 s | 0.72 s |
 | Japan | Both | 0.72 s | 0.72 s |
@@ -595,7 +595,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-The suite is 1,253 tests across 49 modules: 725 beside the analysis modules, 510 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
+The suite is 1,277 tests across 49 modules: 743 beside the analysis modules, 516 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
 
 Builds run in Docker with pinned toolchains, no network and a non-root user, never on the host. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 

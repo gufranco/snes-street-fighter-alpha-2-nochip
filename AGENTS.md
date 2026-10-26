@@ -122,7 +122,7 @@ uvx --python 3.12 --from coverage==7.6.10 coverage report
 
 Every tool is pinned because a local install of a different version disagrees,
 and a report from a version nobody ships is worse than no report. The suite
-takes several minutes and 1,253 tests; a run that finishes faster than that did
+takes several minutes and 1,277 tests; a run that finishes faster than that did
 not run all of it.
 
 A test that needs a retail dump goes in `<module>.retail.test.py` beside the
