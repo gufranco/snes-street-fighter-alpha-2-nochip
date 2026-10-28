@@ -69,6 +69,7 @@ MANIFEST = "SHA256SUMS"
 
 SD2SNES_CHIPSET = 0x43
 SD2SNES_EXTENSION = ".smc"
+SD2SNES_FLAGS = ("--sd2snes", "--fxpak")
 COPIER_HEADER = bytes(0x200)
 
 
@@ -128,6 +129,15 @@ def for_sd2snes(image: bytes | bytearray) -> bytes:
         start = at + rewrite.CHECKSUM_COMPLEMENT
         declared[start : start + len(field)] = field
     return COPIER_HEADER + bytes(declared)
+
+
+def forms_of(
+    region: str, image: bytes, sd2snes: bool, derive: Callable[[bytes], bytes]
+) -> list[tuple[str, bytes]]:
+    plain = [(output_name(region), image)]
+    if not sd2snes:
+        return plain
+    return [*plain, (sd2snes_name(region), derive(image))]
 
 
 def manifest_line(name: str, image: bytes | bytearray) -> str:
@@ -214,7 +224,8 @@ def main(
     gate_check = gate.check if gate_check is None else gate_check
     dist = DIST if dist is None else Path(dist)
 
-    wanted = argv[1:] or sorted(REGIONS)
+    sd2snes = any(flag in argv[1:] for flag in SD2SNES_FLAGS)
+    wanted = [word for word in argv[1:] if word not in SD2SNES_FLAGS] or sorted(REGIONS)
     unknown = [region for region in wanted if region not in REGIONS]
     if unknown:
         complain(f"unknown region: {', '.join(unknown)}")
@@ -246,10 +257,7 @@ def main(
         except AssemblyFailed as failure:
             complain(str(failure))
             return 1
-        for name, written in (
-            (output_name(region), image),
-            (sd2snes_name(region), derive(image)),
-        ):
+        for name, written in forms_of(region, image, sd2snes, derive):
             (dist / name).write_bytes(written)
             lines.append(manifest_line(name, written))
             say(f"  {name}  {len(written):,} bytes")

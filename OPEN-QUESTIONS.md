@@ -14,42 +14,23 @@ Every entry below is also in
 [`conformance/divergences.json`](conformance/divergences.json) with its status
 and severity, so a program can read what a person reads here.
 
-## The guarded sample upload is not yet seen on a cartridge
+## The FXPAK Pro run of the `.sfc` is not explained
 
-Release 1.5.4 decided whether a new block had begun on a single read of the
-counter port. The two sides of an audio port are not clocked together, so a read
-that lands during the other side's write can return a mixture of old and new
-bits, and no emulator models that. Issue #31 reports a black screen right after
-the Capcom logo on an SD2SNES Mk.II clone, an original SD2SNES and an SD2SNES
-Pro, and a Game Doctor SF7 that ran only without the fast upload. A retail ROM
-with nothing but the upload patch fails the same way.
+The FXPAK Pro runs the same sd2snes firmware as the SD2SNES. That firmware picks
+its 96 Mbit map only for map byte `$22` or `$32` with chip `$43` or `$45`, and
+release v1.11.2 also needs the file to be exactly `0xC00200` bytes. The `.sfc`
+declares chip `$00`, so by the firmware source it falls back to plain LoROM and
+reads the graphics banks from the wrong offsets.
 
-The receive loops now read the counter a second time before believing a new
-block has begun, as the audio unit's boot program does at `$FFE9` to `$FFED`. On
-the SPC700 model, one read that looks ahead leaves the 1.5.4 loops spinning
-forever, and the guarded loops deliver every byte. That shows the guard handles
-the read it is handed. It does not show that real ports tear in exactly this way,
-or that the guard is the whole fix.
+The hardware table records the `.sfc` running on an FXPAK Pro, and that run was
+recorded before any of this was known. On an SD2SNES Mk.II clone running
+firmware 1.11.2, the `.sfc` built with all six header copies rewritten goes
+black at power on, which is what the source predicts. Either the FXPAK Pro run
+used a firmware that maps the file differently, or the recorded run was not the
+image it is listed as.
 
-**What would settle it:** an image built with the guarded upload reaching a fight
-on any of the three cartridges in issue #31, against the same cartridge failing
-with 1.5.4.
-
-## The sd2snes form is not yet seen on a cartridge
-
-The sd2snes firmware picks its 96 Mbit map only for map byte `$22` or `$32` with
-chip `$43` or `$45`, and release v1.11.2 also needs the file to be exactly
-`0xC00200` bytes. The `.sfc` declares chip `$00`, so that firmware reads the
-graphics banks from the wrong offsets. The `.smc` beside it sets chip `$43` in
-all six header copies and adds a 512 byte copier header. The firmware's map for
-it places every address where this project's map does.
-
-The hardware table's FXPAK Pro run of the `.sfc` was recorded before this was
-known. The firmware source does not explain it, and the SD2SNES Pro report in
-issue #31 contradicts it.
-
-**What would settle it:** the `.smc` reaching a fight on an SD2SNES or FXPAK Pro,
-with the firmware version noted, and the `.sfc` retried on the FXPAK Pro.
+**What would settle it:** the `.sfc` and the `.smc` from the same build run on
+the FXPAK Pro, with the firmware version noted.
 
 ## The Japanese stream table cannot be proved complete
 
@@ -100,6 +81,38 @@ table's streams are absent from it and 472 share only a first sixty four bytes.
 The section above stands unchanged.
 
 ## What is closed, and why it is worth saying
+
+**The guarded sample upload runs on a cartridge.** Release 1.5.4 decided whether
+a new block had begun on a single read of the counter port. The two sides of an
+audio port are not clocked together, so a read that lands during the other
+side's write can return a mixture of old and new bits, and no emulator models
+that. Issue #31 reported a black screen right after the Capcom logo on an
+SD2SNES Mk.II clone, an original SD2SNES and an SD2SNES Pro, and a Game Doctor
+SF7 that ran only without the fast upload. On the SPC700 model, one read that
+looks ahead left the 1.5.4 loops spinning forever.
+
+The receive loops now read the counter a second time before believing a new
+block has begun, as the audio unit's boot program does at `$FFE9` to `$FFED`.
+The deciding run used the 4 MB retail ROM with nothing but the upload patch on
+the SD2SNES Mk.II clone, firmware 1.11.2. Built from 1.5.4 it went black after
+the logo. Built with the second read, at SHA-256
+`38b519adcebc6702ead736b6fd35aa82a93736489b1ee41ec4db24f76c07e141`, it was played
+through the whole game with Ken, Ryu and Akuma, with normal sound and no
+unusual pause. That image touches neither the map nor the header, so the second
+read is what fixed the black screen.
+
+**The sd2snes form runs on a cartridge.** The `.smc` sets chip `$43` in all six
+header copies and adds a 512 byte copier header, which is what firmware v1.11.2
+needs before it picks the map that places every address where this project's map
+does. On the same SD2SNES Mk.II clone, the USA `.smc` built with the guarded
+upload was played through the whole game. That form is now written only when
+[`pack.py`](pack.py) is given `--sd2snes` or `--fxpak`, because the game has no
+chip and the default image says so.
+
+Both runs are by Hamilton Pimentel, reported in issue #31 on 2026-10-27, with
+photographs in [`photos/sd2snes-mk2/`](photos/sd2snes-mk2). The other two
+cartridges in that issue, the original SD2SNES and the SD2SNES Pro, have not run
+the new build.
 
 **The boot window does not reach the upload driver.** An earlier reading here
 said the audio driver ran away when the unit's boot program was left covering the

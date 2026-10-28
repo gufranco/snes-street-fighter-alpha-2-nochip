@@ -257,14 +257,37 @@ class EntryTest(unittest.TestCase):
         self.assertIn(pack.output_name("usa"), written)
         self.assertIn("64 bytes", " ".join(said))
 
-    def test_the_same_run_writes_the_sd2snes_form_beside_it(self) -> None:
+    def test_a_run_without_a_flag_writes_only_the_chip_free_image(self) -> None:
         # Arrange
         said: list[Any] = []
 
         # Act
         with tempfile.TemporaryDirectory() as tmp, a_dump_in_place():
-            pack.main(
+            code = pack.main(
                 ["pack.py", "usa"],
+                make=lambda _region, _workdir: b"\x00" * 64,
+                gate_check=lambda _region: [],
+                say=said.append,
+                dist=tmp,
+                derive=lambda image: b"\x01" * 16 + image,
+            )
+            derived_exists = (Path(tmp) / pack.sd2snes_name("usa")).exists()
+            listed = (Path(tmp) / pack.MANIFEST).read_text().splitlines()
+
+        # Assert
+        self.assertEqual(code, 0)
+        self.assertFalse(derived_exists)
+        self.assertEqual(len(listed), 1)
+        self.assertIn("1 images", said[-1])
+
+    def test_the_sd2snes_flag_writes_the_sd2snes_form_beside_it(self) -> None:
+        # Arrange
+        said: list[Any] = []
+
+        # Act
+        with tempfile.TemporaryDirectory() as tmp, a_dump_in_place():
+            code = pack.main(
+                ["pack.py", "--sd2snes", "usa"],
                 make=lambda _region, _workdir: b"\x00" * 64,
                 gate_check=lambda _region: [],
                 say=said.append,
@@ -275,10 +298,55 @@ class EntryTest(unittest.TestCase):
             listed = (Path(tmp) / pack.MANIFEST).read_text().splitlines()
 
         # Assert
+        self.assertEqual(code, 0)
         self.assertEqual(derived, b"\x01" * 16 + b"\x00" * 64)
         self.assertEqual(len(listed), 2)
         self.assertIn("80 bytes", " ".join(said))
         self.assertIn("2 images", said[-1])
+
+    def test_the_fxpak_flag_is_the_same_as_the_sd2snes_flag(self) -> None:
+        # Arrange
+        said: list[Any] = []
+
+        # Act
+        with tempfile.TemporaryDirectory() as tmp, a_dump_in_place():
+            code = pack.main(
+                ["pack.py", "usa", "--fxpak"],
+                make=lambda _region, _workdir: b"\x00" * 64,
+                gate_check=lambda _region: [],
+                say=said.append,
+                dist=tmp,
+                derive=lambda image: b"\x01" * 16 + image,
+            )
+            derived = (Path(tmp) / pack.sd2snes_name("usa")).read_bytes()
+
+        # Assert
+        self.assertEqual(code, 0)
+        self.assertEqual(derived, b"\x01" * 16 + b"\x00" * 64)
+        self.assertIn("2 images", said[-1])
+
+    def test_a_flag_alone_still_builds_every_region(self) -> None:
+        # Arrange
+        built: list[str] = []
+
+        def record(region: str, _workdir: Path) -> bytes:
+            built.append(region)
+            return b"\x00" * 64
+
+        # Act
+        with tempfile.TemporaryDirectory() as tmp, a_dump_in_place("usa"), a_dump_in_place("jp"):
+            code = pack.main(
+                ["pack.py", "--fxpak"],
+                make=record,
+                gate_check=lambda _region: [],
+                say=lambda _l: None,
+                dist=tmp,
+                derive=lambda image: image,
+            )
+
+        # Assert
+        self.assertEqual(code, 0)
+        self.assertEqual(built, ["jp", "usa"])
 
 
 def headed_image() -> bytearray:
