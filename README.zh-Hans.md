@@ -22,7 +22,7 @@
 
 ---
 
-5,672 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，0 个不同；20 个镜像各运行 12,000 帧，查表未命中 0 次；1,280 项测试；100% 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖。
+5,672 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，0 个不同；20 个镜像各运行 12,000 帧，查表未命中 0 次；1,286 项测试；100% 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖。
 
 ```python
 import hardware
@@ -85,35 +85,37 @@ python3 doctor.py
 ```bash
 python3 tools/identify.py
 python3 pack.py
-python3 pack.py jp
-python3 pack.py usa --sd2snes
+python3 pack.py usa
 ```
 
-[`tools/identify.py`](tools/identify.py) 根据 [`artifacts.manifest.json`](artifacts.manifest.json) 检查 `roms/` 中的每个转储。[`pack.py`](pack.py) 为指定的每个地区构建无芯片镜像，未指定时两个地区都构建。镜像写入 `dist/`，写出的每个文件都列在一个 `SHA256SUMS` 清单中：
+[`tools/identify.py`](tools/identify.py) 根据 [`artifacts.manifest.json`](artifacts.manifest.json) 检查 `roms/` 中的每个转储。[`pack.py`](pack.py) 为指定的每个地区构建无芯片镜像，未指定时两个地区都构建。镜像按设备各写一次，写入 `dist/v<version>/` 下每个设备一个文件夹，所有文件都列在一个 `SHA256SUMS` 清单中。美版如下：
 
 ```
-  sfz2-jp-nochip-v<version>.sfc  12,582,912 bytes
-  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
-  SHA256SUMS  2 images
+  v<version>/emulator/sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
+  v<version>/supereverdrive/sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
+  v<version>/sd2snes/sfa2-usa-nochip-v<version>.smc  12,583,424 bytes
+  v<version>/fxpak/sfa2-usa-nochip-v<version>.smc  12,583,424 bytes
+  v<version>/gamedoctor/sfa2-usa-nochip-v<version>.smc  12,583,424 bytes
+  v<version>/SHA256SUMS  5 images
 ```
 
-`.sfc` 不声明任何芯片，这与镜像本身相符。这是默认形式，适用于除运行 sd2snes 固件的卡带之外的所有卡带和模拟器。
+请选择以卡带或模拟器命名的文件夹。每个文件都是同一个镜像，区别在于镜像前面的 512 字节以及头部声明的芯片组，因为每种设备都据此决定如何映射镜像。
 
-`--sd2snes` 会在每个 `.sfc` 旁边再写出一个 `.smc`，供运行 SD2SNES、SD2SNES Pro 和 FXPAK Pro 的 sd2snes 固件使用。`--fxpak` 是同一个选项的另一个名称。该固件只在头部声明芯片 `$43` 或 `$45` 时使用其 96 Mbit 映射，而 v1.11.2 版本还要求文件恰好为 12,583,424 字节。因此 `.smc` 在全部六个头部副本中声明芯片 `$43`，并以一个 512 字节的拷贝机头部开头。该头部之后是同一个镜像。
+| 文件夹 | 用于 | 镜像前面的内容 |
+|:--|:--|:--|
+| `emulator` | snes9x 等模拟器 | 没有。头部不声明芯片，这与镜像本身相符 |
+| `supereverdrive` | Super EverDrive | 与 `emulator` 相同的文件 |
+| `sd2snes` | SD2SNES 和 SD2SNES Pro | 512 字节的空拷贝机头部，并在全部六个头部副本中声明芯片 `$43` |
+| `fxpak` | FXPAK Pro | 与 `sd2snes` 相同的文件，它运行同一个固件 |
+| `gamedoctor` | Game Doctor SF7 | 映射全部 24 个 4 Mbit 块的 512 字节 Game Doctor 头部 |
 
-```
-  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
-  sfa2-usa-nochip-sd2snes-v<version>.smc  12,583,424 bytes
-  SHA256SUMS  2 images
-```
-
-在运行固件 1.11.2 的 SD2SNES Mk.II 仿制品上，美版 `.smc` 能玩通整个游戏，`.sfc` 则从开机起一直黑屏。
+sd2snes 固件只在头部声明芯片 `$43` 或 `$45` 时使用其 96 Mbit 映射，v1.11.2 版本还要求文件恰好为 12,583,424 字节，并且它从不读取前面的 512 字节。Game Doctor 只读取这 512 字节，来放置地址空间的每个区域。两种头部都由 [snes-rom-image-python](https://github.com/gufranco/snes-rom-image-python) 的 `copier` 模块写出：Game Doctor 映射从卡带映射推导，并逐槽检查，它与 herrkuhn 在 Game Doctor SF7 上运行两个地区时所用的头部逐字节相同。
 
 [`pack.py`](pack.py) 在零售版转储上依次执行下面的每个补丁，在 Docker 中汇编旁路代码，加入赛前表，依据冻结的数据流表布置镜像，并改写文件头，声明为普通 ROM。写出任何内容之前，它会对每个地区的数据流表运行 [`gate.py`](gate.py)，一旦有发现就停止。
 
 | 命令 | 参数 | 退出码 |
 |:--|:--|:--|
-| [`pack.py`](pack.py) | `[usa] [jp] [--sd2snes \| --fxpak]` | 0 已写出，1 缺少转储、门禁检查失败或汇编失败，2 未知地区 |
+| [`pack.py`](pack.py) | `[usa] [jp]` | 0 已写出，1 缺少转储、门禁检查失败或汇编失败，2 未知地区 |
 | [`tools/identify.py`](tools/identify.py) | `[file name ...]`，默认为清单声明的所有转储 | 0 至少一个转储正确且没有错误的，1 有转储错误或没有一个正确，2 没有声明该名称的转储 |
 | [`gate.py`](gate.py) | `[usa] [jp]` | 0 所有表均通过，1 有发现，2 未知地区 |
 | [`doctor.py`](doctor.py) | 无 | 0 所有检查均通过，1 其他情况 |
@@ -250,7 +252,7 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)` 从 [`version.py`](version.py) 取得版本号写入名称，版本 `0.0.0` 会标上 `-dev`。`pack.sd2snes_name(region, release=None)` 以同样方式为 `.smc` 命名。`pack.for_sd2snes(image)` 返回完成镜像的这种形式，对没有头部的镜像抛出 `NoHeader`。`pack.forms_of(region, image, sd2snes, derive)` 列出一个地区写出的每个文件的名称和字节，除非 `sd2snes` 为真，否则只有 `.sfc`。`pack.SD2SNES_FLAGS` 保存这两个选项名。`pack.unify_headers(image)` 把第一个头部复制到所有标题和映射字节与之相同、位于库末尾的副本上，使随后的改写覆盖全部六处。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 返回一个地区的完成镜像，需要 Docker 和零售版转储。`pack.REGIONS` 列出每个地区的零售版转储和旁路补丁。汇编失败时抛出 `pack.AssemblyFailed`，其中带有 [`build.py`](build.py) 的输出。
+`pack.output_name(region, release=None)` 从 [`version.py`](version.py) 取得版本号写入名称，版本 `0.0.0` 会标上 `-dev`。`pack.headed_name(region, release=None)` 以同样方式为带拷贝机头部的形式命名，以 `.smc` 结尾。`pack.release_folder(release=None)` 是 `dist/` 下的 `v<version>` 文件夹。`pack.forms_of(region, image)` 列出一个地区写出的每个文件的路径和字节，`pack.DEVICES` 中每一项对应一个，对没有头部的镜像抛出 `NoHeader`。`pack.unify_headers(image)` 把第一个头部复制到所有标题和映射字节与之相同、位于库末尾的副本上，使随后的改写覆盖全部六处。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 返回一个地区的完成镜像，需要 Docker 和零售版转储。`pack.REGIONS` 列出每个地区的零售版转储和旁路补丁。汇编失败时抛出 `pack.AssemblyFailed`，其中带有 [`build.py`](build.py) 的输出。
 
 ### 全部命令
 
@@ -426,7 +428,8 @@ Bank `$C0+k` 在 `$8000`-`$FFFF` 暴露 bank `k` 的低半部分，在 `$0000`-`
 | 形式 | 大小 | 是否需要芯片 | 写出者 |
 |:--|:--|:--|:--|
 | 96 Mbit 无芯片 | 12,582,912 字节 | 否 | [`pack.py`](pack.py)，以及 [`tools/rebuild_all.py`](tools/rebuild_all.py)，后者输出为 `*-free.sfc` |
-| 用于 sd2snes 固件的 96 Mbit 无芯片 | 12,583,424 字节 | 否，尽管头部声明了芯片 | [`pack.py`](pack.py) 加上 `--sd2snes` 或 `--fxpak`，输出为 `*-sd2snes-*.smc` |
+| 用于 sd2snes 固件的 96 Mbit 无芯片 | 12,583,424 字节 | 否，尽管头部声明了芯片 | [`pack.py`](pack.py)，位于 `sd2snes` 和 `fxpak` 文件夹 |
+| 用于 Game Doctor 的 96 Mbit 无芯片 | 12,583,424 字节 | 否 | [`pack.py`](pack.py)，位于 `gamedoctor` 文件夹 |
 | 4 MB 已打补丁卡带 | 4,194,304 字节 | 是，适用于已经模拟 S-DD1 的硬件 | [`tools/rebuild_all.py`](tools/rebuild_all.py)，输出为 `*-bypass.sfc` |
 
 两者都带有更快的采样上传、Shin Akuma 解锁和各项修正。只有无芯片镜像带有赛前表。
@@ -506,9 +509,7 @@ python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Pat
 
 **有两项修正未在画面上得到演示。** 对象表溢出需要同时出现八个阴影帧，外加一次飞行道具碰撞；被投掷的父亲精灵位于这里的任何驱动程序都到达不了的场景中。两者都以反汇编为依据，而同样的运行表明，在能到达的部分，两者都没有改变任何东西。
 
-**日版构建只在模拟环境中运行过。** 它与美版的构造方式相同，并通过相同的检查。
-
-**FXPAK Pro 运行 `.sfc` 的结果无法解释。** FXPAK Pro 运行 sd2snes 固件，按其源码，芯片 `$00` 的头部会被当作普通 LoROM 映射，而运行固件 1.11.2 的 SD2SNES Mk.II 仿制品用 `.sfc` 也一直黑屏。下面的 FXPAK Pro 一行是在知道这一点之前记录的。在记下固件版本重新运行之前，为该卡带构建时请使用 `--fxpak`。
+**FXPAK Pro 运行 `.sfc` 的结果无法解释。** FXPAK Pro 运行 sd2snes 固件，按其源码，芯片 `$00` 的头部会被当作普通 LoROM 映射，而运行固件 1.11.2 的 SD2SNES Mk.II 仿制品用 `.sfc` 也一直黑屏。下面的 FXPAK Pro 一行是在知道这一点之前记录的。在记下固件版本重新运行之前，该卡带请使用 `fxpak` 文件夹中的文件。
 
 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 列出了每个未解决的问题，以及能解决它的测量方法。
 
@@ -592,8 +593,13 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 | SD2SNES Mk.II 仿制品，固件 1.11.2 | 美版，用于 sd2snes 固件的 96 Mbit 无芯片，带保护的上传 | 用 Ken、Ryu 和 Akuma 玩通整个游戏 |
 | SD2SNES Mk.II 仿制品，固件 1.11.2 | 美版，只加带保护上传的 4 MB 零售 ROM | 用 Ken、Ryu 和 Akuma 玩通整个游戏 |
 | SD2SNES Mk.II 仿制品，固件 1.11.2 | 美版，96 Mbit 无芯片 `.sfc`，带保护的上传 | 开机即黑屏，与固件源码的预测一致 |
+| SD2SNES，固件 1.11.2 | 美版和日版，用于 sd2snes 固件的 96 Mbit 无芯片，1.6.0 | 能进入对战 |
+| SD2SNES Pro，固件 1.11.2 | 美版和日版，用于 sd2snes 固件的 96 Mbit 无芯片，1.6.0 | 能进入对战 |
+| Game Doctor SF7，128 Mbit DRAM | 美版和日版，带 Game Doctor 头部的 96 Mbit 无芯片，1.6.0 | 能进入对战 |
 
 FXPAK Pro 在其 FPGA 中模拟 S-DD1，这就是 4 MB 形式能在其上运行的原因；对于无芯片镜像，这一模拟处于空闲状态。
+
+标注 1.6.0 的三行是 herrkuhn 的运行结果，于 2026-10-28 在 [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) 和 [issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37) 中报告，也是日版构建首次在硬件上运行。
 
 SD2SNES Mk.II 仿制品的三行是 Hamilton Pimentel 的运行结果，于 2026-10-27 在 [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) 中报告。下面九张照片也出自 Hamilton Pimentel，是在那里为本文档分享的，从插在 Super Famicom 上的卡带一直到结尾画面：
 
@@ -635,7 +641,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-测试套件共 1,280 项测试，分布在 49 个模块中：746 项位于分析模块旁，516 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试放在模块旁边的 `<module>.retail.test.py` 文件中，没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中，测量时不包括这些文件，因此在没有转储的机器上同样成立，CI 在每次推送时都会强制执行。
+测试套件共 1,286 项测试，分布在 49 个模块中：752 项位于分析模块旁，516 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试放在模块旁边的 `<module>.retail.test.py` 文件中，没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中，测量时不包括这些文件，因此在没有转储的机器上同样成立，CI 在每次推送时都会强制执行。
 
 构建在 Docker 中运行，使用固定版本的工具链、无网络、非 root 用户，从不在宿主机上运行。[`asm/`](asm) 中的汇编是唯一带注释的源码：入口和出口状态、寄存器宽度，以及每个还原出的地址的来源。
 

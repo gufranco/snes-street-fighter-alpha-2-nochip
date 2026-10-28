@@ -23,6 +23,7 @@ image_package = load_images()
 
 dump = image_package.dump
 rewrite = image_package.rewrite
+copier = image_package.copier
 
 
 ROOT = Path(__file__).resolve().parent
@@ -68,15 +69,31 @@ DIST = ROOT / "dist"
 MANIFEST = "SHA256SUMS"
 
 SD2SNES_CHIPSET = 0x43
-SD2SNES_EXTENSION = ".smc"
-SD2SNES_FLAGS = ("--sd2snes", "--fxpak")
-COPIER_HEADER = bytes(0x200)
+HEADED_EXTENSION = ".smc"
+EMULATOR = "emulator"
+SUPER_EVERDRIVE = "supereverdrive"
+SD2SNES = "sd2snes"
+FXPAK = "fxpak"
+GAME_DOCTOR = "gamedoctor"
+DEVICES = (EMULATOR, SUPER_EVERDRIVE, SD2SNES, FXPAK, GAME_DOCTOR)
 
 
 def output_name(region: str, release: str | None = None) -> str:
     found = version.stamped(f"{REGIONS[region].title}-nochip", release)
     assert isinstance(found, str)
     return found
+
+
+def headed_name(region: str, release: str | None = None) -> str:
+    found = version.stamped(f"{REGIONS[region].title}-nochip", release, HEADED_EXTENSION)
+    assert isinstance(found, str)
+    return found
+
+
+def release_folder(release: str | None = None) -> str:
+    found = version.stamped("", release, "")
+    assert isinstance(found, str)
+    return found.lstrip("-")
 
 
 HEADER_ALIGNMENT = 0x8000
@@ -108,36 +125,17 @@ def unify_headers(image: bytes | bytearray) -> bytes:
     return bytes(unified)
 
 
-def sd2snes_name(region: str, release: str | None = None) -> str:
-    title = f"{REGIONS[region].title}-nochip-sd2snes"
-    found = version.stamped(title, release, SD2SNES_EXTENSION)
-    assert isinstance(found, str)
-    return found
-
-
-def for_sd2snes(image: bytes | bytearray) -> bytes:
-    places = rewrite.mirrors(image)
-    if not places:
-        raise rewrite.NoHeader("no cartridge header at any documented position")
-    declared = bytearray(image)
-    for at in places:
-        declared[at + rewrite.CHIPSET] = SD2SNES_CHIPSET
-    value = rewrite.checksum(declared, places)
-    complement = value ^ 0xFFFF
-    field = bytes((complement & 0xFF, complement >> 8, value & 0xFF, value >> 8))
-    for at in places:
-        start = at + rewrite.CHECKSUM_COMPLEMENT
-        declared[start : start + len(field)] = field
-    return COPIER_HEADER + bytes(declared)
-
-
-def forms_of(
-    region: str, image: bytes, sd2snes: bool, derive: Callable[[bytes], bytes]
-) -> list[tuple[str, bytes]]:
-    plain = [(output_name(region), image)]
-    if not sd2snes:
-        return plain
-    return [*plain, (sd2snes_name(region), derive(image))]
+def forms_of(region: str, image: bytes) -> list[tuple[str, bytes]]:
+    plain = output_name(region)
+    headed = headed_name(region)
+    sd2snes = copier.for_sd2snes(image, SD2SNES_CHIPSET)
+    return [
+        (f"{EMULATOR}/{plain}", image),
+        (f"{SUPER_EVERDRIVE}/{plain}", image),
+        (f"{SD2SNES}/{headed}", sd2snes),
+        (f"{FXPAK}/{headed}", sd2snes),
+        (f"{GAME_DOCTOR}/{headed}", copier.for_game_doctor(image)),
+    ]
 
 
 def manifest_line(name: str, image: bytes | bytearray) -> str:
@@ -217,15 +215,14 @@ def main(
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
     dist: Path | None = None,
-    derive: Callable[[bytes], bytes] = for_sd2snes,
+    forms: Callable[[str, bytes], list[tuple[str, bytes]]] = forms_of,
 ) -> int:
     complain = say if complain is None else complain
     make = build if make is None else make
     gate_check = gate.check if gate_check is None else gate_check
     dist = DIST if dist is None else Path(dist)
 
-    sd2snes = any(flag in argv[1:] for flag in SD2SNES_FLAGS)
-    wanted = [word for word in argv[1:] if word not in SD2SNES_FLAGS] or sorted(REGIONS)
+    wanted = argv[1:] or sorted(REGIONS)
     unknown = [region for region in wanted if region not in REGIONS]
     if unknown:
         complain(f"unknown region: {', '.join(unknown)}")
@@ -249,6 +246,8 @@ def main(
     dist.mkdir(exist_ok=True)
     workdir = dist / "work"
     workdir.mkdir(exist_ok=True)
+    release = dist / release_folder()
+    release.mkdir(exist_ok=True)
 
     lines = []
     for region in wanted:
@@ -257,13 +256,14 @@ def main(
         except AssemblyFailed as failure:
             complain(str(failure))
             return 1
-        for name, written in forms_of(region, image, sd2snes, derive):
-            (dist / name).write_bytes(written)
+        for name, written in forms(region, image):
+            (release / name).parent.mkdir(parents=True, exist_ok=True)
+            (release / name).write_bytes(written)
             lines.append(manifest_line(name, written))
-            say(f"  {name}  {len(written):,} bytes")
+            say(f"  {release.name}/{name}  {len(written):,} bytes")
 
-    (dist / MANIFEST).write_text("\n".join(lines) + "\n")
-    say(f"  {MANIFEST}  {len(lines)} images")
+    (release / MANIFEST).write_text("\n".join(lines) + "\n")
+    say(f"  {release.name}/{MANIFEST}  {len(lines)} images")
     return 0
 
 

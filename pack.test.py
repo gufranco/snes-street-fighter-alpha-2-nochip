@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 ROOT = Path(__file__).resolve().parent
 
@@ -248,16 +248,16 @@ class EntryTest(unittest.TestCase):
                 gate_check=lambda _region: [],
                 say=said.append,
                 dist=tmp,
-                derive=lambda image: b"\x01" * 16 + image,
+                forms=two_forms,
             )
-            written = (Path(tmp) / pack.MANIFEST).read_text()
+            written = (Path(tmp) / pack.release_folder() / pack.MANIFEST).read_text()
 
         # Assert
         self.assertEqual(code, 0)
-        self.assertIn(pack.output_name("usa"), written)
+        self.assertIn(f"emulator/{pack.output_name('usa')}", written)
         self.assertIn("64 bytes", " ".join(said))
 
-    def test_a_run_without_a_flag_writes_only_the_chip_free_image(self) -> None:
+    def test_the_plain_image_lands_in_the_emulator_folder_of_the_release(self) -> None:
         # Arrange
         said: list[Any] = []
 
@@ -269,63 +269,58 @@ class EntryTest(unittest.TestCase):
                 gate_check=lambda _region: [],
                 say=said.append,
                 dist=tmp,
-                derive=lambda image: b"\x01" * 16 + image,
+                forms=two_forms,
             )
-            derived_exists = (Path(tmp) / pack.sd2snes_name("usa")).exists()
-            listed = (Path(tmp) / pack.MANIFEST).read_text().splitlines()
+            release = Path(tmp) / pack.release_folder()
+            plain = (release / "emulator" / pack.output_name("usa")).read_bytes()
+            listed = (release / pack.MANIFEST).read_text().splitlines()
 
         # Assert
         self.assertEqual(code, 0)
-        self.assertFalse(derived_exists)
-        self.assertEqual(len(listed), 1)
-        self.assertIn("1 images", said[-1])
+        self.assertEqual(plain, b"\x00" * 64)
+        self.assertEqual(len(listed), 2)
+        self.assertIn("2 images", said[-1])
 
-    def test_the_sd2snes_flag_writes_the_sd2snes_form_beside_it(self) -> None:
+    def test_a_headed_form_lands_in_its_own_device_folder(self) -> None:
         # Arrange
         said: list[Any] = []
 
         # Act
         with tempfile.TemporaryDirectory() as tmp, a_dump_in_place():
             code = pack.main(
-                ["pack.py", "--sd2snes", "usa"],
+                ["pack.py", "usa"],
                 make=lambda _region, _workdir: b"\x00" * 64,
                 gate_check=lambda _region: [],
                 say=said.append,
                 dist=tmp,
-                derive=lambda image: b"\x01" * 16 + image,
+                forms=two_forms,
             )
-            derived = (Path(tmp) / pack.sd2snes_name("usa")).read_bytes()
-            listed = (Path(tmp) / pack.MANIFEST).read_text().splitlines()
+            release = Path(tmp) / pack.release_folder()
+            headed = (release / "gamedoctor" / pack.headed_name("usa")).read_bytes()
+            listed = (release / pack.MANIFEST).read_text().splitlines()
 
         # Assert
         self.assertEqual(code, 0)
-        self.assertEqual(derived, b"\x01" * 16 + b"\x00" * 64)
+        self.assertEqual(headed, b"\x01" * 16 + b"\x00" * 64)
         self.assertEqual(len(listed), 2)
         self.assertIn("80 bytes", " ".join(said))
         self.assertIn("2 images", said[-1])
 
-    def test_the_fxpak_flag_is_the_same_as_the_sd2snes_flag(self) -> None:
+    def test_an_option_from_before_every_device_was_written_is_refused(self) -> None:
         # Arrange
-        said: list[Any] = []
+        complained: list[Any] = []
 
         # Act
-        with tempfile.TemporaryDirectory() as tmp, a_dump_in_place():
-            code = pack.main(
-                ["pack.py", "usa", "--fxpak"],
-                make=lambda _region, _workdir: b"\x00" * 64,
-                gate_check=lambda _region: [],
-                say=said.append,
-                dist=tmp,
-                derive=lambda image: b"\x01" * 16 + image,
-            )
-            derived = (Path(tmp) / pack.sd2snes_name("usa")).read_bytes()
+        code = pack.main(
+            ["pack.py", "usa", "--fxpak"], say=lambda _l: None, complain=complained.append
+        )
 
         # Assert
-        self.assertEqual(code, 0)
-        self.assertEqual(derived, b"\x01" * 16 + b"\x00" * 64)
-        self.assertIn("2 images", said[-1])
+        self.assertEqual(code, 2)
+        self.assertIn("--fxpak", complained[0])
+        self.assertIn("unknown region", complained[0])
 
-    def test_a_flag_alone_still_builds_every_region(self) -> None:
+    def test_no_region_named_builds_every_region(self) -> None:
         # Arrange
         built: list[str] = []
 
@@ -336,17 +331,24 @@ class EntryTest(unittest.TestCase):
         # Act
         with tempfile.TemporaryDirectory() as tmp, a_dump_in_place("usa"), a_dump_in_place("jp"):
             code = pack.main(
-                ["pack.py", "--fxpak"],
+                ["pack.py"],
                 make=record,
                 gate_check=lambda _region: [],
                 say=lambda _l: None,
                 dist=tmp,
-                derive=lambda image: image,
+                forms=two_forms,
             )
 
         # Assert
         self.assertEqual(code, 0)
         self.assertEqual(built, ["jp", "usa"])
+
+
+def two_forms(region: str, image: bytes) -> list[tuple[str, bytes]]:
+    return [
+        (f"emulator/{pack.output_name(region)}", image),
+        (f"gamedoctor/{pack.headed_name(region)}", b"\x01" * 16 + image),
+    ]
 
 
 def headed_image() -> bytearray:
@@ -419,85 +421,171 @@ class UnifyHeadersTest(unittest.TestCase):
         self.assertEqual(unified, image)
 
 
-class Sd2snesNameTest(unittest.TestCase):
-    def test_the_name_says_which_cartridge_it_is_for(self) -> None:
+class HeadedNameTest(unittest.TestCase):
+    def test_a_form_with_a_copier_header_keeps_the_name_and_says_smc(self) -> None:
         # Arrange
         release = "1.6.0"
 
         # Act
-        name = pack.sd2snes_name("usa", release)
+        name = pack.headed_name("usa", release)
 
         # Assert
-        self.assertEqual(name, "sfa2-usa-nochip-sd2snes-v1.6.0.smc")
+        self.assertEqual(name, "sfa2-usa-nochip-v1.6.0.smc")
 
-
-class Sd2snesFormTest(unittest.TestCase):
-    def test_a_512_byte_copier_header_comes_first(self) -> None:
+    def test_the_release_folder_is_the_version(self) -> None:
         # Arrange
-        image = headed_image()
+        release = "1.6.0"
 
         # Act
-        derived = pack.for_sd2snes(image)
+        folder = pack.release_folder(release)
 
         # Assert
-        self.assertEqual(len(derived), 0x10000 + 512)
-        self.assertEqual(derived[:512], bytes(512))
+        self.assertEqual(folder, "v1.6.0")
+
+    def test_an_unreleased_folder_says_so(self) -> None:
+        # Arrange
+        release = version.UNRELEASED
+
+        # Act
+        folder = pack.release_folder(release)
+
+        # Assert
+        self.assertEqual(folder, "v0.0.0-dev")
+
+
+def chip_free_image() -> bytes:
+    image = bytearray(0xC00000)
+    for anchor in (0x7FC0, 0xFFC0):
+        image[anchor : anchor + 21] = b"SYNTHETIC CHIP FREE  "
+        image[anchor + pack.rewrite.MAP_MODE] = 0x32
+        image[anchor + 0x1A] = 0x33
+        image[anchor + 0x3C : anchor + 0x3E] = b"\x00\x80"
+    declared: bytes = pack.rewrite.declare_rom_only(image)
+    return declared
+
+
+class DeviceFormTest(unittest.TestCase):
+    image: bytes
+    forms: dict[str, bytes]
+
+    @classmethod
+    @override
+    def setUpClass(cls) -> None:
+        cls.image = chip_free_image()
+        cls.forms = dict(pack.forms_of("usa", cls.image))
+
+    def sd2snes(self) -> bytes:
+        return self.forms[f"sd2snes/{pack.headed_name('usa')}"]
+
+    def test_every_device_gets_its_own_folder(self) -> None:
+        # Arrange
+        expected = list(pack.DEVICES)
+
+        # Act
+        folders = [name.split("/")[0] for name in self.forms]
+
+        # Assert
+        self.assertEqual(folders, expected)
+
+    def test_an_emulator_and_a_super_everdrive_take_the_image_as_built(self) -> None:
+        # Arrange
+        name = pack.output_name("usa")
+
+        # Act
+        plain = (self.forms[f"emulator/{name}"], self.forms[f"supereverdrive/{name}"])
+
+        # Assert
+        self.assertEqual(plain, (self.image, self.image))
+
+    def test_the_sd2snes_and_the_fxpak_get_the_same_file(self) -> None:
+        # Arrange
+        name = pack.headed_name("usa")
+
+        # Act
+        fxpak = self.forms[f"fxpak/{name}"]
+
+        # Assert
+        self.assertEqual(fxpak, self.sd2snes())
+
+    def test_a_512_byte_empty_copier_header_comes_first(self) -> None:
+        # Arrange
+        expected = 0xC00000 + 512
+
+        # Act
+        written = self.sd2snes()
+
+        # Assert
+        self.assertEqual(len(written), expected)
+        self.assertEqual(written[:512], bytes(512))
 
     def test_every_header_copy_declares_the_chip_the_firmware_keys_on(self) -> None:
         # Arrange
-        image = headed_image()
+        copies = (0x7FC0, 0xFFC0)
 
         # Act
-        body = pack.for_sd2snes(image)[512:]
+        body = self.sd2snes()[512:]
 
         # Assert
-        self.assertEqual([body[at + 0x16] for at in (0x7FC0, 0xFFC0)], [0x43, 0x43])
+        self.assertEqual([body[at + 0x16] for at in copies], [0x43, 0x43])
 
     def test_the_map_byte_is_left_as_it_was(self) -> None:
         # Arrange
-        image = headed_image()
+        copies = (0x7FC0, 0xFFC0)
 
         # Act
-        body = pack.for_sd2snes(image)[512:]
+        body = self.sd2snes()[512:]
 
         # Assert
-        self.assertEqual([body[at + 0x15] for at in (0x7FC0, 0xFFC0)], [0x32, 0x32])
+        self.assertEqual([body[at + 0x15] for at in copies], [0x32, 0x32])
 
     def test_every_copy_carries_a_checksum_that_matches_the_bytes(self) -> None:
         # Arrange
-        image = headed_image()
+        copies = (0x7FC0, 0xFFC0)
 
         # Act
-        body = pack.for_sd2snes(image)[512:]
+        body = self.sd2snes()[512:]
 
         # Assert
-        for at in (0x7FC0, 0xFFC0):
+        for at in copies:
             complement = body[at + 0x1C] | body[at + 0x1D] << 8
             value = body[at + 0x1E] | body[at + 0x1F] << 8
-            self.assertEqual(value, pack.rewrite.checksum(body, [0x7FC0, 0xFFC0]))
+            self.assertEqual(value, pack.rewrite.checksum(body, list(copies)))
             self.assertEqual(complement ^ value, 0xFFFF)
 
     def test_nothing_outside_the_chip_and_checksum_fields_changes(self) -> None:
         # Arrange
-        image = headed_image()
         touched = {
             at + offset for at in (0x7FC0, 0xFFC0) for offset in (0x16, 0x1C, 0x1D, 0x1E, 0x1F)
         }
 
         # Act
-        body = pack.for_sd2snes(image)[512:]
+        body = self.sd2snes()[512:]
 
         # Assert
-        moved = {at for at in range(len(image)) if body[at] != image[at]}
+        moved = {at for at in range(0x10000) if body[at] != self.image[at]}
         self.assertLessEqual(moved, touched)
+        self.assertEqual(body[0x10000:], self.image[0x10000:])
+
+    def test_the_game_doctor_file_maps_all_twenty_four_chunks_in_order(self) -> None:
+        # Arrange
+        name = pack.headed_name("usa")
+
+        # Act
+        written = self.forms[f"gamedoctor/{name}"]
+
+        # Assert
+        self.assertEqual(
+            (written[:16], written[0x11:0x29], written[0x200:]),
+            (b"GAME DOCTOR SF 3", bytes(range(0x20, 0x38)), self.image),
+        )
 
     def test_an_image_with_no_header_is_refused(self) -> None:
         # Arrange
-        image = bytes(0x10000)
+        image = bytes(0xC00000)
 
         # Act
         with self.assertRaises(pack.rewrite.NoHeader) as raised:
-            pack.for_sd2snes(image)
+            pack.forms_of("usa", image)
 
         # Assert
         self.assertIn("no cartridge header", str(raised.exception))

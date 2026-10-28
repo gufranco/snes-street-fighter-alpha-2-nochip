@@ -105,14 +105,15 @@ read is what fixed the black screen.
 header copies and adds a 512 byte copier header, which is what firmware v1.11.2
 needs before it picks the map that places every address where this project's map
 does. On the same SD2SNES Mk.II clone, the USA `.smc` built with the guarded
-upload was played through the whole game. That form is now written only when
-[`pack.py`](pack.py) is given `--sd2snes` or `--fxpak`, because the game has no
-chip and the default image says so.
+upload was played through the whole game. [`pack.py`](pack.py) writes that form
+into the `sd2snes` and `fxpak` folders of every build, beside a plain `.sfc` that
+declares no chip, because the game has none.
 
 Both runs are by Hamilton Pimentel, reported in issue #31 on 2026-10-27, with
 photographs in [`photos/sd2snes-mk2/`](photos/sd2snes-mk2). The other two
-cartridges in that issue, the original SD2SNES and the SD2SNES Pro, have not run
-the new build.
+cartridges in that issue ran 1.6.0 on 2026-10-28: herrkuhn reports both regions
+reaching a fight on an original SD2SNES and an SD2SNES Pro on firmware 1.11.2,
+and on a Game Doctor SF7 with 128 Mbit and the Game Doctor header of issue #37.
 
 **The boot window does not reach the upload driver.** An earlier reading here
 said the audio driver ran away when the unit's boot program was left covering the

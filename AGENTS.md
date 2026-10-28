@@ -60,8 +60,10 @@ stream table is converged rather than proved complete, two corrections are read
 from the disassembly rather than seen on screen, and the FXPAK Pro run of the
 chip-free `.sfc` is not explained by the firmware source. The guarded sample
 upload and the sd2snes form are closed: both ran the whole game on an SD2SNES
-Mk.II clone. The sd2snes form is written only with `--sd2snes` or `--fxpak`,
-because the default image declares no chip, which is the truth.
+Mk.II clone, and both regions reach a fight on an SD2SNES, an SD2SNES Pro and
+a Game Doctor SF7. Every build writes one folder per device under
+`dist/v<version>/`, and the headers that differ between them come from
+`romimage.copier`, never from code here.
 
 ## The order matters
 
@@ -125,7 +127,7 @@ uvx --python 3.12 --from coverage==7.6.10 coverage report
 
 Every tool is pinned because a local install of a different version disagrees,
 and a report from a version nobody ships is worse than no report. The suite
-takes several minutes and 1,280 tests; a run that finishes faster than that did
+takes several minutes and 1,286 tests; a run that finishes faster than that did
 not run all of it.
 
 A test that needs a retail dump goes in `<module>.retail.test.py` beside the

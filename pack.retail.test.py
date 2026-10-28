@@ -54,7 +54,9 @@ class BuildTest(unittest.TestCase):
         places = (0x7FC0, 0xFFC0, 0x407FC0, 0x40FFC0, 0x607FC0, 0xA07FC0)
 
         # Act
-        derived = pack.for_sd2snes(pack.build("usa", self._workdir()))
+        derived = dict(pack.forms_of("usa", pack.build("usa", self._workdir())))[
+            f"{pack.SD2SNES}/{pack.headed_name('usa')}"
+        ]
 
         # Assert
         self.assertEqual(len(derived), 0xC00200)

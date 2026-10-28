@@ -22,7 +22,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 
 ---
 
-5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,280 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
+5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,286 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
 
 ```python
 import hardware
@@ -81,35 +81,37 @@ Releases follow [Semantic Versioning](https://semver.org/) and are cut from the 
 ```bash
 python3 tools/identify.py
 python3 pack.py
-python3 pack.py jp
-python3 pack.py usa --sd2snes
+python3 pack.py usa
 ```
 
-[`tools/identify.py`](tools/identify.py) checks each dump in `roms/` against [`artifacts.manifest.json`](artifacts.manifest.json). [`pack.py`](pack.py) builds the chip-free image for each region named, or both when none is named, writes it to `dist/`, and lists every file it wrote in a `SHA256SUMS` manifest:
+[`tools/identify.py`](tools/identify.py) checks each dump in `roms/` against [`artifacts.manifest.json`](artifacts.manifest.json). [`pack.py`](pack.py) builds the chip-free image for each region named, or both when none is named, and writes it once per device into `dist/v<version>/`, one folder per device, with a `SHA256SUMS` manifest of every file. For the USA region:
 
 ```
-  sfz2-jp-nochip-v<version>.sfc  12,582,912 bytes
-  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
-  SHA256SUMS  2 images
+  v<version>/emulator/sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
+  v<version>/supereverdrive/sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
+  v<version>/sd2snes/sfa2-usa-nochip-v<version>.smc  12,583,424 bytes
+  v<version>/fxpak/sfa2-usa-nochip-v<version>.smc  12,583,424 bytes
+  v<version>/gamedoctor/sfa2-usa-nochip-v<version>.smc  12,583,424 bytes
+  v<version>/SHA256SUMS  5 images
 ```
 
-The `.sfc` declares no chip, which is true of the image. That is the default, and it is the file for every cartridge and emulator except one running the sd2snes firmware.
+Pick the folder named after the cartridge or emulator. Every file holds the same image; what differs is the 512 bytes in front of it and the chipset the header declares, because each device decides how to map the image from those.
 
-`--sd2snes` writes a `.smc` beside each `.sfc` for the sd2snes firmware, which runs the SD2SNES, the SD2SNES Pro and the FXPAK Pro. `--fxpak` is the same option under the other name. That firmware uses its 96 Mbit map only for a header declaring chip `$43` or `$45`, and release v1.11.2 only for a file of exactly 12,583,424 bytes. So the `.smc` declares chip `$43` in all six header copies and starts with a 512 byte copier header. Everything after that header is the same image.
+| Folder | For | What is in front of the image |
+|:--|:--|:--|
+| `emulator` | snes9x and other emulators | Nothing. The header declares no chip, which is true of the image |
+| `supereverdrive` | Super EverDrive | The same file as `emulator` |
+| `sd2snes` | SD2SNES and SD2SNES Pro | An empty 512 byte copier header, and chip `$43` in all six header copies |
+| `fxpak` | FXPAK Pro | The same file as `sd2snes`. It runs the same firmware |
+| `gamedoctor` | Game Doctor SF7 | The 512 byte Game Doctor header, which maps all 24 chunks of 4 Mbit |
 
-```
-  sfa2-usa-nochip-v<version>.sfc  12,582,912 bytes
-  sfa2-usa-nochip-sd2snes-v<version>.smc  12,583,424 bytes
-  SHA256SUMS  2 images
-```
-
-On an SD2SNES Mk.II clone running firmware 1.11.2, the USA `.smc` plays the whole game and the `.sfc` stays black at power on.
+The sd2snes firmware uses its 96 Mbit map only for a header declaring chip `$43` or `$45`, and release v1.11.2 only for a file of exactly 12,583,424 bytes, and it never reads the 512 bytes in front. The Game Doctor reads only those 512 bytes to place each region of the address space. Both headers are written by the [snes-rom-image-python](https://github.com/gufranco/snes-rom-image-python) `copier` module: the Game Doctor map is derived from the cartridge map and checked slot by slot, and it is byte for byte the header herrkuhn ran both regions with on a Game Doctor SF7.
 
 [`pack.py`](pack.py) runs every patch below in order on the retail dump, assembles the bypass in Docker, adds the pre-fight table, lays out the image from the frozen stream table, and rewrites the header to declare a plain ROM. Before writing anything it runs [`gate.py`](gate.py) over each region's stream table and stops on any finding.
 
 | Command | Arguments | Exit codes |
 |:--|:--|:--|
-| [`pack.py`](pack.py) | `[usa] [jp] [--sd2snes \| --fxpak]` | 0 written, 1 a dump is missing, the gate failed or the assembly failed, 2 an unknown region |
+| [`pack.py`](pack.py) | `[usa] [jp]` | 0 written, 1 a dump is missing, the gate failed or the assembly failed, 2 an unknown region |
 | [`tools/identify.py`](tools/identify.py) | `[file name ...]`, default every dump the manifest declares | 0 at least one dump correct and none wrong, 1 a dump is wrong or none is correct, 2 no declared dump has that name |
 | [`gate.py`](gate.py) | `[usa] [jp]` | 0 every table passes, 1 a finding, 2 an unknown region |
 | [`doctor.py`](doctor.py) | none | 0 every check passed, 1 otherwise |
@@ -246,7 +248,7 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)` stamps the version from [`version.py`](version.py), and version `0.0.0` is marked `-dev`. `pack.sd2snes_name(region, release=None)` names the `.smc` the same way. `pack.for_sd2snes(image)` returns that form of a finished image, and raises `NoHeader` for an image with no header. `pack.forms_of(region, image, sd2snes, derive)` lists the name and bytes of each file one region writes, the `.sfc` alone unless `sd2snes` is true. `pack.SD2SNES_FLAGS` holds the two option names. `pack.unify_headers(image)` copies the first header over every copy at a bank end that shares its title and map byte, so the rewrite that follows reaches all six. `pack.manifest_line(name, image)` is one line of `SHA256SUMS`. `pack.build(region, workdir)` returns the finished image for one region and needs Docker and the retail dump. `pack.REGIONS` names each region's retail dump and bypass patch. A failed assembly raises `pack.AssemblyFailed` carrying the output of [`build.py`](build.py).
+`pack.output_name(region, release=None)` stamps the version from [`version.py`](version.py), and version `0.0.0` is marked `-dev`. `pack.headed_name(region, release=None)` names a form with a copier header the same way, ending in `.smc`. `pack.release_folder(release=None)` is the `v<version>` folder under `dist/`. `pack.forms_of(region, image)` lists the path and bytes of each file one region writes, one per entry of `pack.DEVICES`, and raises `NoHeader` for an image with no header. `pack.unify_headers(image)` copies the first header over every copy at a bank end that shares its title and map byte, so the rewrite that follows reaches all six. `pack.manifest_line(name, image)` is one line of `SHA256SUMS`. `pack.build(region, workdir)` returns the finished image for one region and needs Docker and the retail dump. `pack.REGIONS` names each region's retail dump and bypass patch. A failed assembly raises `pack.AssemblyFailed` carrying the output of [`build.py`](build.py).
 
 ### Every command
 
@@ -420,7 +422,8 @@ Before every fight the game spends 27 frames computing a 24,704 byte table that 
 | Form | Size | Needs the chip | Written by |
 |:--|:--|:--|:--|
 | 96 Mbit chip-free | 12,582,912 bytes | No | [`pack.py`](pack.py), and [`tools/rebuild_all.py`](tools/rebuild_all.py) as `*-free.sfc` |
-| 96 Mbit chip-free for sd2snes firmware | 12,583,424 bytes | No, though the header declares it | [`pack.py`](pack.py) with `--sd2snes` or `--fxpak`, as `*-sd2snes-*.smc` |
+| 96 Mbit chip-free for sd2snes firmware | 12,583,424 bytes | No, though the header declares it | [`pack.py`](pack.py), in the `sd2snes` and `fxpak` folders |
+| 96 Mbit chip-free for the Game Doctor | 12,583,424 bytes | No | [`pack.py`](pack.py), in the `gamedoctor` folder |
 | 4 MB patched cartridge | 4,194,304 bytes | Yes, for hardware that already emulates the S-DD1 | [`tools/rebuild_all.py`](tools/rebuild_all.py) as `*-bypass.sfc` |
 
 Both carry the faster sample upload, the Shin Akuma unlock and the corrections. Only the chip-free image carries the pre-fight table.
@@ -498,9 +501,7 @@ This route builds the USA image without the pre-fight table, from the stream map
 
 **Two corrections are not demonstrated on screen.** The object table overflow needs eight simultaneous shadow frames plus a projectile collision, and the thrown father sprite sits in a scene no driver here reaches. Both rest on the disassembly, and the same runs show neither changes anything that is reached.
 
-**The Japanese build has only been run under emulation.** It is the same construction as the USA one and passes the same checks.
-
-**The FXPAK Pro run of the `.sfc` is not explained.** The FXPAK Pro runs the sd2snes firmware, which by its source maps a chip `$00` header as plain LoROM, and an SD2SNES Mk.II clone on firmware 1.11.2 stays black with the `.sfc`. The FXPAK Pro row below was recorded before that was known. Until it is rerun with the firmware version noted, build with `--fxpak` for that cartridge.
+**The FXPAK Pro run of the `.sfc` is not explained.** The FXPAK Pro runs the sd2snes firmware, which by its source maps a chip `$00` header as plain LoROM, and an SD2SNES Mk.II clone on firmware 1.11.2 stays black with the `.sfc`. The FXPAK Pro row below was recorded before that was known. Until it is rerun with the firmware version noted, use the file in the `fxpak` folder on that cartridge.
 
 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) lists every open question with the measurement that would close it.
 
@@ -580,10 +581,15 @@ Every image carrying the sound patch is also driven through all eighteen fighter
 | SD2SNES Mk.II clone, firmware 1.11.2 | USA, 96 Mbit chip-free for sd2snes firmware, guarded upload | Whole game, with Ken, Ryu and Akuma |
 | SD2SNES Mk.II clone, firmware 1.11.2 | USA, 4 MB retail with only the guarded upload | Whole game, with Ken, Ryu and Akuma |
 | SD2SNES Mk.II clone, firmware 1.11.2 | USA, 96 Mbit chip-free `.sfc`, guarded upload | Black at power on, as the firmware source predicts |
+| SD2SNES, firmware 1.11.2 | USA and Japan, 96 Mbit chip-free for sd2snes firmware, 1.6.0 | Reaches a fight |
+| SD2SNES Pro, firmware 1.11.2 | USA and Japan, 96 Mbit chip-free for sd2snes firmware, 1.6.0 | Reaches a fight |
+| Game Doctor SF7, 128 Mbit DRAM | USA and Japan, 96 Mbit chip-free with the Game Doctor header, 1.6.0 | Reaches a fight |
 
 The FXPAK Pro emulates the S-DD1 in its FPGA, which is why the 4 MB form runs there, and that emulation is idle for the chip-free image.
 
-The three SD2SNES Mk.II clone rows are Hamilton Pimentel's runs, reported in [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) on 2026-10-27. The nine photographs below are Hamilton Pimentel's, shared there for this document, and run, from the cartridge in a Super Famicom to the closing screen:
+The three rows marked 1.6.0 are herrkuhn's runs, reported in [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) and [issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37) on 2026-10-28, and the first hardware runs of the Japanese build.
+
+The three SD2SNES Mk.II clone rows are Hamilton Pimentel's runs, reported in [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) on 2026-10-27. The nine photographs below are Hamilton Pimentel's, shared there for this document, and run from the cartridge in a Super Famicom to the closing screen:
 
 <p align="center">
   <img src="photos/sd2snes-mk2/01-sd2snes-in-a-super-famicom.jpg" width="250" alt="An SD2SNES cartridge in a Super Famicom, powered on">
@@ -621,7 +627,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-The suite is 1,280 tests across 49 modules: 746 beside the analysis modules, 516 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
+The suite is 1,286 tests across 49 modules: 752 beside the analysis modules, 516 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
 
 Builds run in Docker with pinned toolchains, no network and a non-root user, never on the host. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 
