@@ -22,7 +22,7 @@
 
 ---
 
-5,672 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，0 个不同；20 个镜像各运行 12,000 帧，查表未命中 0 次；1,286 项测试；100% 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖。
+5,672 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，0 个不同；20 个镜像各运行 12,000 帧，查表未命中 0 次；1,300 项测试；100% 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖。
 
 ```python
 import hardware
@@ -49,6 +49,65 @@ $C0:8000 is file offset 0x0600000
 
 ## 安装
 
+### 分步操作
+
+从零到可用的检出共五步。第 4 步的 doctor 会确认前三步。
+
+1. **安装 Python、git 和 Docker。**
+
+   | | Windows | macOS | Linux |
+   |:--|:--|:--|:--|
+   | Python 3.12 或更新版本 | `winget install Python.Python.3.12` | `brew install python@3.12` | 发行版的 `python3` 软件包 |
+   | git | `winget install Git.Git` | `xcode-select --install` | 发行版的 `git` 软件包 |
+   | Docker | `winget install Docker.DockerDesktop`，然后启动 Docker Desktop | Docker Desktop，或 `brew install colima docker` 后运行 `colima start` | Docker Engine，然后 `sudo systemctl start docker` |
+
+   在 Windows 上，本页写 `python3` 的地方请输入 `py -3.12`。
+
+2. **克隆仓库，不要下载。**
+
+   ```bash
+   git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
+   cd snes-street-fighter-alpha-2-nochip
+   ```
+
+   > [!CAUTION]
+   > 只有克隆才能得到可用的副本。GitHub 上绿色的 **Code** 按钮还提供 **Download ZIP**，但 ZIP 在这里永远无法使用：本项目依赖的 9 个模型是以 git 子模块固定的独立仓库，ZIP 一个都不包含，之后也无法补上。doctor 会把这样的副本报告为下载的归档；请删除它并克隆。没有加 `--recurse-submodules` 的克隆，可以用 `git submodule update --init --recursive` 就地修复。
+
+3. **把转储放进 `roms/`**，文件名按[转储列表](#the-dumps)：`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`。然后检查，你提供的每个转储都应显示 `ok`：
+
+   ```bash
+   python3 tools/identify.py
+   ```
+
+4. **运行 doctor。** 它检查检出、每个模型、每个转储，以及 Docker 引擎是否在运行，最后说明下一步运行什么：
+
+   ```bash
+   python3 doctor.py
+   ```
+
+   ```
+     N checks, nothing to report
+     next: python3 pack.py
+   ```
+
+   标有 `!` 的行，下一行写着该怎么做。它能发现的设置错误：
+
+   | doctor 显示 | 怎么做 |
+   |:--|:--|
+   | `checkout: no git metadata` | 删除文件夹并克隆，第 2 步 |
+   | `... is not checked out` | `git submodule update --init --recursive` |
+   | `cartridge ...: missing` | 第 3 步 |
+   | `docker engine: docker is not installed` | 第 1 步 |
+   | `docker engine: installed but not answering` | 启动 Docker Desktop，或 `sudo systemctl start docker` |
+
+5. **构建。** 它把每个镜像写入 `dist/v<version>/`，每种设备一个文件夹；从以你的卡带或模拟器命名的文件夹中复制文件。
+
+   ```bash
+   python3 pack.py
+   ```
+
+### 依赖与 doctor
+
 | 要求 | 版本 |
 |:--|:--|
 | Python | 3.12 或更新 |
@@ -56,20 +115,14 @@ $C0:8000 is file offset 0x0600000
 | Docker | 任意当前版本，且正在运行。[`build.py`](build.py)、[`pack.py`](pack.py) 以及与 snes9x 的比对检查都在容器中运行各自的工具链 |
 | 你自己的卡带转储 | 每个 4,194,304 字节，放在 `roms/` 中，按 [转储文件](#the-dumps) 一节所列命名 |
 
-```bash
-git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
-cd snes-street-fighter-alpha-2-nochip
-python3 doctor.py
-```
-
-> [!IMPORTANT]
-> 本项目用来衡量自身的每个模型都是独立的仓库，以子模块形式固定在根目录，所以必须使用 `--recurse-submodules`。不带该参数克隆的仓库可以用 `git submodule update --init --recursive` 修复。通过下载 zip 链接得到的源码归档不含任何子模块内容，无法修复，请改用克隆。
-
-诊断脚本会打印机器信息、每个固定模型的版本、`roms/` 中每个转储的状态和 SHA-256、解压器能否解码、`docker` 是否在路径上，以及每个模型自身诊断脚本给出的报告。不在 `roms/` 中的转储计为一项未通过的检查。报告以一行结束，第一种形式的退出码为 0，第二种为 1：
+诊断脚本会打印机器信息、该文件夹是否为 git 克隆、每个固定模型的版本、`roms/` 中每个转储的状态和 SHA-256、解压器能否解码、`docker` 是否在路径上以及其引擎是否应答，以及每个模型自身诊断脚本给出的报告。不在 `roms/` 中的转储计为一项未通过的检查。报告以两行结束，第二行说明下一步运行什么。第一种形式的退出码为 0，第二种为 1：
 
 ```
   N checks, nothing to report
+  next: python3 pack.py
+
   K of N checks did not pass
+  next: fix the first line marked ! above, then run python3 doctor.py again
 ```
 
 提交任何缺陷报告时，请粘贴完整输出。
@@ -641,7 +694,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-测试套件共 1,286 项测试，分布在 49 个模块中：752 项位于分析模块旁，516 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试放在模块旁边的 `<module>.retail.test.py` 文件中，没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中，测量时不包括这些文件，因此在没有转储的机器上同样成立，CI 在每次推送时都会强制执行。
+测试套件共 1,300 项测试，分布在 49 个模块中：766 项位于分析模块旁，516 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试放在模块旁边的 `<module>.retail.test.py` 文件中，没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中，测量时不包括这些文件，因此在没有转储的机器上同样成立，CI 在每次推送时都会强制执行。
 
 构建在 Docker 中运行，使用固定版本的工具链、无网络、非 root 用户，从不在宿主机上运行。[`asm/`](asm) 中的汇编是唯一带注释的源码：入口和出口状态、寄存器宽度，以及每个还原出的地址的来源。
 

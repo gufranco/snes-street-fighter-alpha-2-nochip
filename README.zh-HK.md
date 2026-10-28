@@ -22,7 +22,7 @@
 
 ---
 
-5,672 個數據流經解壓後與 snes9x 的 `sdd1emu.cpp` 逐位元組比較，0 個有差異；20 個映像檔各執行 12,000 幀，查找未命中 0 次；1,286 個測試；100% 語句及分支覆蓋率關卡檢查；除標準庫外不依賴任何 Python 套件。
+5,672 個數據流經解壓後與 snes9x 的 `sdd1emu.cpp` 逐位元組比較，0 個有差異；20 個映像檔各執行 12,000 幀，查找未命中 0 次；1,300 個測試；100% 語句及分支覆蓋率關卡檢查；除標準庫外不依賴任何 Python 套件。
 
 ```python
 import hardware
@@ -49,6 +49,65 @@ $C0:8000 is file offset 0x0600000
 
 ## 安裝
 
+### 逐步操作
+
+由零開始到可用的副本共五步。第 4 步的 doctor 會確認前三步。
+
+1. **安裝 Python、git 和 Docker。**
+
+   | | Windows | macOS | Linux |
+   |:--|:--|:--|:--|
+   | Python 3.12 或更新版本 | `winget install Python.Python.3.12` | `brew install python@3.12` | 發行版的 `python3` 套件 |
+   | git | `winget install Git.Git` | `xcode-select --install` | 發行版的 `git` 套件 |
+   | Docker | `winget install Docker.DockerDesktop`，然後啟動 Docker Desktop | Docker Desktop，或 `brew install colima docker` 後執行 `colima start` | Docker Engine，然後 `sudo systemctl start docker` |
+
+   在 Windows 上，本頁寫 `python3` 的地方請輸入 `py -3.12`。
+
+2. **複製儲存庫，不要下載。**
+
+   ```bash
+   git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
+   cd snes-street-fighter-alpha-2-nochip
+   ```
+
+   > [!CAUTION]
+   > 只有複製才能得到可用的副本。GitHub 上綠色的 **Code** 按鈕亦提供 **Download ZIP**，但 ZIP 在這裏永遠無法使用：本專案依賴的 9 個模型是以 git 子模組固定的獨立倉庫，ZIP 一個都不包含，之後亦無法補上。doctor 會把這樣的副本報告為下載的封存檔；請刪除它並複製。沒有加 `--recurse-submodules` 的複製，可以用 `git submodule update --init --recursive` 就地修復。
+
+3. **把傾印檔放進 `roms/`**，檔名按[傾印檔清單](#the-dumps)：`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`。然後檢查，你提供的每個傾印檔都應顯示 `ok`：
+
+   ```bash
+   python3 tools/identify.py
+   ```
+
+4. **執行 doctor。** 它檢查副本、每個模型、每個傾印檔，以及 Docker 引擎是否在運行，最後說明下一步執行甚麼：
+
+   ```bash
+   python3 doctor.py
+   ```
+
+   ```
+     N checks, nothing to report
+     next: python3 pack.py
+   ```
+
+   標有 `!` 的行，下一行寫着該怎麼做。它能發現的設定錯誤：
+
+   | doctor 顯示 | 怎樣做 |
+   |:--|:--|
+   | `checkout: no git metadata` | 刪除資料夾並複製，第 2 步 |
+   | `... is not checked out` | `git submodule update --init --recursive` |
+   | `cartridge ...: missing` | 第 3 步 |
+   | `docker engine: docker is not installed` | 第 1 步 |
+   | `docker engine: installed but not answering` | 啟動 Docker Desktop，或 `sudo systemctl start docker` |
+
+5. **建構。** 它把每個映像檔寫入 `dist/v<version>/`，每種裝置一個資料夾；從以你的卡帶或模擬器命名的資料夾中複製檔案。
+
+   ```bash
+   python3 pack.py
+   ```
+
+### 所需項目與 doctor
+
 | 需求 | 版本 |
 |:--|:--|
 | Python | 3.12 或更新 |
@@ -56,20 +115,14 @@ $C0:8000 is file offset 0x0600000
 | Docker | 任何現行版本，並須正在運行。[`build.py`](build.py)、[`pack.py`](pack.py) 以及與 snes9x 對照的檢查都在容器中執行其工具鏈 |
 | 你自己的卡帶傾印 | 每個 4,194,304 位元組，放在 `roms/`，按[傾印檔案](#the-dumps)所列命名 |
 
-```bash
-git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
-cd snes-street-fighter-alpha-2-nochip
-python3 doctor.py
-```
-
-> [!IMPORTANT]
-> 本項目用作比對標準的每個模型都是獨立的儲存庫，以子模組形式固定在根目錄，所以必須使用 `--recurse-submodules`。沒有加上它的複製可用 `git submodule update --init --recursive` 修復。經下載 zip 連結取得的原始碼封存檔不含子模組內容，無法修復，因此請改用複製。
-
-診斷腳本會列印機器資訊、每個已固定模型的版本、`roms/` 中每個傾印的狀態與 SHA-256、解壓器能否解碼、`docker` 是否在路徑上，以及每個模型自身診斷腳本給出的報告。不在 `roms/` 中的傾印算作一項未通過的檢查。報告以一行結束，第一種形式的退出碼為 0，第二種為 1：
+診斷腳本會列印機器資訊、該資料夾是否為 git 複製、每個已固定模型的版本、`roms/` 中每個傾印的狀態與 SHA-256、解壓器能否解碼、`docker` 是否在路徑上及其引擎是否回應，以及每個模型自身診斷腳本給出的報告。不在 `roms/` 中的傾印算作一項未通過的檢查。報告以兩行結束，第二行說明下一步執行甚麼。第一種形式的退出碼為 0，第二種為 1：
 
 ```
   N checks, nothing to report
+  next: python3 pack.py
+
   K of N checks did not pass
+  next: fix the first line marked ! above, then run python3 doctor.py again
 ```
 
 提交錯誤報告時，請貼上完整輸出。
@@ -641,7 +694,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-測試套件共 1,286 個測試，分佈於 49 個模組：752 個在分析模組旁，516 個在工具旁，18 個在 [`conformance/`](conformance) 下。每個模組的測試檔案都在其旁邊，以其命名，並可獨立執行。需要零售版傾印的測試放在模組旁邊的 `<module>.retail.test.py` 檔案內，在沒有傾印時報告為跳過。覆蓋率是在 [`pyproject.toml`](pyproject.toml) 中設定的 100% 語句及分支關卡檢查，量度時不計這些檔案，所以在沒有傾印的機器上同樣成立，CI 每次推送都會強制執行。
+測試套件共 1,300 個測試，分佈於 49 個模組：766 個在分析模組旁，516 個在工具旁，18 個在 [`conformance/`](conformance) 下。每個模組的測試檔案都在其旁邊，以其命名，並可獨立執行。需要零售版傾印的測試放在模組旁邊的 `<module>.retail.test.py` 檔案內，在沒有傾印時報告為跳過。覆蓋率是在 [`pyproject.toml`](pyproject.toml) 中設定的 100% 語句及分支關卡檢查，量度時不計這些檔案，所以在沒有傾印的機器上同樣成立，CI 每次推送都會強制執行。
 
 建構在 Docker 中以已固定版本的工具鏈、無網絡和非 root 用戶執行，從不在主機上執行。[`asm/`](asm) 中的組合語言是唯一帶有註解的原始碼：進入與退出狀態、暫存器寬度，以及每個還原位址的來源。
 

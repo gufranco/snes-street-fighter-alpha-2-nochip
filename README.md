@@ -22,7 +22,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 
 ---
 
-5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,286 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
+5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,300 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
 
 ```python
 import hardware
@@ -47,6 +47,65 @@ The example asks the pinned cartridge map where five console addresses land in a
 
 ## Install
 
+### Step by step
+
+Five steps from nothing to a working checkout. The doctor in step 4 confirms the first three.
+
+1. **Install Python, git and Docker.**
+
+   | | Windows | macOS | Linux |
+   |:--|:--|:--|:--|
+   | Python 3.12 or newer | `winget install Python.Python.3.12` | `brew install python@3.12` | your distribution's `python3` package |
+   | git | `winget install Git.Git` | `xcode-select --install` | your distribution's `git` package |
+   | Docker | `winget install Docker.DockerDesktop`, then start Docker Desktop | Docker Desktop, or `brew install colima docker` then `colima start` | Docker Engine, then `sudo systemctl start docker` |
+
+   On Windows, type `py -3.12` wherever this page says `python3`.
+
+2. **Clone the repository. Do not download it.**
+
+   ```bash
+   git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
+   cd snes-street-fighter-alpha-2-nochip
+   ```
+
+   > [!CAUTION]
+   > Cloning is the only way to get a copy that works. The green **Code** button on GitHub also offers **Download ZIP**, and a ZIP never works here: the 9 models this project runs on are separate repositories pinned as git submodules, a ZIP carries none of them, and nothing can add them afterwards. The doctor names such a copy a downloaded archive; delete it and clone. A clone made without `--recurse-submodules` is repaired in place with `git submodule update --init --recursive`.
+
+3. **Put your dump in `roms/`** under its name in [the dump list](#the-dumps): `sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`. Then check it; each dump you supplied should read `ok`:
+
+   ```bash
+   python3 tools/identify.py
+   ```
+
+4. **Run the doctor.** It checks the checkout, every model, each dump, and whether Docker's engine is running, and ends by naming the next thing to run:
+
+   ```bash
+   python3 doctor.py
+   ```
+
+   ```
+     N checks, nothing to report
+     next: python3 pack.py
+   ```
+
+   A line marked `!` carries what to do on the line below it. The setup mistakes it catches:
+
+   | The doctor says | Do this |
+   |:--|:--|
+   | `checkout: no git metadata` | Delete the folder and clone, step 2 |
+   | `... is not checked out` | `git submodule update --init --recursive` |
+   | `cartridge ...: missing` | Step 3 |
+   | `docker engine: docker is not installed` | Step 1 |
+   | `docker engine: installed but not answering` | Start Docker Desktop, or `sudo systemctl start docker` |
+
+5. **Build.** This writes every image into `dist/v<version>/`, one folder per device; copy the file from the folder named after your cartridge or emulator.
+
+   ```bash
+   python3 pack.py
+   ```
+
+### Requirements and the doctor
+
 | Requirement | Version |
 |:--|:--|
 | Python | 3.12 or newer |
@@ -54,20 +113,14 @@ The example asks the pinned cartridge map where five console addresses land in a
 | Docker | Any current release, running. [`build.py`](build.py), [`pack.py`](pack.py) and the checks against snes9x run their toolchains in containers |
 | Your own cartridge dumps | 4,194,304 bytes each, in `roms/`, named as [The dumps](#the-dumps) lists them |
 
-```bash
-git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
-cd snes-street-fighter-alpha-2-nochip
-python3 doctor.py
-```
-
-> [!IMPORTANT]
-> Every model this project measures itself against is its own repository, pinned as a submodule at the root, so `--recurse-submodules` is required. A clone made without it is repaired with `git submodule update --init --recursive`. A source archive from the download-zip link carries no submodule content and cannot be repaired, so clone instead.
-
-The doctor prints the machine, the version of every pinned model, the state and SHA-256 of each dump in `roms/`, whether the decompressor decodes, whether `docker` is on the path, and the report each model's own doctor gives. A dump that is not in `roms/` counts as a check that did not pass. The report ends with one line, and the exit code is 0 for the first form and 1 for the second:
+The doctor prints the machine, whether the folder is a git clone, the version of every pinned model, the state and SHA-256 of each dump in `roms/`, whether the decompressor decodes, whether `docker` is on the path and its engine answers, and the report each model's own doctor gives. A dump that is not in `roms/` counts as a check that did not pass. The report ends with two lines, the second naming what to run next, and the exit code is 0 for the first form and 1 for the second:
 
 ```
   N checks, nothing to report
+  next: python3 pack.py
+
   K of N checks did not pass
+  next: fix the first line marked ! above, then run python3 doctor.py again
 ```
 
 Paste the whole output into any bug report.
@@ -627,7 +680,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-The suite is 1,286 tests across 49 modules: 752 beside the analysis modules, 516 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
+The suite is 1,300 tests across 49 modules: 766 beside the analysis modules, 516 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
 
 Builds run in Docker with pinned toolchains, no network and a non-root user, never on the host. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 

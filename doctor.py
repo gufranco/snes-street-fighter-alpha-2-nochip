@@ -1,6 +1,7 @@
 import importlib
 import platform
 import shutil
+import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -26,6 +27,12 @@ PROJECT = "snes-street-fighter-alpha-2-nochip"
 PART = "sdd1"
 
 TOOLS = ("docker",)
+
+DOCKER_ANSWER_SECONDS = 30
+
+NEXT_WHEN_CLEAN = "python3 pack.py"
+
+NEXT_WHEN_NOT = "fix the first line marked ! above, then run python3 doctor.py again"
 
 
 class Finding:
@@ -61,6 +68,58 @@ def _python() -> Finding:
 
 def _project() -> Finding:
     return Finding(PROJECT, True, f"version {VERSION}")
+
+
+def _checkout(cloned: Callable[[], bool] = hardware.is_git_checkout) -> Finding:
+    if cloned():
+        return Finding("checkout", True, "a git clone, so the submodules can be fetched")
+    return Finding(
+        "checkout",
+        False,
+        "no git metadata, so this came from a downloaded archive",
+        "a downloaded ZIP never carries the submodules and nothing can add them"
+        " afterwards; delete this folder and clone instead:"
+        f" git clone --recurse-submodules {hardware.ORIGIN}",
+    )
+
+
+def _docker_answers(run: Callable[..., Any] = subprocess.run) -> tuple[bool, str]:
+    try:
+        done = run(
+            ["docker", "info", "--format", "{{.ServerVersion}}"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=DOCKER_ANSWER_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as trouble:
+        return False, f"{type(trouble).__name__}: {trouble}"
+    said = (done.stdout or done.stderr or "no answer").strip().splitlines()
+    return done.returncode == 0, said[0] if said else "no answer"
+
+
+def _docker_engine(
+    look: Callable[[str], str | None] = shutil.which,
+    ask: Callable[[], tuple[bool, str]] = _docker_answers,
+) -> Finding:
+    if not look("docker"):
+        return Finding(
+            "docker engine",
+            False,
+            "docker is not installed",
+            "install Docker Desktop on Windows or macOS, or Docker Engine on Linux,"
+            " then open a new terminal so the docker command is found",
+        )
+    running, said = ask()
+    if running:
+        return Finding("docker engine", True, f"running, server {said}")
+    return Finding(
+        "docker engine",
+        False,
+        f"installed but not answering: {said}",
+        "start Docker Desktop and wait until it says the engine is running, or on"
+        " Linux run sudo systemctl start docker; the build assembles in a container",
+    )
 
 
 def _default_import(package: str) -> Any:
@@ -212,13 +271,14 @@ def _beneath(beneath: Any, unused: Any = _default_unused) -> list[Finding]:
 
 
 def examine(load: Any = _default_import, beneath: Any = _default_beneath) -> list[Finding]:
-    found = [_python(), _project()]
+    found = [_python(), _project(), _checkout()]
     found.extend(
         _model(package, hardware.root_of(package), load) for package in sorted(hardware.PACKAGES)
     )
     found.extend(_cartridges())
     found.append(_decompressor())
     found.extend(_tools())
+    found.append(_docker_engine())
     found.extend(_beneath(beneath))
     return found
 
@@ -234,8 +294,10 @@ def report(found: list[Finding]) -> list[str]:
     lines.append("")
     if unwell:
         lines.append(f"  {len(unwell)} of {len(found)} checks did not pass")
+        lines.append(f"  next: {NEXT_WHEN_NOT}")
     else:
         lines.append(f"  {len(found)} checks, nothing to report")
+        lines.append(f"  next: {NEXT_WHEN_CLEAN}")
     return lines
 
 

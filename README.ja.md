@@ -22,7 +22,7 @@
 
 ---
 
-5,672本のストリームを展開してsnes9xの`sdd1emu.cpp`とバイト単位で比較し、相違は0件です。20本のイメージをそれぞれ12,000フレーム実行し、参照ミスは0件です。テストは1,286件、ステートメントとブランチの100%カバレッジゲートがあり、標準ライブラリ以外のPython依存はありません。
+5,672本のストリームを展開してsnes9xの`sdd1emu.cpp`とバイト単位で比較し、相違は0件です。20本のイメージをそれぞれ12,000フレーム実行し、参照ミスは0件です。テストは1,300件、ステートメントとブランチの100%カバレッジゲートがあり、標準ライブラリ以外のPython依存はありません。
 
 ```python
 import hardware
@@ -49,6 +49,65 @@ $C0:8000 is file offset 0x0600000
 
 ## インストール
 
+### 手順
+
+何もない状態から動くチェックアウトまで5つの手順です。手順4のドクターが最初の3つを確認します。
+
+1. **Python、git、Dockerをインストールします。**
+
+   | | Windows | macOS | Linux |
+   |:--|:--|:--|:--|
+   | Python 3.12以降 | `winget install Python.Python.3.12` | `brew install python@3.12` | ディストリビューションの`python3`パッケージ |
+   | git | `winget install Git.Git` | `xcode-select --install` | ディストリビューションの`git`パッケージ |
+   | Docker | `winget install Docker.DockerDesktop`を実行し、Docker Desktopを起動 | Docker Desktop、または`brew install colima docker`の後に`colima start` | Docker Engineを入れ、`sudo systemctl start docker` |
+
+   Windowsでは、このページの`python3`を`py -3.12`に置き換えてください。
+
+2. **リポジトリをクローンします。ダウンロードはしないでください。**
+
+   ```bash
+   git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
+   cd snes-street-fighter-alpha-2-nochip
+   ```
+
+   > [!CAUTION]
+   > 動くコピーを得る方法はクローンだけです。GitHubの緑の**Code**ボタンには**Download ZIP**もありますが、ZIPはここでは決して動きません。このプロジェクトが使う9個のモデルはgitのサブモジュールとして固定された別のリポジトリで、ZIPにはどれも含まれず、後から追加することもできません。ドクターはそのようなコピーをダウンロードしたアーカイブとして報告します。削除してクローンしてください。`--recurse-submodules`なしでクローンした場合は、`git submodule update --init --recursive`でその場で直せます。
+
+3. **ダンプを`roms/`に置きます。** 名前は[ダンプの一覧](#the-dumps)のとおり`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`です。その後で確認します。用意した各ダンプが`ok`と表示されるはずです。
+
+   ```bash
+   python3 tools/identify.py
+   ```
+
+4. **ドクターを実行します。** チェックアウト、各モデル、各ダンプ、Dockerのエンジンが動いているかを確認し、最後に次に実行するものを示します。
+
+   ```bash
+   python3 doctor.py
+   ```
+
+   ```
+     N checks, nothing to report
+     next: python3 pack.py
+   ```
+
+   `!`の付いた行は、その下の行にすべきことを書いています。ドクターが見つける設定の誤りは次のとおりです。
+
+   | ドクターの表示 | すること |
+   |:--|:--|
+   | `checkout: no git metadata` | フォルダーを削除してクローンする（手順2） |
+   | `... is not checked out` | `git submodule update --init --recursive` |
+   | `cartridge ...: missing` | 手順3 |
+   | `docker engine: docker is not installed` | 手順1 |
+   | `docker engine: installed but not answering` | Docker Desktopを起動するか、`sudo systemctl start docker` |
+
+5. **ビルドします。** すべてのイメージを機器ごとのフォルダーに分けて`dist/v<version>/`へ書き出します。使うカートリッジやエミュレーターの名前のフォルダーからファイルをコピーしてください。
+
+   ```bash
+   python3 pack.py
+   ```
+
+### 必要なものとドクター
+
 | 要件 | バージョン |
 |:--|:--|
 | Python | 3.12以降 |
@@ -56,20 +115,14 @@ $C0:8000 is file offset 0x0600000
 | Docker | 現行の任意のリリースで、起動していること。[`build.py`](build.py)、[`pack.py`](pack.py)、snes9xとの照合はツールチェーンをコンテナで実行します |
 | 自分のカートリッジダンプ | 各4,194,304バイト。`roms/`に置き、[ダンプ](#the-dumps)に記載の名前にします |
 
-```bash
-git clone --recurse-submodules https://github.com/gufranco/snes-street-fighter-alpha-2-nochip.git
-cd snes-street-fighter-alpha-2-nochip
-python3 doctor.py
-```
-
-> [!IMPORTANT]
-> このプロジェクトが照合の基準とするモデルはすべて独立したリポジトリで、ルートにサブモジュールとして固定されています。そのため`--recurse-submodules`は必須です。これを付けずに作ったクローンは`git submodule update --init --recursive`で修復できます。download-zipリンクから得たソースアーカイブにはサブモジュールの内容が含まれず、修復できないため、クローンしてください。
-
-ドクターは、マシン、固定された各モデルのバージョン、`roms/`内の各ダンプの状態とSHA-256、展開器がデコードできるか、`docker`がパス上にあるか、各モデル自身のドクターが出す報告を表示します。`roms/`にないダンプは、合格しなかったチェックとして数えます。報告は1行で終わり、終了コードは1つ目の形式なら0、2つ目なら1です。
+ドクターは、マシン、フォルダーがgitのクローンかどうか、固定された各モデルのバージョン、`roms/`内の各ダンプの状態とSHA-256、展開器がデコードできるか、`docker`がパス上にありエンジンが応答するか、各モデル自身のドクターが出す報告を表示します。`roms/`にないダンプは、合格しなかったチェックとして数えます。報告は2行で終わり、2行目は次に実行するものを示します。終了コードは1つ目の形式なら0、2つ目なら1です。
 
 ```
   N checks, nothing to report
+  next: python3 pack.py
+
   K of N checks did not pass
+  next: fix the first line marked ! above, then run python3 doctor.py again
 ```
 
 バグ報告には出力全体を貼り付けてください。
@@ -641,7 +694,7 @@ for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$modu
 python3 doctor.py
 ```
 
-テストスイートは49モジュールにわたる1,286件のテストです。分析モジュールの隣に752件、ツールの隣に516件、[`conformance/`](conformance)に18件あります。各モジュールには、その名前を付けたテストファイルが隣にあり、単独で実行できます。市販ダンプを必要とするテストは、モジュールの隣の`<module>.retail.test.py`ファイルに置かれ、ダンプがなければスキップとして報告されます。カバレッジは、[`pyproject.toml`](pyproject.toml)で設定された100%のステートメントとブランチのゲートで、これらのファイルを除いて測定します。そのためダンプのないマシンでも成立し、CIがプッシュのたびに強制します。
+テストスイートは49モジュールにわたる1,300件のテストです。分析モジュールの隣に766件、ツールの隣に516件、[`conformance/`](conformance)に18件あります。各モジュールには、その名前を付けたテストファイルが隣にあり、単独で実行できます。市販ダンプを必要とするテストは、モジュールの隣の`<module>.retail.test.py`ファイルに置かれ、ダンプがなければスキップとして報告されます。カバレッジは、[`pyproject.toml`](pyproject.toml)で設定された100%のステートメントとブランチのゲートで、これらのファイルを除いて測定します。そのためダンプのないマシンでも成立し、CIがプッシュのたびに強制します。
 
 ビルドは、固定されたツールチェーン、ネットワークなし、非rootユーザーでDocker内で実行し、ホストでは決して実行しません。[`asm/`](asm)内のアセンブリは、コメントを含む唯一のソースです。コメントには、入口と出口の状態、レジスタ幅、復元した各アドレスの出所が書かれています。
 
