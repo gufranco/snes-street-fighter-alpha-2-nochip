@@ -22,7 +22,7 @@ English | [日本語](README.ja.md) | [简体中文](README.zh-Hans.md) | [繁�
 
 ---
 
-5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,300 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
+5,672 streams decompressed and compared byte for byte with snes9x's `sdd1emu.cpp`, 0 differing; 20 images run for 12,000 frames each, 0 lookup misses; 1,309 tests; a 100% statement and branch coverage gate; no Python dependencies outside the standard library.
 
 ```python
 import hardware
@@ -51,15 +51,14 @@ The example asks the pinned cartridge map where five console addresses land in a
 
 Five steps from nothing to a working checkout. The doctor in step 4 confirms the first three.
 
-1. **Install Python, git and Docker.**
+1. **Install git and Docker, and nothing else.** Python and every tool the build runs live in this project's Docker image, which the first command builds.
 
    | | Windows | macOS | Linux |
    |:--|:--|:--|:--|
-   | Python 3.12 or newer | `winget install Python.Python.3.12` | `brew install python@3.12` | your distribution's `python3` package |
    | git | `winget install Git.Git` | `xcode-select --install` | your distribution's `git` package |
    | Docker | `winget install Docker.DockerDesktop`, then start Docker Desktop | Docker Desktop, or `brew install colima docker` then `colima start` | Docker Engine, then `sudo systemctl start docker` |
 
-   On Windows, type `py -3.12` wherever this page says `python3`.
+   On Windows, type `.\run.cmd` wherever this page says `./run.sh`.
 
 2. **Clone the repository. Do not download it.**
 
@@ -69,58 +68,57 @@ Five steps from nothing to a working checkout. The doctor in step 4 confirms the
    ```
 
    > [!CAUTION]
-   > Cloning is the only way to get a copy that works. The green **Code** button on GitHub also offers **Download ZIP**, and a ZIP never works here: the 9 models this project runs on are separate repositories pinned as git submodules, a ZIP carries none of them, and nothing can add them afterwards. The doctor names such a copy a downloaded archive; delete it and clone. A clone made without `--recurse-submodules` is repaired in place with `git submodule update --init --recursive`.
+   > Cloning is the only way to get a copy that works. The green **Code** button on GitHub also offers **Download ZIP**, and a ZIP never works here: the 9 models this project runs on are separate repositories pinned as git submodules, a ZIP carries none of them, and nothing can add them afterwards. The launcher refuses such a copy and says so; delete it and clone. A clone made without `--recurse-submodules` is repaired in place with `git submodule update --init --recursive`.
 
-3. **Put your dump in `roms/`** under its name in [the dump list](#the-dumps): `sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`. Then check it; each dump you supplied should read `ok`:
+3. **Put your dump in `roms/`** under its name in [the dump list](#the-dumps): `sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`. Then check it; each dump you supplied should read `ok`. This first command builds the image and takes several minutes; later ones start at once:
 
    ```bash
-   python3 tools/identify.py
+   ./run.sh tools/identify.py
    ```
 
-4. **Run the doctor.** It checks the checkout, every model, each dump, and whether Docker's engine is running, and ends by naming the next thing to run:
+4. **Run the doctor.** It checks the checkout, every model, each dump and the image's tools, and ends by naming the next thing to run:
 
    ```bash
-   python3 doctor.py
+   ./run.sh doctor.py
    ```
 
    ```
      N checks, nothing to report
-     next: python3 pack.py
+     next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
    ```
 
-   A line marked `!` carries what to do on the line below it. The setup mistakes it catches:
+   A line marked `!` carries what to do on the line below it. The setup mistakes it and the launcher catch:
 
-   | The doctor says | Do this |
+   | The message | Do this |
    |:--|:--|
-   | `checkout: no git metadata` | Delete the folder and clone, step 2 |
+   | `This folder has no git metadata` | Delete the folder and clone, step 2 |
+   | `Docker is not installed` | Step 1 |
+   | `Docker is installed but its engine is not answering` | Start Docker Desktop, or `sudo systemctl start docker` |
    | `... is not checked out` | `git submodule update --init --recursive` |
    | `cartridge ...: missing` | Step 3 |
-   | `docker engine: docker is not installed` | Step 1 |
-   | `docker engine: installed but not answering` | Start Docker Desktop, or `sudo systemctl start docker` |
 
 5. **Build.** This writes every image into `dist/v<version>/`, one folder per device; copy the file from the folder named after your cartridge or emulator.
 
    ```bash
-   python3 pack.py
+   ./run.sh pack.py
    ```
 
 ### Requirements and the doctor
 
 | Requirement | Version |
 |:--|:--|
-| Python | 3.12 or newer |
 | git | Any, to fetch the nine submodules |
-| Docker | Any current release, running. [`build.py`](build.py), [`pack.py`](pack.py) and the checks against snes9x run their toolchains in containers |
+| Docker | Any current release, running. Python 3.12, asar 1.81 and the snes9x builds live in the image the [`Dockerfile`](Dockerfile) describes, and [`run.sh`](run.sh) runs every command in it |
 | Your own cartridge dumps | 4,194,304 bytes each, in `roms/`, named as [The dumps](#the-dumps) lists them |
 
-The doctor prints the machine, whether the folder is a git clone, the version of every pinned model, the state and SHA-256 of each dump in `roms/`, whether the decompressor decodes, whether `docker` is on the path and its engine answers, and the report each model's own doctor gives. A dump that is not in `roms/` counts as a check that did not pass. The report ends with two lines, the second naming what to run next, and the exit code is 0 for the first form and 1 for the second:
+The doctor runs inside the image and prints the machine, whether the folder is a git clone, the version of every pinned model, the state and SHA-256 of each dump in `roms/`, whether the decompressor decodes, whether the image's asar, sfemu and sdd1ref are there, and the report each model's own doctor gives. A dump that is not in `roms/` counts as a check that did not pass. The report ends with two lines, the second naming what to run next, and the exit code is 0 for the first form and 1 for the second:
 
 ```
   N checks, nothing to report
-  next: python3 pack.py
+  next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
 
   K of N checks did not pass
-  next: fix the first line marked ! above, then run python3 doctor.py again
+  next: fix the first line marked ! above, then run ./run.sh doctor.py, or on Windows .\run.cmd doctor.py
 ```
 
 Paste the whole output into any bug report.
@@ -132,9 +130,9 @@ Releases follow [Semantic Versioning](https://semver.org/) and are cut from the 
 ### Building the images
 
 ```bash
-python3 tools/identify.py
-python3 pack.py
-python3 pack.py usa
+./run.sh tools/identify.py
+./run.sh pack.py
+./run.sh pack.py usa
 ```
 
 [`tools/identify.py`](tools/identify.py) checks each dump in `roms/` against [`artifacts.manifest.json`](artifacts.manifest.json). [`pack.py`](pack.py) builds the chip-free image for each region named, or both when none is named, and writes it once per device into `dist/v<version>/`, one folder per device, with a `SHA256SUMS` manifest of every file. For the USA region:
@@ -160,7 +158,7 @@ Pick the folder named after the cartridge or emulator. Every file holds the same
 
 The sd2snes firmware uses its 96 Mbit map only for a header declaring chip `$43` or `$45`, and release v1.11.2 only for a file of exactly 12,583,424 bytes, and it never reads the 512 bytes in front. The Game Doctor reads only those 512 bytes to place each region of the address space. Both headers are written by the [snes-rom-image-python](https://github.com/gufranco/snes-rom-image-python) `copier` module: the Game Doctor map is derived from the cartridge map and checked slot by slot, and it is byte for byte the header herrkuhn ran both regions with on a Game Doctor SF7.
 
-[`pack.py`](pack.py) runs every patch below in order on the retail dump, assembles the bypass in Docker, adds the pre-fight table, lays out the image from the frozen stream table, and rewrites the header to declare a plain ROM. Before writing anything it runs [`gate.py`](gate.py) over each region's stream table and stops on any finding.
+[`pack.py`](pack.py) runs every patch below in order on the retail dump, assembles the bypass with the image's asar, adds the pre-fight table, lays out the image from the frozen stream table, and rewrites the header to declare a plain ROM. Before writing anything it runs [`gate.py`](gate.py) over each region's stream table and stops on any finding.
 
 | Command | Arguments | Exit codes |
 |:--|:--|:--|
@@ -301,17 +299,17 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)` stamps the version from [`version.py`](version.py), and version `0.0.0` is marked `-dev`. `pack.headed_name(region, release=None)` names a form with a copier header the same way, ending in `.smc`. `pack.release_folder(release=None)` is the `v<version>` folder under `dist/`. `pack.forms_of(region, image)` lists the path and bytes of each file one region writes, one per entry of `pack.DEVICES`, and raises `NoHeader` for an image with no header. `pack.unify_headers(image)` copies the first header over every copy at a bank end that shares its title and map byte, so the rewrite that follows reaches all six. `pack.manifest_line(name, image)` is one line of `SHA256SUMS`. `pack.build(region, workdir)` returns the finished image for one region and needs Docker and the retail dump. `pack.REGIONS` names each region's retail dump and bypass patch. A failed assembly raises `pack.AssemblyFailed` carrying the output of [`build.py`](build.py).
+`pack.output_name(region, release=None)` stamps the version from [`version.py`](version.py), and version `0.0.0` is marked `-dev`. `pack.headed_name(region, release=None)` names a form with a copier header the same way, ending in `.smc`. `pack.release_folder(release=None)` is the `v<version>` folder under `dist/`. `pack.forms_of(region, image)` lists the path and bytes of each file one region writes, one per entry of `pack.DEVICES`, and raises `NoHeader` for an image with no header. `pack.unify_headers(image)` copies the first header over every copy at a bank end that shares its title and map byte, so the rewrite that follows reaches all six. `pack.manifest_line(name, image)` is one line of `SHA256SUMS`. `pack.build(region, workdir)` returns the finished image for one region and needs the image's asar and the retail dump. `pack.REGIONS` names each region's retail dump and bypass patch. A failed assembly raises `pack.AssemblyFailed` carrying the output of [`build.py`](build.py).
 
 ### Every command
 
 | Command | Arguments | What it does |
 |:--|:--|:--|
-| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>`, or `--image` | Assembles a patch with asar 1.81 in a container with no network, writing the output beside the patch. `--image` only builds the container |
+| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>` | Assembles a patch with the image's asar 1.81, writing the output beside the patch |
 | [`rombuild.py`](rombuild.py) | `<patched-rom> <tagged-rom> <output.sfc>` | Lays out the 96 Mbit image from the stream map in a tagged dump |
 | [`mapcheck.py`](mapcheck.py) | `<rom>` | Checks the frozen table for the dump's region: duplicates, undecodable entries and scan distance |
 | [`patchrun.py`](patchrun.py) | `<built-image> <patched-rom> <tagged-rom>` | Runs the assembled translate routine on the 65816 model for every stream and compares where it points |
-| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`, default 500 cases and seed 20260813 | Decompresses random offsets with snes9x's `sdd1emu.cpp` in a container and with the Python model, and compares |
+| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`, default 500 cases and seed 20260813 | Decompresses random offsets with snes9x's `sdd1emu.cpp` built into the image and with the Python model, and compares |
 | [`sdd1map.py`](sdd1map.py) | `<tagged-rom> <source-rom> [output.bin]` | Reads the stream map out of the `SDD1` tags in a tagged dump |
 | [`sdd1find.py`](sdd1find.py) | `<source-rom> <reference-rom> [start] [stop]` | Finds streams by content, against a dump that holds the same graphics decompressed |
 | [`sdd1sites.py`](sdd1sites.py) | `<source-rom> <tagged-rom>` | Lists every store to the chip's registers outside compressed data, and disassembles each arm site |
@@ -335,8 +333,8 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip
 A command given the wrong number of required arguments exits 2. [`mapcheck.py`](mapcheck.py), [`patchrun.py`](patchrun.py), [`sdd1ref.py`](sdd1ref.py), the two verify tools, [`tools/validate_all.py`](tools/validate_all.py), [`tools/compare_audio.py`](tools/compare_audio.py) and [`tools/tour_audio.py`](tools/tour_audio.py) exit 1 when a check fails and 0 otherwise.
 
 ```bash
-python3 tools/verify_streams.py
-python3 tools/verify_image.py build/all/usa-both-free.sfc
+./run.sh tools/verify_streams.py
+./run.sh tools/verify_image.py build/all/usa-both-free.sfc
 ```
 
 ```
@@ -379,7 +377,7 @@ graph TD
     spcfast --> shinakuma["shinakuma.py: Shin Akuma unlock"]
     shinakuma --> gamefixes["gamefixes.py: eleven corrections"]
     gamefixes --> repeatload["repeatload.py: skip a loaded sample list"]
-    repeatload --> bypass["build.py: bypass assembled in Docker"]
+    repeatload --> bypass["build.py: bypass assembled by asar"]
     bypass --> cart[("4 MB patched cartridge, still needs the chip")]
     bypass --> prefight["prefight.py: callers moved to the stored table"]
     tables[("Frozen stream table")] --> gate["gate.py: refuses a bad table"]
@@ -529,13 +527,13 @@ The third file is not a retail cartridge. It carries the `SDD1` stream tags that
 
 ```bash
 mkdir -p build
-python3 spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
-python3 shinakuma.py  build/step1.sfc          build/step2.sfc
-python3 gamefixes.py  build/step2.sfc          build/step3.sfc
-python3 repeatload.py build/step3.sfc          build/step4.sfc
-python3 build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
-python3 rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
-python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
+./run.sh spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
+./run.sh shinakuma.py  build/step1.sfc          build/step2.sfc
+./run.sh gamefixes.py  build/step2.sfc          build/step3.sfc
+./run.sh repeatload.py build/step3.sfc          build/step4.sfc
+./run.sh build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
+./run.sh rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
+./run.sh -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
 ```
 
 This route builds the USA image without the pre-fight table, from the stream map in the tagged dump. [`rombuild.py`](rombuild.py) reads 2,815 streams from the tags, two fewer than the 2,817 in the frozen table [`pack.py`](pack.py) uses:
@@ -571,8 +569,8 @@ ares, Mesen2, bsnes and Mednafen have not been run against these images.
 [`spcfast.py`](spcfast.py) replaces the sample upload loop and [`repeatload.py`](repeatload.py) skips an upload when the list asked for is already loaded. Neither may change which bytes the audio processor ends up holding. Diffing the audio processor's memory at the end of two runs cannot settle that, because the patch changes timing and the two runs stop with the driver at different points.
 
 ```bash
-python3 tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
-python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
+./run.sh tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
+./run.sh tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
 ```
 
 The comparison is per upload. Every block the cartridge hands over is checked against the bytes still in the cartridge, so a loop that drops a byte fails on the block it dropped it in. It also reports which sources were uploaded at all, since a skip may upload fewer of them and never different ones, and the writes per byte, which is the number a faster loop changes. `--roster` and `--budget` set the fighters toured and the frames per fighter, 18 and 4000 by default.
@@ -599,7 +597,7 @@ The models start dirty: memory and registers hold arbitrary but reproducible val
 
 ## Is it right
 
-The decompressor is compared with snes9x 1.63's `sdd1emu.cpp`, built from source in the pinned container under [`ref/`](ref). [`tools/verify_streams.py`](tools/verify_streams.py) runs all 2,817 USA and 2,855 Japanese streams through both, and none differ. [`tools/verify_image.py`](tools/verify_image.py) then reads every stream back out of a finished image through its lookup tables.
+The decompressor is compared with snes9x 1.63's `sdd1emu.cpp`, built from source by the reference stage of the [`Dockerfile`](Dockerfile) around the driver in [`ref/`](ref). [`tools/verify_streams.py`](tools/verify_streams.py) runs all 2,817 USA and 2,855 Japanese streams through both, and none differ. [`tools/verify_image.py`](tools/verify_image.py) then reads every stream back out of a finished image through its lookup tables.
 
 The image matrix is two regions by four patch sets by two cartridge forms, sixteen images, plus four USA control builds that each drop one patch. [`tools/validate_all.py`](tools/validate_all.py) runs each on the harness under [`emu/`](emu) for 12,000 frames. In the last recorded run all 20 loaded, all delivered 12,000 of 12,000 frames, and none missed a lookup.
 
@@ -672,27 +670,25 @@ The Super EverDrive row rests on the photograph alone. That cartridge has no S-D
 | Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
 ```bash
-uvx ruff@0.16.3 format --check .
-uvx ruff@0.16.3 check .
-pnpm install --frozen-lockfile && pnpm run format:check
-uvx --python 3.12 mypy==1.14.1
-for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$module" || echo "FAILED $module"; done
-python3 doctor.py
+./run.sh --gates
+./run.sh doctor.py
 ```
 
-The suite is 1,300 tests across 49 modules: 766 beside the analysis modules, 516 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
+The suite is 1,309 tests across 51 modules: 775 beside the analysis modules, 516 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), measured without those files, so it holds on a machine with no dump and CI enforces it on every push.
 
-Builds run in Docker with pinned toolchains, no network and a non-root user, never on the host. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
+Every command runs in the project's image, with pinned toolchains, no network and your own user id, and nothing is installed on the host. `./run.sh --gates` runs every gate in order, with the versions CI uses. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 
 <details>
 <summary><strong>Project structure</strong></summary>
 
 | Path | Holds |
 |:--|:--|
-| [`asm/`](asm) | The patches in 65816 and SPC700 assembly, among them the bypass, the translate routine and the fast upload, with the container that runs asar 1.81 |
+| [`asm/`](asm) | The patches in 65816 and SPC700 assembly, among them the bypass, the translate routine and the fast upload |
 | [`tools/`](tools) | Sixteen tools: dump identification, stream and image verification, the image matrix, audio comparison and the Japanese stream search |
 | [`emu/`](emu) | The emulator harness the image matrix runs on, built on snes9x 1.63 with the windowed map added |
-| [`ref/`](ref) | The container that builds snes9x 1.63's `sdd1emu.cpp` as the decompression reference |
+| [`ref/`](ref) | The driver the image builds around snes9x 1.63's `sdd1emu.cpp`, the decompression reference |
+| [`Dockerfile`](Dockerfile) | The one image every command runs in: asar, the emulator harness, the reference, Python 3.12, and a gates stage with every lint and test tool |
+| [`run.sh`](run.sh), [`run.ps1`](run.ps1), [`run.cmd`](run.cmd) | The launchers that build the image and run a command in it |
 | [`conformance/`](conformance) | The divergences record and the test that holds it to [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) |
 | [`photos/`](photos) | Photographs of the images running on hardware, credited where they appear in this document |
 | [`scripts/`](scripts) | The release script that stamps [`version.py`](version.py) and [`CITATION.cff`](CITATION.cff) |

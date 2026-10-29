@@ -9,6 +9,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import toolchain
 
 dump = hardware.load("romimage").dump
 rewrite = hardware.load("romimage").rewrite
@@ -92,24 +93,19 @@ def scan_log(image: Path, execute: Callable[..., Any] = subprocess.run) -> list[
     log = OUT / f"{image.stem}-scan.txt"
     with log.open("wb") as handle:
         execute(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "--network=none",
-                "-e",
-                "SFSCAN=1",
-                "-e",
-                "SFSCANLEN=1",
-                "-e",
-                "SFGRID=1",
-                "-v",
-                f"{ROOT}:/work",
-                "snes-street-fighter-alpha-2-nochip/sfemu:snes9x-1.63",
-                str(image.relative_to(ROOT)),
-                str(FRAMES),
-                "-2",
-            ],
+            toolchain.command(
+                toolchain.EMULATOR,
+                [
+                    "SFSCAN=1",
+                    "SFSCANLEN=1",
+                    "SFGRID=1",
+                ],
+                [
+                    str(image.relative_to(ROOT)),
+                    str(FRAMES),
+                    "-2",
+                ],
+            ),
             stdout=handle,
             stderr=subprocess.DEVNULL,
             check=False,

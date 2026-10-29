@@ -10,6 +10,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import toolchain
 
 dump = hardware.load("romimage").dump
 rewrite = hardware.load("romimage").rewrite
@@ -46,15 +47,15 @@ SCAN = re.compile(
 )
 
 PASSES = (
-    ("tour18000", ["-e", "SFTOUR=1", "-e", "SFTOURBUDGET=18000"], 216000),
-    ("tour9000", ["-e", "SFTOUR=1", "-e", "SFTOURBUDGET=9000"], 162000),
+    ("tour18000", ["SFTOUR=1", "SFTOURBUDGET=18000"], 216000),
+    ("tour9000", ["SFTOUR=1", "SFTOURBUDGET=9000"], 162000),
     (
         "tourconfirm",
-        ["-e", "SFTOUR=1", "-e", "SFTOURBUDGET=12000", "-e", "SFTOURCONFIRM=1"],
+        ["SFTOUR=1", "SFTOURBUDGET=12000", "SFTOURCONFIRM=1"],
         216000,
     ),
-    ("force", ["-e", "SFFORCE=1"], 60000),
-    ("grid", ["-e", "SFGRID=1", "-e", "SFSETTLE=200"], 60000),
+    ("force", ["SFFORCE=1"], 60000),
+    ("grid", ["SFGRID=1", "SFSETTLE=200"], 60000),
 )
 
 
@@ -120,23 +121,19 @@ def requests_of(
     execute: Callable[..., Any] = subprocess.run,
 ) -> dict[int, int]:
     result = execute(
-        [
-            "docker",
-            "run",
-            "--rm",
-            "--network=none",
-            "-e",
-            "SFSCAN=1",
-            "-e",
-            "SFSCANLEN=1",
-            *extra,
-            "-v",
-            f"{ROOT}:/work",
-            "snes-street-fighter-alpha-2-nochip/sfemu:snes9x-1.63",
-            str(image.relative_to(ROOT)),
-            str(frames),
-            "-2",
-        ],
+        toolchain.command(
+            toolchain.EMULATOR,
+            [
+                "SFSCAN=1",
+                "SFSCANLEN=1",
+                *extra,
+            ],
+            [
+                str(image.relative_to(ROOT)),
+                str(frames),
+                "-2",
+            ],
+        ),
         capture_output=True,
         text=True,
         check=False,

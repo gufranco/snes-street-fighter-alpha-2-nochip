@@ -7,11 +7,13 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+import toolchain  # noqa: E402
 
 IMAGES = ROOT / "build" / "all"
 LOGS = ROOT / "build" / "logs"
 
-IMAGE = "snes-street-fighter-alpha-2-nochip/sfemu:snes9x-1.63"
 
 ROSTER = 18
 BUDGET = 4000
@@ -64,27 +66,21 @@ def run(
     log = LOGS / f"audio-{image.stem}.txt"
     with log.open("wb") as handle:
         execute(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "--network=none",
-                "-e",
-                "SFTOUR=1",
-                "-e",
-                f"SFTOURROSTER={roster}",
-                "-e",
-                f"SFTOURBUDGET={budget}",
-                "-e",
-                "SFVERIFY=1",
-                *(("-e", "SFTOURCONFIRM=1") if fights else ()),
-                "-v",
-                f"{ROOT}:/work",
-                IMAGE,
-                str(image.relative_to(ROOT)),
-                str(roster * budget),
-                mapping_for(image.stem),
-            ],
+            toolchain.command(
+                toolchain.EMULATOR,
+                [
+                    "SFTOUR=1",
+                    f"SFTOURROSTER={roster}",
+                    f"SFTOURBUDGET={budget}",
+                    "SFVERIFY=1",
+                    *(("SFTOURCONFIRM=1",) if fights else ()),
+                ],
+                [
+                    str(image.relative_to(ROOT)),
+                    str(roster * budget),
+                    mapping_for(image.stem),
+                ],
+            ),
             stdout=handle,
             stderr=subprocess.DEVNULL,
             check=False,

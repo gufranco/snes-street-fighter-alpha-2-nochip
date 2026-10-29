@@ -4,6 +4,21 @@ Read [`FAMILY.md`](FAMILY.md) first. It is the standard every member is built to
 and it is identical in all twenty of them. This file is the part that is only
 true here.
 
+## Two hard rules about tooling
+
+**Docker carries every dependency, never the host.** Python, asar, the emulator
+and reference builds and every lint and test tool live in the image the
+[`Dockerfile`](Dockerfile) describes. The host needs Docker and git, nothing
+else. Every documented command runs through [`run.sh`](run.sh), or
+[`run.cmd`](run.cmd) on Windows, and nothing here tells a reader to install a
+tool or uses one the host happens to have. Set by the owner on 2026-10-28.
+
+**The three chip-free projects share one tooling layout.** This repository,
+snes-dungeon-master-nochip and snes-pilotwings-nochip keep the same Dockerfile
+stage names, launchers, gate script, [`toolchain.py`](toolchain.py), CI jobs
+and doctor shape. A tooling change lands in all three in the same task, and a
+difference between them comes from the game. Set by the owner on 2026-10-28.
+
 ## What this project is, in one paragraph
 
 Street Fighter Alpha 2 shipped with a decompression chip on the cartridge, and
@@ -115,19 +130,20 @@ redistribute what it did not write.
 ## Every gate, in the order to run them
 
 ```sh
-uvx ruff@0.16.3 check .
-uvx ruff@0.16.3 format --check .
-uvx --python 3.12 mypy==1.14.1
-pnpm run format:check
-uvx yamllint==1.38.0 --strict .
-uvx --python 3.12 --from coverage==7.6.10 coverage erase
-for module in *.test.py tools/*.test.py conformance/*.test.py; do uvx --python 3.12 --from coverage==7.6.10 coverage run -a "$module" || break; done
-uvx --python 3.12 --from coverage==7.6.10 coverage report
+./run.sh --gates
 ```
 
-Every tool is pinned because a local install of a different version disagrees,
-and a report from a version nobody ships is worse than no report. The suite
-takes several minutes and 1,300 tests; a run that finishes faster than that did
+[`scripts/gates.sh`](scripts/gates.sh) runs in the `gates` stage of the
+[`Dockerfile`](Dockerfile) and stops at the first failure: ruff check, ruff
+format, mypy, prettier, yamllint, shellcheck, actionlint, then every test
+module under coverage and the coverage report. CI runs the same script in the
+same image.
+
+Every tool is pinned in the image because a local install of a different
+version disagrees, and a report from a version nobody ships is worse than no
+report. A gate run on the host proves nothing about the image: an output filter
+there has already hidden a ruff diff that the image's ruff failed on. The suite
+takes several minutes and 1,309 tests; a run that finishes faster than that did
 not run all of it.
 
 A test that needs a retail dump goes in `<module>.retail.test.py` beside the

@@ -141,7 +141,7 @@ class ShellOutTest(unittest.TestCase):
             asked.append(command)
             return None
 
-        tour_oracle.run("probe", ["-e", "SFPROBE=1"], 4242, execute=_record)
+        tour_oracle.run("probe", ["SFPROBE=1"], 4242, execute=_record)
 
         self.assertIn("4242", asked[0])
 

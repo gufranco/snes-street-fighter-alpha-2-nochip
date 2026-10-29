@@ -22,7 +22,7 @@
 
 ---
 
-5,672 個數據流經解壓後與 snes9x 的 `sdd1emu.cpp` 逐位元組比較，0 個有差異；20 個映像檔各執行 12,000 幀，查找未命中 0 次；1,300 個測試；100% 語句及分支覆蓋率關卡檢查；除標準庫外不依賴任何 Python 套件。
+5,672 個數據流經解壓後與 snes9x 的 `sdd1emu.cpp` 逐位元組比較，0 個有差異；20 個映像檔各執行 12,000 幀，查找未命中 0 次；1,309 個測試；100% 語句及分支覆蓋率關卡檢查；除標準庫外不依賴任何 Python 套件。
 
 ```python
 import hardware
@@ -53,15 +53,14 @@ $C0:8000 is file offset 0x0600000
 
 由零開始到可用的副本共五步。第 4 步的 doctor 會確認前三步。
 
-1. **安裝 Python、git 和 Docker。**
+1. **只安裝 git 和 Docker。** Python 以及建構用到的每個工具都在本專案的 Docker 映像裏，第一個指令會建構它。
 
    | | Windows | macOS | Linux |
    |:--|:--|:--|:--|
-   | Python 3.12 或更新版本 | `winget install Python.Python.3.12` | `brew install python@3.12` | 發行版的 `python3` 套件 |
    | git | `winget install Git.Git` | `xcode-select --install` | 發行版的 `git` 套件 |
    | Docker | `winget install Docker.DockerDesktop`，然後啟動 Docker Desktop | Docker Desktop，或 `brew install colima docker` 後執行 `colima start` | Docker Engine，然後 `sudo systemctl start docker` |
 
-   在 Windows 上，本頁寫 `python3` 的地方請輸入 `py -3.12`。
+   在 Windows 上，本頁寫 `./run.sh` 的地方請輸入 `.\run.cmd`。
 
 2. **複製儲存庫，不要下載。**
 
@@ -71,58 +70,57 @@ $C0:8000 is file offset 0x0600000
    ```
 
    > [!CAUTION]
-   > 只有複製才能得到可用的副本。GitHub 上綠色的 **Code** 按鈕亦提供 **Download ZIP**，但 ZIP 在這裏永遠無法使用：本專案依賴的 9 個模型是以 git 子模組固定的獨立倉庫，ZIP 一個都不包含，之後亦無法補上。doctor 會把這樣的副本報告為下載的封存檔；請刪除它並複製。沒有加 `--recurse-submodules` 的複製，可以用 `git submodule update --init --recursive` 就地修復。
+   > 只有複製才能得到可用的副本。GitHub 上綠色的 **Code** 按鈕亦提供 **Download ZIP**，但 ZIP 在這裏永遠無法使用：本專案依賴的 9 個模型是以 git 子模組固定的獨立倉庫，ZIP 一個都不包含，之後亦無法補上。啟動腳本會拒絕這樣的副本並說明原因；請刪除它並複製。沒有加 `--recurse-submodules` 的複製，可以用 `git submodule update --init --recursive` 就地修復。
 
-3. **把傾印檔放進 `roms/`**，檔名按[傾印檔清單](#the-dumps)：`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`。然後檢查，你提供的每個傾印檔都應顯示 `ok`：
+3. **把傾印檔放進 `roms/`**，檔名按[傾印檔清單](#the-dumps)：`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`。然後檢查，你提供的每個傾印檔都應顯示 `ok`。這第一個指令會建構映像，需時數分鐘；之後的指令會即時開始：
 
    ```bash
-   python3 tools/identify.py
+   ./run.sh tools/identify.py
    ```
 
-4. **執行 doctor。** 它檢查副本、每個模型、每個傾印檔，以及 Docker 引擎是否在運行，最後說明下一步執行甚麼：
+4. **執行 doctor。** 它檢查副本、每個模型、每個傾印檔和映像中的工具，最後說明下一步執行甚麼：
 
    ```bash
-   python3 doctor.py
+   ./run.sh doctor.py
    ```
 
    ```
      N checks, nothing to report
-     next: python3 pack.py
+     next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
    ```
 
-   標有 `!` 的行，下一行寫着該怎麼做。它能發現的設定錯誤：
+   標有 `!` 的行，下一行寫着該怎麼做。doctor 和啟動腳本能發現的設定錯誤：
 
-   | doctor 顯示 | 怎樣做 |
+   | 提示 | 怎樣做 |
    |:--|:--|
-   | `checkout: no git metadata` | 刪除資料夾並複製，第 2 步 |
+   | `This folder has no git metadata` | 刪除資料夾並複製，第 2 步 |
+   | `Docker is not installed` | 第 1 步 |
+   | `Docker is installed but its engine is not answering` | 啟動 Docker Desktop，或 `sudo systemctl start docker` |
    | `... is not checked out` | `git submodule update --init --recursive` |
    | `cartridge ...: missing` | 第 3 步 |
-   | `docker engine: docker is not installed` | 第 1 步 |
-   | `docker engine: installed but not answering` | 啟動 Docker Desktop，或 `sudo systemctl start docker` |
 
 5. **建構。** 它把每個映像檔寫入 `dist/v<version>/`，每種裝置一個資料夾；從以你的卡帶或模擬器命名的資料夾中複製檔案。
 
    ```bash
-   python3 pack.py
+   ./run.sh pack.py
    ```
 
 ### 所需項目與 doctor
 
 | 需求 | 版本 |
 |:--|:--|
-| Python | 3.12 或更新 |
 | git | 任何版本，用來取得九個子模組 |
-| Docker | 任何現行版本，並須正在運行。[`build.py`](build.py)、[`pack.py`](pack.py) 以及與 snes9x 對照的檢查都在容器中執行其工具鏈 |
+| Docker | 任何現行版本，並須正在運行。Python 3.12、asar 1.81 和 snes9x 的建構都在 [`Dockerfile`](Dockerfile) 描述的映像中，[`run.sh`](run.sh) 在其中執行每個指令 |
 | 你自己的卡帶傾印 | 每個 4,194,304 位元組，放在 `roms/`，按[傾印檔案](#the-dumps)所列命名 |
 
-診斷腳本會列印機器資訊、該資料夾是否為 git 複製、每個已固定模型的版本、`roms/` 中每個傾印的狀態與 SHA-256、解壓器能否解碼、`docker` 是否在路徑上及其引擎是否回應，以及每個模型自身診斷腳本給出的報告。不在 `roms/` 中的傾印算作一項未通過的檢查。報告以兩行結束，第二行說明下一步執行甚麼。第一種形式的退出碼為 0，第二種為 1：
+診斷腳本在映像中執行，列印機器資訊、該資料夾是否為 git 複製、每個已固定模型的版本、`roms/` 中每個傾印的狀態與 SHA-256、解壓器能否解碼、映像中的 asar、sfemu 和 sdd1ref 是否存在，以及每個模型自身診斷腳本給出的報告。不在 `roms/` 中的傾印算作一項未通過的檢查。報告以兩行結束，第二行說明下一步執行甚麼。第一種形式的退出碼為 0，第二種為 1：
 
 ```
   N checks, nothing to report
-  next: python3 pack.py
+  next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
 
   K of N checks did not pass
-  next: fix the first line marked ! above, then run python3 doctor.py again
+  next: fix the first line marked ! above, then run ./run.sh doctor.py, or on Windows .\run.cmd doctor.py
 ```
 
 提交錯誤報告時，請貼上完整輸出。
@@ -136,9 +134,9 @@ $C0:8000 is file offset 0x0600000
 ### 建構映像檔
 
 ```bash
-python3 tools/identify.py
-python3 pack.py
-python3 pack.py usa
+./run.sh tools/identify.py
+./run.sh pack.py
+./run.sh pack.py usa
 ```
 
 [`tools/identify.py`](tools/identify.py) 按 [`artifacts.manifest.json`](artifacts.manifest.json) 檢查 `roms/` 中的每個傾印。[`pack.py`](pack.py) 為每個指定的地區建構無晶片映像檔，未指定時則兩個都建構。映像檔按裝置各寫一次，寫入 `dist/v<version>/` 下每個裝置一個資料夾，所有檔案都列於一份 `SHA256SUMS` 清單中。美國版如下：
@@ -164,7 +162,7 @@ python3 pack.py usa
 
 sd2snes 韌體只會在標頭宣告晶片 `$43` 或 `$45` 時使用其 96 Mbit 映射，v1.11.2 版本更要求檔案剛好是 12,583,424 位元組，而且它從不讀取前面的 512 位元組。Game Doctor 只讀取這 512 位元組，以放置位址空間的每個區域。兩種標頭都由 [snes-rom-image-python](https://github.com/gufranco/snes-rom-image-python) 的 `copier` 模組寫出：Game Doctor 映射從卡帶映射推導，並逐槽檢查，它與 herrkuhn 在 Game Doctor SF7 上運行兩個地區時所用的標頭逐位元組相同。
 
-[`pack.py`](pack.py) 依次在零售版傾印上執行下列每個修補，在 Docker 中組譯旁路，加入戰前表，根據凍結的數據流表排列映像檔，並改寫標頭以宣告為普通 ROM。寫入任何內容之前，它會對每個地區的數據流表執行 [`gate.py`](gate.py)，有任何發現即停止。
+[`pack.py`](pack.py) 依次在零售版傾印上執行下列每個修補，以映像中的 asar 組譯旁路，加入戰前表，根據凍結的數據流表排列映像檔，並改寫標頭以宣告為普通 ROM。寫入任何內容之前，它會對每個地區的數據流表執行 [`gate.py`](gate.py)，有任何發現即停止。
 
 | 命令 | 參數 | 退出碼 |
 |:--|:--|:--|
@@ -305,17 +303,17 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)` 從 [`version.py`](version.py) 加上版本號，版本 `0.0.0` 標記為 `-dev`。`pack.headed_name(region, release=None)` 以同樣方式為帶複製機標頭的形式命名，以 `.smc` 結尾。`pack.release_folder(release=None)` 是 `dist/` 下的 `v<version>` 資料夾。`pack.forms_of(region, image)` 列出一個地區寫出的每個檔案的路徑及位元組，`pack.DEVICES` 中每一項對應一個，對沒有標頭的映像檔引發 `NoHeader`。`pack.unify_headers(image)` 把第一個標頭複製到每個標題和映射位元組與之相同、位於庫末尾的副本上，令隨後的改寫覆蓋全部六處。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 傳回一個地區的完成映像檔，需要 Docker 和零售版傾印。`pack.REGIONS` 列出每個地區的零售版傾印與旁路修補。組譯失敗會引發 `pack.AssemblyFailed`，其中帶有 [`build.py`](build.py) 的輸出。
+`pack.output_name(region, release=None)` 從 [`version.py`](version.py) 加上版本號，版本 `0.0.0` 標記為 `-dev`。`pack.headed_name(region, release=None)` 以同樣方式為帶複製機標頭的形式命名，以 `.smc` 結尾。`pack.release_folder(release=None)` 是 `dist/` 下的 `v<version>` 資料夾。`pack.forms_of(region, image)` 列出一個地區寫出的每個檔案的路徑及位元組，`pack.DEVICES` 中每一項對應一個，對沒有標頭的映像檔引發 `NoHeader`。`pack.unify_headers(image)` 把第一個標頭複製到每個標題和映射位元組與之相同、位於庫末尾的副本上，令隨後的改寫覆蓋全部六處。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 傳回一個地區的完成映像檔，需要映像中的 asar 和零售版傾印。`pack.REGIONS` 列出每個地區的零售版傾印與旁路修補。組譯失敗會引發 `pack.AssemblyFailed`，其中帶有 [`build.py`](build.py) 的輸出。
 
 ### 全部命令
 
 | 命令 | 參數 | 作用 |
 |:--|:--|:--|
-| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>`，或 `--image` | 在沒有網絡的容器中以 asar 1.81 組譯修補，把輸出寫在修補旁邊。`--image` 只建構容器 |
+| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>` | 以映像中的 asar 1.81 組譯修補，把輸出寫在修補旁邊 |
 | [`rombuild.py`](rombuild.py) | `<patched-rom> <tagged-rom> <output.sfc>` | 根據帶標籤傾印中的數據流映射排列 96 Mbit 映像檔 |
 | [`mapcheck.py`](mapcheck.py) | `<rom>` | 檢查該傾印所屬地區的凍結表：重複、無法解碼的條目和掃描距離 |
 | [`patchrun.py`](patchrun.py) | `<built-image> <patched-rom> <tagged-rom>` | 對每個數據流在 65816 模型上執行組譯後的轉換常式，並比較其指向位置 |
-| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`，預設 500 個案例，種子 20260813 | 以容器中的 snes9x `sdd1emu.cpp` 和 Python 模型解壓隨機偏移，並作比較 |
+| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`，預設 500 個案例，種子 20260813 | 以建構進映像的 snes9x `sdd1emu.cpp` 和 Python 模型解壓隨機偏移，並作比較 |
 | [`sdd1map.py`](sdd1map.py) | `<tagged-rom> <source-rom> [output.bin]` | 從帶標籤傾印中的 `SDD1` 標籤讀出數據流映射 |
 | [`sdd1find.py`](sdd1find.py) | `<source-rom> <reference-rom> [start] [stop]` | 對照一個存有相同圖像解壓版本的傾印，按內容尋找數據流 |
 | [`sdd1sites.py`](sdd1sites.py) | `<source-rom> <tagged-rom>` | 列出壓縮數據以外每個寫入晶片暫存器的儲存指令，並反組譯每個啟動位置 |
@@ -339,8 +337,8 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip
 必需參數數目錯誤的命令以 2 退出。[`mapcheck.py`](mapcheck.py)、[`patchrun.py`](patchrun.py)、[`sdd1ref.py`](sdd1ref.py)、兩個驗證工具、[`tools/validate_all.py`](tools/validate_all.py)、[`tools/compare_audio.py`](tools/compare_audio.py) 與 [`tools/tour_audio.py`](tools/tour_audio.py) 在檢查失敗時以 1 退出，否則以 0 退出。
 
 ```bash
-python3 tools/verify_streams.py
-python3 tools/verify_image.py build/all/usa-both-free.sfc
+./run.sh tools/verify_streams.py
+./run.sh tools/verify_image.py build/all/usa-both-free.sfc
 ```
 
 ```
@@ -383,7 +381,7 @@ graph TD
     spcfast --> shinakuma["shinakuma.py：解鎖真豪鬼"]
     shinakuma --> gamefixes["gamefixes.py：十一項修正"]
     gamefixes --> repeatload["repeatload.py：略過已載入的取樣清單"]
-    repeatload --> bypass["build.py：在 Docker 內組譯旁路"]
+    repeatload --> bypass["build.py：以 asar 組譯旁路"]
     bypass --> cart[("4 MB 修補卡帶，仍需晶片")]
     bypass --> prefight["prefight.py：呼叫者改用預存的表"]
     tables[("凍結的數據流表")] --> gate["gate.py：拒絕有問題的表"]
@@ -537,13 +535,13 @@ Bank `$C0+k` 在 `$8000`-`$FFFF` 公開 bank `k` 的低半部，在 `$0000`-`$7F
 
 ```bash
 mkdir -p build
-python3 spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
-python3 shinakuma.py  build/step1.sfc          build/step2.sfc
-python3 gamefixes.py  build/step2.sfc          build/step3.sfc
-python3 repeatload.py build/step3.sfc          build/step4.sfc
-python3 build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
-python3 rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
-python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
+./run.sh spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
+./run.sh shinakuma.py  build/step1.sfc          build/step2.sfc
+./run.sh gamefixes.py  build/step2.sfc          build/step3.sfc
+./run.sh repeatload.py build/step3.sfc          build/step4.sfc
+./run.sh build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
+./run.sh rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
+./run.sh -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
 ```
 
 這個途徑根據帶標籤傾印中的數據流映射，建構不含戰前表的美國版映像檔。[`rombuild.py`](rombuild.py) 從標籤讀取 2,815 個數據流，比 [`pack.py`](pack.py) 所用凍結表中的 2,817 個少兩個：
@@ -579,8 +577,8 @@ ares、Mesen2、bsnes 和 Mednafen 尚未以這些映像檔測試過。
 [`spcfast.py`](spcfast.py) 替換取樣上傳迴圈，[`repeatload.py`](repeatload.py) 則在請求的清單已載入時跳過上傳。兩者都不可改變音效處理器最終持有的位元組。比較兩次執行結束時音效處理器的記憶體無法判定這一點，因為修補改變了時序，兩次執行停止時驅動程式處於不同位置。
 
 ```bash
-python3 tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
-python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
+./run.sh tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
+./run.sh tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
 ```
 
 比較以每次上傳為單位。卡帶交出的每個區塊都與仍在卡帶中的位元組核對，所以丟失一個位元組的迴圈會在丟失它的那個區塊上失敗。它也報告哪些來源曾被上傳，因為跳過只可能令上傳的來源變少，而不會變成不同的來源；它還報告每位元組的寫入次數，這正是較快的迴圈所改變的數字。`--roster` 和 `--budget` 設定走訪的角色和每名角色的幀數，預設為 18 和 4000。
@@ -611,7 +609,7 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 
 ## 是否正確
 
-解壓器與 snes9x 1.63 的 `sdd1emu.cpp` 作比較，後者在 [`ref/`](ref) 下已固定版本的容器中從原始碼建構。[`tools/verify_streams.py`](tools/verify_streams.py) 把美國版全部 2,817 個與日本版 2,855 個數據流送經兩者，沒有任何差異。[`tools/verify_image.py`](tools/verify_image.py) 然後透過完成映像檔的查找表，把每個數據流從映像檔中讀回。
+解壓器與 snes9x 1.63 的 `sdd1emu.cpp` 作比較，後者由 [`Dockerfile`](Dockerfile) 的 reference 階段連同 [`ref/`](ref) 中的驅動程式從原始碼建構。[`tools/verify_streams.py`](tools/verify_streams.py) 把美國版全部 2,817 個與日本版 2,855 個數據流送經兩者，沒有任何差異。[`tools/verify_image.py`](tools/verify_image.py) 然後透過完成映像檔的查找表，把每個數據流從映像檔中讀回。
 
 映像檔矩陣為兩個地區乘四種修補組合乘兩種卡帶形式，共十六個映像檔，另加四個各去掉一個修補的美國版對照建構。[`tools/validate_all.py`](tools/validate_all.py) 在 [`emu/`](emu) 下的測試裝置上把每個映像檔執行 12,000 幀。在最近一次記錄的執行中，全部 20 個都能載入，全部交付 12,000 幀中的 12,000 幀，沒有一個出現查找未命中。
 
@@ -686,27 +684,25 @@ Super EverDrive 這一行只以該相片為依據。這款卡帶沒有 S-DD1，�
 | 行為守則 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
 ```bash
-uvx ruff@0.16.3 format --check .
-uvx ruff@0.16.3 check .
-pnpm install --frozen-lockfile && pnpm run format:check
-uvx --python 3.12 mypy==1.14.1
-for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$module" || echo "FAILED $module"; done
-python3 doctor.py
+./run.sh --gates
+./run.sh doctor.py
 ```
 
-測試套件共 1,300 個測試，分佈於 49 個模組：766 個在分析模組旁，516 個在工具旁，18 個在 [`conformance/`](conformance) 下。每個模組的測試檔案都在其旁邊，以其命名，並可獨立執行。需要零售版傾印的測試放在模組旁邊的 `<module>.retail.test.py` 檔案內，在沒有傾印時報告為跳過。覆蓋率是在 [`pyproject.toml`](pyproject.toml) 中設定的 100% 語句及分支關卡檢查，量度時不計這些檔案，所以在沒有傾印的機器上同樣成立，CI 每次推送都會強制執行。
+測試套件共 1,309 個測試，分佈於 51 個模組：775 個在分析模組旁，516 個在工具旁，18 個在 [`conformance/`](conformance) 下。每個模組的測試檔案都在其旁邊，以其命名，並可獨立執行。需要零售版傾印的測試放在模組旁邊的 `<module>.retail.test.py` 檔案內，在沒有傾印時報告為跳過。覆蓋率是在 [`pyproject.toml`](pyproject.toml) 中設定的 100% 語句及分支關卡檢查，量度時不計這些檔案，所以在沒有傾印的機器上同樣成立，CI 每次推送都會強制執行。
 
-建構在 Docker 中以已固定版本的工具鏈、無網絡和非 root 用戶執行，從不在主機上執行。[`asm/`](asm) 中的組合語言是唯一帶有註解的原始碼：進入與退出狀態、暫存器寬度，以及每個還原位址的來源。
+每個指令都在專案映像中執行，使用已固定版本的工具鏈、無網絡和你自己的用戶 ID，主機上不安裝任何東西。`./run.sh --gates` 以與 CI 相同的版本依次執行所有檢查。[`asm/`](asm) 中的組合語言是唯一帶有註解的原始碼：進入與退出狀態、暫存器寬度，以及每個還原位址的來源。
 
 <details>
 <summary><strong>專案結構</strong></summary>
 
 | 路徑 | 內容 |
 |:--|:--|
-| [`asm/`](asm) | 以 65816 和 SPC700 組合語言寫成的修補，包括旁路、轉換程序和快速上傳，以及執行 asar 1.81 的容器 |
+| [`asm/`](asm) | 以 65816 和 SPC700 組合語言寫成的修補，包括旁路、轉換程序和快速上傳 |
 | [`tools/`](tools) | 十六個工具：傾印識別、數據流與映像檔驗證、映像檔矩陣、音效比較和日版數據流搜尋 |
 | [`emu/`](emu) | 映像檔矩陣所用的模擬器測試框架，以 snes9x 1.63 建構，並加入窗口式映射 |
-| [`ref/`](ref) | 建構 snes9x 1.63 的 `sdd1emu.cpp` 作為解壓基準的容器 |
+| [`ref/`](ref) | 映像圍繞 snes9x 1.63 的 `sdd1emu.cpp` 建構的驅動程式，即解壓基準 |
+| [`Dockerfile`](Dockerfile) | 每個指令執行所在的唯一映像：asar、模擬器測試框架、基準、Python 3.12，以及包含所有檢查和測試工具的 gates 階段 |
+| [`run.sh`](run.sh)、[`run.ps1`](run.ps1)、[`run.cmd`](run.cmd) | 建構映像並在其中執行指令的啟動腳本 |
 | [`conformance/`](conformance) | 來源分歧紀錄，以及令它與 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 保持一致的測試 |
 | [`photos/`](photos) | 映像檔在硬件上運行的相片，在本文件出現處註明作者 |
 | [`scripts/`](scripts) | 為 [`version.py`](version.py) 和 [`CITATION.cff`](CITATION.cff) 寫入版本號的發佈腳本 |

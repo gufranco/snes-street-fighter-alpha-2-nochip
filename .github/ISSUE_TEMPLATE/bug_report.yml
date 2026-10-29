@@ -21,12 +21,11 @@ body:
 
         macOS and Linux:
 
-            python3 -m doctor
+            ./run.sh doctor.py
 
-        Windows, whichever of these resolves:
+        Windows:
 
-            python -m doctor
-            py -3 -m doctor
+            .\run.cmd doctor.py
 
         It reports the machine as well as the package, so most answers are in
         there already. If it will not run at all, say so here and paste whatever
@@ -74,7 +73,7 @@ body:
       description: Commands we can run as they stand, with no editing.
       render: shell
       placeholder: |
-        python3 gate.py usa
+        ./run.sh gate.py usa
     validations:
       required: true
 

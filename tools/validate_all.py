@@ -6,6 +6,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+import toolchain  # noqa: E402
+
 IMAGES = ROOT / "build" / "all"
 LOGS = ROOT / "build" / "logs"
 
@@ -26,26 +30,20 @@ def run(image: Path, mapping: str, execute: Callable[..., Any] = subprocess.run)
     log = LOGS / f"{image.stem}{mapping}.txt"
     with log.open("wb") as handle:
         execute(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "--network=none",
-                "-e",
-                "SFDRIVE=1",
-                "-e",
-                f"SFBRIGHT={BRIGHT_EVERY}",
-                "-e",
-                "SFSCANLEN=1",
-                "-e",
-                "SFAPU=1",
-                "-v",
-                f"{ROOT}:/work",
-                "snes-street-fighter-alpha-2-nochip/sfemu:snes9x-1.63",
-                str(image.relative_to(ROOT)),
-                str(FRAMES),
-                mapping,
-            ],
+            toolchain.command(
+                toolchain.EMULATOR,
+                [
+                    "SFDRIVE=1",
+                    f"SFBRIGHT={BRIGHT_EVERY}",
+                    "SFSCANLEN=1",
+                    "SFAPU=1",
+                ],
+                [
+                    str(image.relative_to(ROOT)),
+                    str(FRAMES),
+                    mapping,
+                ],
+            ),
             stdout=handle,
             stderr=subprocess.DEVNULL,
             check=False,

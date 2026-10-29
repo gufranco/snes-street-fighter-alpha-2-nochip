@@ -12,8 +12,8 @@ did.
 
 - [ ] `ruff format --check .` and `ruff check .` are clean
 - [ ] Every test module runs
-- [ ] `python3 doctor.py` reports nothing on this machine
-- [ ] Where the dumps are present, `python3 tools/identify.py` and `python3 gate.py` are both clean
+- [ ] `./run.sh doctor.py` reports nothing
+- [ ] Where the dumps are present, `./run.sh tools/identify.py` and `./run.sh gate.py` are both clean
 
 ## If this changes what an image contains
 

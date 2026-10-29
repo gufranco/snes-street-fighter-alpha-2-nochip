@@ -115,14 +115,20 @@ class CommandTest(unittest.TestCase):
         code = verify_streams.main(
             argv,
             say=lambda *args, **_k: said.append(str(args[0])),
-            **{"build": lambda: 0, "check": lambda _r: ([1, 2, 3], []), **rest},
+            **{"available": lambda: True, "check": lambda _r: ([1, 2, 3], []), **rest},
         )
         return code, said
 
-    def test_a_build_that_fails_stops_the_run(self) -> None:
-        code, said = self.run_with(["verify_streams.py"], build=lambda: 1)
+    def test_a_missing_reference_stops_the_run_and_names_the_launcher(self) -> None:
+        # Arrange
+        argv = ["verify_streams.py"]
 
-        self.assertEqual((code, "failed to build" in said[0]), (1, True))
+        # Act
+        code, said = self.run_with(argv, available=lambda: False)
+
+        # Assert
+        self.assertEqual(code, 1)
+        self.assertIn("./run.sh <script>", said[0])
 
     def test_a_region_where_everything_agrees_passes(self) -> None:
         code, said = self.run_with(["verify_streams.py", "jp"])

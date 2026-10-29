@@ -22,7 +22,7 @@
 
 ---
 
-5,672本のストリームを展開してsnes9xの`sdd1emu.cpp`とバイト単位で比較し、相違は0件です。20本のイメージをそれぞれ12,000フレーム実行し、参照ミスは0件です。テストは1,300件、ステートメントとブランチの100%カバレッジゲートがあり、標準ライブラリ以外のPython依存はありません。
+5,672本のストリームを展開してsnes9xの`sdd1emu.cpp`とバイト単位で比較し、相違は0件です。20本のイメージをそれぞれ12,000フレーム実行し、参照ミスは0件です。テストは1,309件、ステートメントとブランチの100%カバレッジゲートがあり、標準ライブラリ以外のPython依存はありません。
 
 ```python
 import hardware
@@ -53,15 +53,14 @@ $C0:8000 is file offset 0x0600000
 
 何もない状態から動くチェックアウトまで5つの手順です。手順4のドクターが最初の3つを確認します。
 
-1. **Python、git、Dockerをインストールします。**
+1. **gitとDockerだけをインストールします。** Pythonとビルドが使うすべてのツールはこのプロジェクトのDockerイメージに入っており、最初のコマンドがそれをビルドします。
 
    | | Windows | macOS | Linux |
    |:--|:--|:--|:--|
-   | Python 3.12以降 | `winget install Python.Python.3.12` | `brew install python@3.12` | ディストリビューションの`python3`パッケージ |
    | git | `winget install Git.Git` | `xcode-select --install` | ディストリビューションの`git`パッケージ |
    | Docker | `winget install Docker.DockerDesktop`を実行し、Docker Desktopを起動 | Docker Desktop、または`brew install colima docker`の後に`colima start` | Docker Engineを入れ、`sudo systemctl start docker` |
 
-   Windowsでは、このページの`python3`を`py -3.12`に置き換えてください。
+   Windowsでは、このページの`./run.sh`を`.\run.cmd`に置き換えてください。
 
 2. **リポジトリをクローンします。ダウンロードはしないでください。**
 
@@ -71,58 +70,57 @@ $C0:8000 is file offset 0x0600000
    ```
 
    > [!CAUTION]
-   > 動くコピーを得る方法はクローンだけです。GitHubの緑の**Code**ボタンには**Download ZIP**もありますが、ZIPはここでは決して動きません。このプロジェクトが使う9個のモデルはgitのサブモジュールとして固定された別のリポジトリで、ZIPにはどれも含まれず、後から追加することもできません。ドクターはそのようなコピーをダウンロードしたアーカイブとして報告します。削除してクローンしてください。`--recurse-submodules`なしでクローンした場合は、`git submodule update --init --recursive`でその場で直せます。
+   > 動くコピーを得る方法はクローンだけです。GitHubの緑の**Code**ボタンには**Download ZIP**もありますが、ZIPはここでは決して動きません。このプロジェクトが使う9個のモデルはgitのサブモジュールとして固定された別のリポジトリで、ZIPにはどれも含まれず、後から追加することもできません。ランチャーはそのようなコピーを拒否し、その旨を表示します。削除してクローンしてください。`--recurse-submodules`なしでクローンした場合は、`git submodule update --init --recursive`でその場で直せます。
 
-3. **ダンプを`roms/`に置きます。** 名前は[ダンプの一覧](#the-dumps)のとおり`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`です。その後で確認します。用意した各ダンプが`ok`と表示されるはずです。
+3. **ダンプを`roms/`に置きます。** 名前は[ダンプの一覧](#the-dumps)のとおり`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`です。その後で確認します。用意した各ダンプが`ok`と表示されるはずです。この最初のコマンドはイメージをビルドするため数分かかり、2回目以降はすぐに始まります。
 
    ```bash
-   python3 tools/identify.py
+   ./run.sh tools/identify.py
    ```
 
-4. **ドクターを実行します。** チェックアウト、各モデル、各ダンプ、Dockerのエンジンが動いているかを確認し、最後に次に実行するものを示します。
+4. **ドクターを実行します。** チェックアウト、各モデル、各ダンプ、イメージ内のツールを確認し、最後に次に実行するものを示します。
 
    ```bash
-   python3 doctor.py
+   ./run.sh doctor.py
    ```
 
    ```
      N checks, nothing to report
-     next: python3 pack.py
+     next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
    ```
 
-   `!`の付いた行は、その下の行にすべきことを書いています。ドクターが見つける設定の誤りは次のとおりです。
+   `!`の付いた行は、その下の行にすべきことを書いています。ドクターとランチャーが見つける設定の誤りは次のとおりです。
 
-   | ドクターの表示 | すること |
+   | 表示 | すること |
    |:--|:--|
-   | `checkout: no git metadata` | フォルダーを削除してクローンする（手順2） |
+   | `This folder has no git metadata` | フォルダーを削除してクローンする（手順2） |
+   | `Docker is not installed` | 手順1 |
+   | `Docker is installed but its engine is not answering` | Docker Desktopを起動するか、`sudo systemctl start docker` |
    | `... is not checked out` | `git submodule update --init --recursive` |
    | `cartridge ...: missing` | 手順3 |
-   | `docker engine: docker is not installed` | 手順1 |
-   | `docker engine: installed but not answering` | Docker Desktopを起動するか、`sudo systemctl start docker` |
 
 5. **ビルドします。** すべてのイメージを機器ごとのフォルダーに分けて`dist/v<version>/`へ書き出します。使うカートリッジやエミュレーターの名前のフォルダーからファイルをコピーしてください。
 
    ```bash
-   python3 pack.py
+   ./run.sh pack.py
    ```
 
 ### 必要なものとドクター
 
 | 要件 | バージョン |
 |:--|:--|
-| Python | 3.12以降 |
 | git | 任意。9つのサブモジュールの取得に使います |
-| Docker | 現行の任意のリリースで、起動していること。[`build.py`](build.py)、[`pack.py`](pack.py)、snes9xとの照合はツールチェーンをコンテナで実行します |
+| Docker | 現行の任意のリリースで、起動していること。Python 3.12、asar 1.81、snes9xのビルドは[`Dockerfile`](Dockerfile)が定めるイメージに入っており、[`run.sh`](run.sh)がすべてのコマンドをその中で実行します |
 | 自分のカートリッジダンプ | 各4,194,304バイト。`roms/`に置き、[ダンプ](#the-dumps)に記載の名前にします |
 
-ドクターは、マシン、フォルダーがgitのクローンかどうか、固定された各モデルのバージョン、`roms/`内の各ダンプの状態とSHA-256、展開器がデコードできるか、`docker`がパス上にありエンジンが応答するか、各モデル自身のドクターが出す報告を表示します。`roms/`にないダンプは、合格しなかったチェックとして数えます。報告は2行で終わり、2行目は次に実行するものを示します。終了コードは1つ目の形式なら0、2つ目なら1です。
+ドクターはイメージの中で動き、マシン、フォルダーがgitのクローンかどうか、固定された各モデルのバージョン、`roms/`内の各ダンプの状態とSHA-256、展開器がデコードできるか、イメージ内のasar、sfemu、sdd1refがあるか、各モデル自身のドクターが出す報告を表示します。`roms/`にないダンプは、合格しなかったチェックとして数えます。報告は2行で終わり、2行目は次に実行するものを示します。終了コードは1つ目の形式なら0、2つ目なら1です。
 
 ```
   N checks, nothing to report
-  next: python3 pack.py
+  next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
 
   K of N checks did not pass
-  next: fix the first line marked ! above, then run python3 doctor.py again
+  next: fix the first line marked ! above, then run ./run.sh doctor.py, or on Windows .\run.cmd doctor.py
 ```
 
 バグ報告には出力全体を貼り付けてください。
@@ -136,9 +134,9 @@ $C0:8000 is file offset 0x0600000
 ### イメージの構築
 
 ```bash
-python3 tools/identify.py
-python3 pack.py
-python3 pack.py usa
+./run.sh tools/identify.py
+./run.sh pack.py
+./run.sh pack.py usa
 ```
 
 [`tools/identify.py`](tools/identify.py)は、`roms/`内の各ダンプを[`artifacts.manifest.json`](artifacts.manifest.json)と照合します。[`pack.py`](pack.py)は、指定された各リージョンのチップなしイメージを構築します。何も指定しなければ両方を構築します。イメージは機器ごとに1回ずつ、機器ごとのフォルダーに分けて`dist/v<version>/`へ書き出し、すべてのファイルを`SHA256SUMS`マニフェストに記載します。USA版の場合は次のとおりです。
@@ -164,7 +162,7 @@ python3 pack.py usa
 
 sd2snesファームウェアが96 Mbitマップを使うのは、ヘッダーがチップ`$43`または`$45`を宣言している場合だけで、リリースv1.11.2ではさらにファイルがちょうど12,583,424バイトである必要があり、前にある512バイトは読みません。Game Doctorは、アドレス空間の各領域を配置するためにその512バイトだけを読みます。どちらのヘッダーも[snes-rom-image-python](https://github.com/gufranco/snes-rom-image-python)の`copier`モジュールが書き出します。Game Doctorのマップはカートリッジのマップから導出してスロットごとに確かめたもので、herrkuhnさんがGame Doctor SF7で両リージョンを動かしたヘッダーとバイト単位で同じです。
 
-[`pack.py`](pack.py)は、市販ダンプに対して下記のパッチを順に実行し、Dockerでバイパスをアセンブルし、試合前テーブルを追加し、固定されたストリームテーブルからイメージを配置し、プレーンなROMを宣言するようヘッダーを書き換えます。何かを書き出す前に、各リージョンのストリームテーブルに対して[`gate.py`](gate.py)を実行し、指摘が1つでもあれば停止します。
+[`pack.py`](pack.py)は、市販ダンプに対して下記のパッチを順に実行し、イメージ内のasarでバイパスをアセンブルし、試合前テーブルを追加し、固定されたストリームテーブルからイメージを配置し、プレーンなROMを宣言するようヘッダーを書き換えます。何かを書き出す前に、各リージョンのストリームテーブルに対して[`gate.py`](gate.py)を実行し、指摘が1つでもあれば停止します。
 
 | コマンド | 引数 | 終了コード |
 |:--|:--|:--|
@@ -305,17 +303,17 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)`は[`version.py`](version.py)のバージョンを付け、バージョン`0.0.0`には`-dev`を付けます。`pack.headed_name(region, release=None)`は、コピー機ヘッダー付きの形に同じ方法で`.smc`で終わる名前を付けます。`pack.release_folder(release=None)`は`dist/`の下の`v<version>`フォルダーです。`pack.forms_of(region, image)`は、1つのリージョンが書き出す各ファイルのパスとバイト列を`pack.DEVICES`の項目ごとに1つずつ返し、ヘッダーのないイメージには`NoHeader`を送出します。`pack.unify_headers(image)`は、タイトルとマップバイトが一致するバンク末尾のすべてのコピーに最初のヘッダーを上書きするため、続く書き換えが6つすべてに届きます。`pack.manifest_line(name, image)`は`SHA256SUMS`の1行です。`pack.build(region, workdir)`は1つのリージョンの完成イメージを返し、Dockerと市販ダンプを必要とします。`pack.REGIONS`は、各リージョンの市販ダンプとバイパスパッチを示します。アセンブルに失敗すると、[`build.py`](build.py)の出力を持つ`pack.AssemblyFailed`を送出します。
+`pack.output_name(region, release=None)`は[`version.py`](version.py)のバージョンを付け、バージョン`0.0.0`には`-dev`を付けます。`pack.headed_name(region, release=None)`は、コピー機ヘッダー付きの形に同じ方法で`.smc`で終わる名前を付けます。`pack.release_folder(release=None)`は`dist/`の下の`v<version>`フォルダーです。`pack.forms_of(region, image)`は、1つのリージョンが書き出す各ファイルのパスとバイト列を`pack.DEVICES`の項目ごとに1つずつ返し、ヘッダーのないイメージには`NoHeader`を送出します。`pack.unify_headers(image)`は、タイトルとマップバイトが一致するバンク末尾のすべてのコピーに最初のヘッダーを上書きするため、続く書き換えが6つすべてに届きます。`pack.manifest_line(name, image)`は`SHA256SUMS`の1行です。`pack.build(region, workdir)`は1つのリージョンの完成イメージを返し、イメージ内のasarと市販ダンプを必要とします。`pack.REGIONS`は、各リージョンの市販ダンプとバイパスパッチを示します。アセンブルに失敗すると、[`build.py`](build.py)の出力を持つ`pack.AssemblyFailed`を送出します。
 
 ### すべてのコマンド
 
 | コマンド | 引数 | 動作 |
 |:--|:--|:--|
-| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>`、または`--image` | ネットワークのないコンテナでasar 1.81を使ってパッチをアセンブルし、出力をパッチの隣に書き出します。`--image`はコンテナの構築だけを行います |
+| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>` | イメージ内のasar 1.81でパッチをアセンブルし、出力をパッチの隣に書き出します |
 | [`rombuild.py`](rombuild.py) | `<patched-rom> <tagged-rom> <output.sfc>` | タグ付きダンプ内のストリームマップから96 Mbitのイメージを配置します |
 | [`mapcheck.py`](mapcheck.py) | `<rom>` | ダンプのリージョンに対応する固定テーブルを検査します。重複、デコードできないエントリ、走査距離です |
 | [`patchrun.py`](patchrun.py) | `<built-image> <patched-rom> <tagged-rom>` | アセンブル済みの変換ルーチンを65816モデル上ですべてのストリームについて実行し、指す先を比較します |
-| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`、既定は500ケースとシード20260813 | ランダムなオフセットを、コンテナ内のsnes9xの`sdd1emu.cpp`とPythonモデルの両方で展開して比較します |
+| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`、既定は500ケースとシード20260813 | ランダムなオフセットを、イメージに組み込んだsnes9xの`sdd1emu.cpp`とPythonモデルの両方で展開して比較します |
 | [`sdd1map.py`](sdd1map.py) | `<tagged-rom> <source-rom> [output.bin]` | タグ付きダンプ内の`SDD1`タグからストリームマップを読み出します |
 | [`sdd1find.py`](sdd1find.py) | `<source-rom> <reference-rom> [start] [stop]` | 同じグラフィックスを展開済みで持つダンプと照らし合わせ、内容からストリームを見つけます |
 | [`sdd1sites.py`](sdd1sites.py) | `<source-rom> <tagged-rom>` | 圧縮データ外にあるチップのレジスタへの書き込みをすべて列挙し、各起動箇所を逆アセンブルします |
@@ -339,8 +337,8 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip
 必須引数の数が誤っているコマンドは2で終了します。[`mapcheck.py`](mapcheck.py)、[`patchrun.py`](patchrun.py)、[`sdd1ref.py`](sdd1ref.py)、2つのverifyツール、[`tools/validate_all.py`](tools/validate_all.py)、[`tools/compare_audio.py`](tools/compare_audio.py)、[`tools/tour_audio.py`](tools/tour_audio.py)は、チェックが失敗すると1、それ以外は0で終了します。
 
 ```bash
-python3 tools/verify_streams.py
-python3 tools/verify_image.py build/all/usa-both-free.sfc
+./run.sh tools/verify_streams.py
+./run.sh tools/verify_image.py build/all/usa-both-free.sfc
 ```
 
 ```
@@ -383,7 +381,7 @@ graph TD
     spcfast --> shinakuma["shinakuma.py：真・豪鬼の解禁"]
     shinakuma --> gamefixes["gamefixes.py：11件の修正"]
     gamefixes --> repeatload["repeatload.py：読み込み済みのサンプルリストを省略"]
-    repeatload --> bypass["build.py：バイパスをDockerでアセンブル"]
+    repeatload --> bypass["build.py：バイパスをasarでアセンブル"]
     bypass --> cart[("4 MBパッチ済みカートリッジ、チップは引き続き必要")]
     bypass --> prefight["prefight.py：呼び出し元を格納済みテーブルへ"]
     tables[("凍結済みストリームテーブル")] --> gate["gate.py：不正なテーブルを拒否"]
@@ -537,13 +535,13 @@ S-DD1はメモリをマッピングしますが、Alpha 2はこの機能を使�
 
 ```bash
 mkdir -p build
-python3 spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
-python3 shinakuma.py  build/step1.sfc          build/step2.sfc
-python3 gamefixes.py  build/step2.sfc          build/step3.sfc
-python3 repeatload.py build/step3.sfc          build/step4.sfc
-python3 build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
-python3 rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
-python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
+./run.sh spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
+./run.sh shinakuma.py  build/step1.sfc          build/step2.sfc
+./run.sh gamefixes.py  build/step2.sfc          build/step3.sfc
+./run.sh repeatload.py build/step3.sfc          build/step4.sfc
+./run.sh build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
+./run.sh rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
+./run.sh -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
 ```
 
 この手順は、タグ付きダンプ内のストリームマップから、試合前テーブルなしのUSA版イメージを構築します。[`rombuild.py`](rombuild.py)はタグから2,815本のストリームを読みます。これは[`pack.py`](pack.py)が使う固定テーブルの2,817本より2本少ない数です。
@@ -579,8 +577,8 @@ ares、Mesen2、bsnes、Mednafenは、これらのイメージでは実行され
 [`spcfast.py`](spcfast.py)はサンプル転送ループを置き換え、[`repeatload.py`](repeatload.py)は要求されたリストが読み込み済みのときに転送をスキップします。どちらも、オーディオプロセッサが最終的に保持するバイトを変えてはなりません。2回の実行の終了時にオーディオプロセッサのメモリを比較しても、これは判定できません。パッチがタイミングを変えるため、2回の実行はドライバーが異なる地点にある状態で止まるからです。
 
 ```bash
-python3 tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
-python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
+./run.sh tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
+./run.sh tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
 ```
 
 比較は転送ごとに行います。カートリッジが渡すすべてのブロックを、カートリッジにまだあるバイトと照合するため、バイトを落とすループは、それを落としたブロックで失敗します。どのソースが転送されたかも報告します。スキップは転送するソースを減らすことはあっても、別のソースを転送することはないためです。また、1バイトあたりの書き込み回数も報告します。これは高速なループが変える数値です。`--roster`と`--budget`は巡回するキャラクターとキャラクターごとのフレーム数を設定し、既定は18と4000です。
@@ -611,7 +609,7 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 
 ## 正しいか
 
-展開器は、[`ref/`](ref)にある固定されたコンテナでソースからビルドしたsnes9x 1.63の`sdd1emu.cpp`と比較しています。[`tools/verify_streams.py`](tools/verify_streams.py)は、USA版2,817本と日本版2,855本のすべてのストリームを両方に通し、相違はありません。その後、[`tools/verify_image.py`](tools/verify_image.py)が、完成イメージから参照テーブルを通じてすべてのストリームを読み戻します。
+展開器は、[`Dockerfile`](Dockerfile)のreferenceステージが[`ref/`](ref)のドライバーと共にソースからビルドしたsnes9x 1.63の`sdd1emu.cpp`と比較しています。[`tools/verify_streams.py`](tools/verify_streams.py)は、USA版2,817本と日本版2,855本のすべてのストリームを両方に通し、相違はありません。その後、[`tools/verify_image.py`](tools/verify_image.py)が、完成イメージから参照テーブルを通じてすべてのストリームを読み戻します。
 
 イメージの組み合わせは、2リージョン×4パッチセット×2カートリッジ形式の16本と、パッチを1つずつ外したUSA版の対照ビルド4本です。[`tools/validate_all.py`](tools/validate_all.py)は、それぞれを[`emu/`](emu)のハーネス上で12,000フレーム実行します。最後に記録された実行では、20本すべてが読み込まれ、すべてが12,000フレーム中12,000フレームを出力し、参照ミスはありませんでした。
 
@@ -686,27 +684,25 @@ Super EverDriveの行の根拠はその写真だけです。このカートリ�
 | 行動規範 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
 ```bash
-uvx ruff@0.16.3 format --check .
-uvx ruff@0.16.3 check .
-pnpm install --frozen-lockfile && pnpm run format:check
-uvx --python 3.12 mypy==1.14.1
-for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$module" || echo "FAILED $module"; done
-python3 doctor.py
+./run.sh --gates
+./run.sh doctor.py
 ```
 
-テストスイートは49モジュールにわたる1,300件のテストです。分析モジュールの隣に766件、ツールの隣に516件、[`conformance/`](conformance)に18件あります。各モジュールには、その名前を付けたテストファイルが隣にあり、単独で実行できます。市販ダンプを必要とするテストは、モジュールの隣の`<module>.retail.test.py`ファイルに置かれ、ダンプがなければスキップとして報告されます。カバレッジは、[`pyproject.toml`](pyproject.toml)で設定された100%のステートメントとブランチのゲートで、これらのファイルを除いて測定します。そのためダンプのないマシンでも成立し、CIがプッシュのたびに強制します。
+テストスイートは51モジュールにわたる1,309件のテストです。分析モジュールの隣に775件、ツールの隣に516件、[`conformance/`](conformance)に18件あります。各モジュールには、その名前を付けたテストファイルが隣にあり、単独で実行できます。市販ダンプを必要とするテストは、モジュールの隣の`<module>.retail.test.py`ファイルに置かれ、ダンプがなければスキップとして報告されます。カバレッジは、[`pyproject.toml`](pyproject.toml)で設定された100%のステートメントとブランチのゲートで、これらのファイルを除いて測定します。そのためダンプのないマシンでも成立し、CIがプッシュのたびに強制します。
 
-ビルドは、固定されたツールチェーン、ネットワークなし、非rootユーザーでDocker内で実行し、ホストでは決して実行しません。[`asm/`](asm)内のアセンブリは、コメントを含む唯一のソースです。コメントには、入口と出口の状態、レジスタ幅、復元した各アドレスの出所が書かれています。
+すべてのコマンドはプロジェクトのイメージ内で、固定されたツールチェーン、ネットワークなし、あなた自身のユーザーIDで実行し、ホストには何もインストールしません。`./run.sh --gates`はCIと同じバージョンですべてのゲートを順に実行します。[`asm/`](asm)内のアセンブリは、コメントを含む唯一のソースです。コメントには、入口と出口の状態、レジスタ幅、復元した各アドレスの出所が書かれています。
 
 <details>
 <summary><strong>プロジェクト構成</strong></summary>
 
 | パス | 内容 |
 |:--|:--|
-| [`asm/`](asm) | 65816とSPC700のアセンブリによるパッチです。バイパス、変換ルーチン、高速アップロードを含み、asar 1.81を実行するコンテナも置いています |
+| [`asm/`](asm) | 65816とSPC700のアセンブリによるパッチです。バイパス、変換ルーチン、高速アップロードを含みます |
 | [`tools/`](tools) | 16個のツールです。ダンプの識別、ストリームとイメージの検証、イメージマトリクス、オーディオ比較、日本版ストリームの探索を行います |
 | [`emu/`](emu) | イメージマトリクスを実行するエミュレータハーネスです。snes9x 1.63にウィンドウ方式のマップを加えて構築します |
-| [`ref/`](ref) | snes9x 1.63の`sdd1emu.cpp`を展開の基準としてビルドするコンテナです |
+| [`ref/`](ref) | イメージがsnes9x 1.63の`sdd1emu.cpp`と共にビルドするドライバーで、展開の基準です |
+| [`Dockerfile`](Dockerfile) | すべてのコマンドが動く唯一のイメージです。asar、エミュレータハーネス、基準、Python 3.12、すべてのリントとテストのツールを持つgatesステージを含みます |
+| [`run.sh`](run.sh)、[`run.ps1`](run.ps1)、[`run.cmd`](run.cmd) | イメージをビルドし、その中でコマンドを実行するランチャーです |
 | [`conformance/`](conformance) | 相違の記録と、それを[`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md)と一致させるテストです |
 | [`photos/`](photos) | ハードウェアでイメージを動かした写真です。この文書で使う箇所にクレジットを記載しています |
 | [`scripts/`](scripts) | [`version.py`](version.py)と[`CITATION.cff`](CITATION.cff)にバージョンを書き込むリリーススクリプトです |

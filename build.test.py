@@ -3,6 +3,7 @@ import importlib.util
 import io
 import tempfile
 import unittest
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -20,40 +21,77 @@ def load_module() -> Any:
 bd = load_module()
 
 
-def _record(into: list[Any], args: list[str]) -> int:
-    into.append(args)
-    return 0
+def _recording(seen: list[Any]) -> Callable[[list[str]], int]:
+
+    def _run(args: list[str]) -> int:
+        seen.append(args)
+        return 0
+
+    return _run
+
+
+def _present(_program: str) -> str:
+    return "/usr/local/bin/asar"
+
+
+def _absent(_program: str) -> None:
+    return None
 
 
 class ImageTest(unittest.TestCase):
-    def test_the_image_tag_is_pinned_not_latest(self) -> None:
-        self.assertNotIn(":latest", bd.IMAGE)
-        self.assertIn(":", bd.IMAGE)
+    def test_the_assembler_is_the_one_the_image_carries(self) -> None:
+        # Arrange
+        work = Path("/w")
 
-    def test_the_dockerfile_sits_beside_the_sources(self) -> None:
-        self.assertTrue((bd.ASM_DIR / "Dockerfile").exists())
+        # Act
+        args = bd.patch_command(work, "p.asm", "rom.sfc")
+
+        # Assert
+        self.assertIn("asar", args)
+        self.assertNotIn("docker", args)
+
+    def test_the_assembly_sources_sit_where_the_cartridge_looks(self) -> None:
+        # Arrange
+        expected = MODULE_PATH.parent / "asm"
+
+        # Act
+        found = bd.ASM_DIR
+
+        # Assert
+        self.assertEqual(found, expected)
+        self.assertTrue((found / "sdd1-bypass.asm").exists())
 
 
 class CommandTest(unittest.TestCase):
-    def test_the_build_command_names_the_pinned_tag(self) -> None:
-        args = bd.build_image_command()
+    def test_the_assembler_runs_in_the_folder_of_the_patch(self) -> None:
+        # Arrange
+        work = Path("/w")
 
-        self.assertIn("build", args)
-        self.assertIn(bd.IMAGE, args)
+        # Act
+        args = bd.patch_command(work, "p.asm", "rom.sfc")
 
-    def test_the_patch_command_mounts_the_work_tree_read_write(self) -> None:
-        args = bd.patch_command(Path("/w"), "p.asm", "rom.sfc")
+        # Assert
+        self.assertEqual(args[:2], ["env", "--chdir=/w"])
 
-        joined = " ".join(args)
-        self.assertIn("--rm", args)
-        self.assertIn("/w:/work", joined)
-        self.assertIn("p.asm", args)
-        self.assertIn("rom.sfc", args)
+    def test_the_patch_and_the_image_are_named_last(self) -> None:
+        # Arrange
+        work = Path("/w")
 
-    def test_the_container_runs_without_network(self) -> None:
-        args = bd.patch_command(Path("/w"), "p.asm", "rom.sfc")
+        # Act
+        args = bd.patch_command(work, "p.asm", "rom.sfc")
 
-        self.assertIn("--network=none", args)
+        # Assert
+        self.assertEqual(args[-2:], ["p.asm", "rom.sfc"])
+
+    def test_no_container_is_started_from_inside_one(self) -> None:
+        # Arrange
+        work = Path("/w")
+
+        # Act
+        args = bd.patch_command(work, "p.asm", "rom.sfc")
+
+        # Assert
+        self.assertNotIn("--network=none", args)
 
     def test_paths_are_passed_as_names_not_host_paths(self) -> None:
         args = bd.patch_command(Path("/some/host/dir"), "patch.asm", "rom.sfc")
@@ -61,15 +99,67 @@ class CommandTest(unittest.TestCase):
         self.assertNotIn("/some/host/dir/patch.asm", args)
 
 
-class ArgumentTest(unittest.TestCase):
-    def test_the_image_only_flag_is_reachable_on_its_own(self) -> None:
-        self.assertTrue(bd.wants_image_only(["build.py", "--image"]))
+class ToolchainTest(unittest.TestCase):
+    def test_an_absent_assembler_says_to_start_through_the_launcher(self) -> None:
+        # Arrange
+        look = _absent
 
-    def test_a_normal_invocation_is_not_image_only(self) -> None:
-        self.assertFalse(bd.wants_image_only(["build.py", "p.asm", "in", "out"]))
+        # Act
+        with self.assertRaises(bd.ToolchainMissing) as raised:
+            bd.require("asar", look)
 
-    def test_too_few_arguments_is_not_image_only(self) -> None:
-        self.assertFalse(bd.wants_image_only(["build.py"]))
+        # Assert
+        self.assertIn("./run.sh <script>", str(raised.exception))
+
+    def test_a_present_assembler_is_let_through(self) -> None:
+        # Arrange
+        look = _present
+
+        # Act
+        found = bd.require("asar", look)
+
+        # Assert
+        self.assertIsNone(found)
+
+    def test_an_absent_program_is_named_rather_than_traced(self) -> None:
+        # Arrange
+        program = "definitely-not-a-real-program-9f3a"
+
+        # Act
+        with self.assertRaises(bd.ToolchainMissing) as raised:
+            bd.run([program, "--version"], say=lambda _line: None)
+
+        # Assert
+        self.assertIn(program, str(raised.exception))
+
+    def test_an_absent_toolchain_exits_one_and_says_so_on_stderr(self) -> None:
+        # Arrange
+        def absent() -> Any:
+            raise bd.ToolchainMissing("asar is not in this environment")
+
+        original, bd.main = bd.main, absent
+        stderr = io.StringIO()
+
+        # Act
+        try:
+            with contextlib.redirect_stderr(stderr):
+                code = bd.cli()
+        finally:
+            bd.main = original
+
+        # Assert
+        self.assertEqual(code, 1)
+        self.assertIn("asar is not in this environment", stderr.getvalue())
+
+    def test_a_reachable_program_returns_its_own_exit_code(self) -> None:
+        # Arrange
+        quiet = lambda _line: None  # noqa: E731
+
+        # Act
+        found = (bd.run(["true"], say=quiet), bd.run(["false"], say=quiet))
+
+        # Assert
+        self.assertEqual(found, (0, 1))
 
 
 class SafetyTest(unittest.TestCase):
@@ -97,48 +187,16 @@ class SafetyTest(unittest.TestCase):
             self.assertEqual(rom.read_bytes(), b"A" * 512)
 
 
-class ToolchainTest(unittest.TestCase):
-    def test_an_absent_program_is_named_rather_than_traced(self) -> None:
-        with self.assertRaises(bd.ToolchainMissing) as raised:
-            bd.run(["definitely-not-a-real-program-9f3a", "--version"])
-
-        self.assertIn("definitely-not-a-real-program-9f3a", str(raised.exception))
-
-    def test_the_message_says_how_to_check_the_program_is_there(self) -> None:
-        message = bd.missing_message("docker")
-
-        self.assertIn("docker --version", message)
-
-    def test_the_message_says_why_a_container_is_used(self) -> None:
-        self.assertIn("pinned", bd.missing_message("docker"))
-
-    def test_an_absent_toolchain_exits_one_and_says_so_on_stderr(self) -> None:
-        def absent() -> Any:
-            raise bd.ToolchainMissing("docker is not on PATH")
-
-        original, bd.main = bd.main, absent
-        stderr = io.StringIO()
-        try:
-            with contextlib.redirect_stderr(stderr):
-                code = bd.cli()
-        finally:
-            bd.main = original
-
-        self.assertEqual(code, 1)
-        self.assertIn("docker is not on PATH", stderr.getvalue())
-
-    def test_a_reachable_program_returns_its_own_exit_code(self) -> None:
-        self.assertEqual(bd.run(["true"]), 0)
-        self.assertEqual(bd.run(["false"]), 1)
-
-
 class RunTest(unittest.TestCase):
     def test_a_command_is_printed_before_it_runs(self) -> None:
+        # Arrange
         said: list[Any] = []
 
-        bd.run(["docker", "build"], execute=lambda _args: 0, say=said.append)
+        # Act
+        bd.run(["asar", "p.asm"], execute=lambda _args: 0, say=said.append)
 
-        self.assertIn("docker build", said[0])
+        # Assert
+        self.assertIn("asar p.asm", said[0])
 
     def test_and_what_it_returned_comes_back(self) -> None:
         self.assertEqual(bd.run(["x"], execute=lambda _args: 3, say=lambda _line: None), 3)
@@ -162,15 +220,16 @@ class ShellingOutTest(unittest.TestCase):
 
 
 class EntryTest(unittest.TestCase):
-    def test_asking_for_the_image_alone_builds_only_that(self) -> None:
-        ran: list[Any] = []
+    def test_the_old_image_flag_is_now_a_usage_error(self) -> None:
+        # Arrange
+        said: list[Any] = []
 
-        code = bd.main(
-            ["bd.py", "--image"], execute=lambda args: _record(ran, args), say=lambda _l: None
-        )
+        # Act
+        code = bd.main(["bd.py", "--image"], say=lambda _l: None, complain=said.append)
 
-        self.assertEqual(code, 0)
-        self.assertEqual(len(ran), 1)
+        # Assert
+        self.assertEqual(code, 2)
+        self.assertEqual(said, ["usage: build.py <patch.asm> <source-rom> <output-rom>"])
 
     def test_too_few_arguments_are_refused_with_the_usage(self) -> None:
         said: list[Any] = []
@@ -180,49 +239,59 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("usage", said[0])
 
-    def test_an_image_that_will_not_build_stops_before_anything_is_staged(self) -> None:
-        said: list[Any] = []
+    def test_an_absent_assembler_stops_before_anything_is_staged(self) -> None:
+        # Arrange
+        with tempfile.TemporaryDirectory() as tmp:
+            where = Path(tmp)
+            (where / "in.sfc").write_bytes(b"\x00" * 32)
+            argv = ["bd.py", str(where / "patch.asm"), str(where / "in.sfc"), "out.sfc"]
 
-        code = bd.main(
-            ["bd.py", "patch.asm", "in.sfc", "out.sfc"],
-            execute=lambda _args: 1,
-            say=lambda _l: None,
-            complain=said.append,
-        )
+            # Act
+            with self.assertRaises(bd.ToolchainMissing) as raised:
+                bd.main(argv, execute=lambda _args: 0, say=lambda _l: None, look=_absent)
 
-        self.assertEqual(code, 1)
-        self.assertIn("failed to build", said[0])
+            # Assert
+            self.assertIn("asar", str(raised.exception))
+            self.assertFalse((where / "out.sfc").exists())
 
     def test_a_whole_run_stages_the_rom_and_patches_it(self) -> None:
+        # Arrange
         with tempfile.TemporaryDirectory() as tmp:
             where = Path(tmp)
             (where / "patch.asm").write_text("; nothing")
             (where / "in.sfc").write_bytes(b"\x00" * 32)
             ran: list[Any] = []
 
+            # Act
             code = bd.main(
                 ["bd.py", str(where / "patch.asm"), str(where / "in.sfc"), "out.sfc"],
-                execute=lambda args: _record(ran, args),
+                execute=_recording(ran),
                 say=lambda _l: None,
+                look=_present,
             )
 
+            # Assert
             self.assertEqual(code, 0)
-            self.assertEqual(len(ran), 2)
+            self.assertEqual(len(ran), 1)
             self.assertTrue((where / "out.sfc").exists())
 
     def test_a_patch_that_fails_is_reported_as_what_it_returned(self) -> None:
+        # Arrange
         with tempfile.TemporaryDirectory() as tmp:
             where = Path(tmp)
             (where / "patch.asm").write_text("; nothing")
             (where / "in.sfc").write_bytes(b"\x00" * 32)
-            answers = iter([0, 4])
+            answers = iter([4])
 
+            # Act
             code = bd.main(
                 ["bd.py", str(where / "patch.asm"), str(where / "in.sfc"), "out.sfc"],
                 execute=lambda _args: next(answers),
                 say=lambda _l: None,
+                look=_present,
             )
 
+            # Assert
             self.assertEqual(code, 4)
 
 

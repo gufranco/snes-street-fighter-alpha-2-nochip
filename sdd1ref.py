@@ -1,4 +1,5 @@
 import random
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable
@@ -8,24 +9,22 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
+import toolchain
 
 dump = hardware.load("romimage").dump
 sdd1 = hardware.load("sdd1")
 
-
-ROOT = Path(__file__).resolve().parent
-REF_DIR = ROOT / "ref"
-IMAGE = "snes-street-fighter-alpha-2-nochip/sdd1ref:snes9x-1.63"
 MAX_LENGTH = sdd1.MAX_LENGTH
 SAMPLE_LENGTHS = (1, 2, 15, 16, 17, 64, 832, 2048, 8192)
-
-
-def build_image_command() -> list[str]:
-    return ["docker", "build", "--tag", IMAGE, str(REF_DIR)]
+SNES9X = "1.63"
 
 
 def run_command() -> list[str]:
-    return ["docker", "run", "--rm", "--interactive", "--network=none", IMAGE]
+    return toolchain.command(toolchain.REFERENCE)
+
+
+def reference_available(look: Callable[[str], str | None] = shutil.which) -> bool:
+    return look(toolchain.REFERENCE) is not None
 
 
 def encode_request(rom: bytes | bytearray, cases: list[tuple[int, int]]) -> bytes:
@@ -55,14 +54,6 @@ def decode_response(blob: bytes, cases: list[tuple[int, int]]) -> list[bytes]:
         parts.append(chunk)
         pos += size
     return parts
-
-
-def build_image(quiet: bool = True, execute: Callable[..., Any] = subprocess.run) -> int:
-    stream = subprocess.DEVNULL if quiet else None
-    returned: int = execute(
-        build_image_command(), stdout=stream, stderr=stream, check=False
-    ).returncode
-    return returned
 
 
 def reference_outputs(
@@ -112,7 +103,7 @@ def sample_cases(rom: bytes | bytearray, count: int, seed: int) -> list[tuple[in
 def main(
     argv: list[str] | None = None,
     read: Callable[[Any], Any] | None = None,
-    build: Callable[[], int] = build_image,
+    available: Callable[[], bool] = reference_available,
     check: Callable[..., list[tuple[int, int, str]]] = compare,
     say: Callable[..., None] = print,
 ) -> int:
@@ -126,9 +117,8 @@ def main(
     count = int(argv[2]) if len(argv) > 2 else 500
     seed = int(argv[3]) if len(argv) > 3 else 20260813
 
-    say(f"  building {IMAGE}")
-    if build() != 0:
-        say("reference image failed to build", file=sys.stderr)
+    if not available():
+        say(toolchain.missing_message(toolchain.REFERENCE), file=sys.stderr)
         return 1
 
     cases = sample_cases(rom, count, seed)
@@ -141,7 +131,7 @@ def main(
         say(f"[fail] {len(mismatches)}/{len(cases)} cases differ")
         return 1
 
-    say(f"[ok] {len(cases)} cases identical to snes9x {IMAGE.rsplit('-', maxsplit=1)[-1]}")
+    say(f"[ok] {len(cases)} cases identical to snes9x {SNES9X}")
     return 0
 
 

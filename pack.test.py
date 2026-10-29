@@ -81,11 +81,14 @@ class AssemblyFailureTest(unittest.TestCase):
         self.assertIn("3", message)
 
     def test_what_the_assembler_said_is_carried_and_not_discarded(self) -> None:
-        message = pack.assembly_failure(
-            "usa", self.result(stdout="staged the rom", stderr="docker is not on PATH")
-        )
+        # Arrange
+        done = self.result(stdout="staged the rom", stderr="asar is not in this environment")
 
-        self.assertIn("docker is not on PATH", message)
+        # Act
+        message = pack.assembly_failure("usa", done)
+
+        # Assert
+        self.assertIn("asar is not in this environment", message)
         self.assertIn("staged the rom", message)
 
     def test_an_empty_stream_adds_no_heading(self) -> None:
@@ -94,10 +97,15 @@ class AssemblyFailureTest(unittest.TestCase):
         self.assertNotIn("stdout", message)
         self.assertIn("stderr", message)
 
-    def test_the_message_points_at_the_prerequisite(self) -> None:
-        message = pack.assembly_failure("jp", self.result())
+    def test_the_message_points_at_the_launcher(self) -> None:
+        # Arrange
+        done = self.result()
 
-        self.assertIn("docker --version", message)
+        # Act
+        message = pack.assembly_failure("jp", done)
+
+        # Assert
+        self.assertIn("pack.py through the launcher: ./run.sh pack.py", message)
 
     def test_a_failure_is_raised_as_its_own_kind_of_error(self) -> None:
         self.assertTrue(issubclass(pack.AssemblyFailed, Exception))
@@ -150,13 +158,16 @@ class AssembleTest(unittest.TestCase):
 
         self.assertIn("asar said no", str(raised.exception))
 
-    def test_and_says_that_docker_has_to_be_running(self) -> None:
+    def test_and_says_to_start_through_the_launcher(self) -> None:
+        # Arrange
         failed = type("Done", (), {"returncode": 1, "stdout": "", "stderr": ""})
 
+        # Act
         with self.assertRaises(pack.AssemblyFailed) as raised:
             pack.assemble_bypass("usa", b"\x00" * 16, self._under_root(), lambda _a: failed)
 
-        self.assertIn("docker --version", str(raised.exception))
+        # Assert
+        self.assertIn("./run.sh pack.py", str(raised.exception))
 
     def test_an_assembler_that_succeeds_hands_back_the_image_it_wrote(self) -> None:
         done = type("Done", (), {"returncode": 0, "stdout": "", "stderr": ""})

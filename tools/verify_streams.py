@@ -23,6 +23,7 @@ def load(name: str) -> Any:
 
 
 sdd1ref = load("sdd1ref")
+toolchain = load("toolchain")
 rombuild = load("rombuild")
 jpstreams = load("jpstreams")
 usastreams = load("usastreams")
@@ -67,13 +68,13 @@ def verify(
 
 def main(
     argv: list[str],
-    build: Callable[[], int] = sdd1ref.build_image,
+    available: Callable[[], bool] = sdd1ref.reference_available,
     check: Callable[..., tuple[list[Any], list[Any]]] = verify,
     say: Callable[..., None] = print,
 ) -> int:
     wanted = argv[1:] or sorted(SETS)
-    if build() != 0:
-        say("the reference image failed to build", file=sys.stderr)
+    if not available():
+        say(toolchain.missing_message(toolchain.REFERENCE), file=sys.stderr)
         return 1
 
     failed = False

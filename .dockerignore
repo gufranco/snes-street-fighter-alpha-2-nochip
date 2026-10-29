@@ -1,0 +1,8 @@
+*
+!emu/main.cpp
+!emu/windowed_lorom.cpp
+!emu/windowed_lorom.h
+!ref/driver.cpp
+!ref/port.h
+!package.json
+!pnpm-lock.yaml

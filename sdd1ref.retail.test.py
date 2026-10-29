@@ -1,11 +1,9 @@
 import importlib.util
 import random
-import shutil
-import subprocess
 import sys
 import unittest
 from pathlib import Path
-from typing import Any, override
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -32,24 +30,9 @@ STAR_OCEAN = ROOT / "roms" / "star-ocean-jp-original.sfc"
 ALPHA2 = ROOT / "roms" / "sfa2-usa-final.sfc"
 
 
-def docker_available() -> bool:
-    if not shutil.which("docker"):
-        return False
-    return (
-        subprocess.run(["docker", "info"], capture_output=True, text=True, check=False).returncode
-        == 0
-    )
-
-
-@unittest.skipUnless(docker_available(), "docker is not available")
+@unittest.skipUnless(ref.reference_available(), "sdd1ref runs inside ./run.sh")
 @unittest.skipUnless(STAR_OCEAN.exists() and ALPHA2.exists(), "reference roms are not present")
 class DifferentialTest(unittest.TestCase):
-    @classmethod
-    @override
-    def setUpClass(cls) -> None:
-        if ref.build_image() != 0:
-            raise unittest.SkipTest("reference image failed to build")
-
     def mismatches(self, rom: bytes | bytearray, cases: list[tuple[int, int]]) -> list[int]:
         expected = ref.reference_outputs(rom, cases)
         return [

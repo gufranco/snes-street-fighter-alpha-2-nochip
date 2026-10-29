@@ -5,6 +5,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
+
+import toolchain  # noqa: E402
+
 LOGS = ROOT / "build" / "logs" / "stagediff"
 
 FRAMES = 3600
@@ -20,24 +24,19 @@ def run(
 ) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     execute(
-        [
-            "docker",
-            "run",
-            "--rm",
-            "--network=none",
-            "-e",
-            f"SFSCENE={matchup}",
-            "-e",
-            f"SFSCENEMENU={MENU}",
-            "-e",
-            f"SFHASH=/work/{out.relative_to(ROOT)}",
-            "-v",
-            f"{ROOT}:/work",
-            "snes-street-fighter-alpha-2-nochip/sfemu:snes9x-1.63",
-            str(image.relative_to(ROOT)),
-            str(FRAMES),
-            "-2",
-        ],
+        toolchain.command(
+            toolchain.EMULATOR,
+            [
+                f"SFSCENE={matchup}",
+                f"SFSCENEMENU={MENU}",
+                f"SFHASH={out}",
+            ],
+            [
+                str(image.relative_to(ROOT)),
+                str(FRAMES),
+                "-2",
+            ],
+        ),
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         check=False,

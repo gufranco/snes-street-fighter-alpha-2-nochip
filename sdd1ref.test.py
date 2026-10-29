@@ -71,22 +71,46 @@ class ShellOutTest(unittest.TestCase):
         def __init__(self, code: int, out: bytes = b"", err: bytes = b"") -> None:
             self.returncode, self.stdout, self.stderr = code, out, err
 
-    def test_a_build_that_succeeds_reports_zero(self) -> None:
-        self.assertEqual(ref.build_image(execute=lambda *_a, **_k: self.Exited(0)), 0)
+    def test_the_reference_runs_from_the_image_not_a_new_container(self) -> None:
+        # Arrange
+        expected = ["env", f"--chdir={ROOT}", "sdd1ref"]
 
-    def test_a_build_that_fails_reports_what_the_builder_exited_with(self) -> None:
-        self.assertEqual(ref.build_image(execute=lambda *_a, **_k: self.Exited(3)), 3)
+        # Act
+        found = ref.run_command()
 
-    def test_a_noisy_build_lets_the_builder_write_to_the_terminal(self) -> None:
-        seen: list[Any] = []
+        # Assert
+        self.assertEqual(found, expected)
 
-        def _record(_command: Any, **rest: Any) -> Any:
-            seen.append(rest["stdout"])
-            return self.Exited(0)
+    def test_a_reference_on_the_path_is_available(self) -> None:
+        # Arrange
+        look = lambda _name: "/usr/local/bin/sdd1ref"  # noqa: E731
 
-        ref.build_image(quiet=False, execute=_record)
+        # Act
+        found = ref.reference_available(look)
 
-        self.assertIsNone(seen[0])
+        # Assert
+        self.assertTrue(found)
+
+    def test_a_reference_missing_from_the_path_is_not(self) -> None:
+        # Arrange
+        look = lambda _name: None  # noqa: E731
+
+        # Act
+        found = ref.reference_available(look)
+
+        # Assert
+        self.assertFalse(found)
+
+    def test_the_named_snes9x_is_the_one_the_image_builds(self) -> None:
+        # Arrange
+        dockerfile = (ROOT / "Dockerfile").read_text()
+        reference = dockerfile.split(" AS reference\n", 1)[1].split("\nFROM ", 1)[0]
+
+        # Act
+        found = f"ARG SNES9X_REF={ref.SNES9X}\n" in reference
+
+        # Assert
+        self.assertTrue(found)
 
     def test_a_reference_that_fails_is_reported_rather_than_parsed(self) -> None:
         with self.assertRaises(RuntimeError):
@@ -135,7 +159,7 @@ class CommandTest(unittest.TestCase):
             argv,
             read=lambda _p: self.ROM,
             say=lambda *args, **_k: said.append(str(args[0])),
-            **{"build": lambda: 0, "check": lambda *_a: [], **rest},
+            **{"available": lambda: True, "check": lambda *_a: [], **rest},
         )
         return code, said
 
@@ -144,15 +168,27 @@ class CommandTest(unittest.TestCase):
 
         self.assertEqual((code, "usage" in said[0]), (2, True))
 
-    def test_a_build_that_fails_stops_the_run(self) -> None:
-        code, said = self.run_with(["sdd1ref.py", "rom"], build=lambda: 1)
+    def test_a_missing_reference_stops_the_run_and_names_the_launcher(self) -> None:
+        # Arrange
+        argv = ["sdd1ref.py", "rom"]
 
-        self.assertEqual((code, "failed to build" in "\n".join(said)), (1, True))
+        # Act
+        code, said = self.run_with(argv, available=lambda: False)
+
+        # Assert
+        self.assertEqual(code, 1)
+        self.assertIn("./run.sh <script>", "\n".join(said))
 
     def test_a_run_where_every_case_agrees_passes(self) -> None:
-        code, said = self.run_with(["sdd1ref.py", "rom", "3"])
+        # Arrange
+        argv = ["sdd1ref.py", "rom", "3"]
 
-        self.assertEqual((code, "[ok] 3 cases" in "\n".join(said)), (0, True))
+        # Act
+        code, said = self.run_with(argv)
+
+        # Assert
+        self.assertEqual(code, 0)
+        self.assertIn("[ok] 3 cases identical to snes9x 1.63", said)
 
     def test_a_seed_can_be_named_so_the_sample_repeats(self) -> None:
         seen: list[list[tuple[int, int]]] = []

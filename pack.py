@@ -10,6 +10,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
+import toolchain
 
 
 def load_images(load: Callable[[str], Any] = hardware.load) -> Any:
@@ -154,8 +155,8 @@ def assembly_failure(region: str, result: Any) -> str:
     said = [
         f"the {region} bypass patch did not assemble: build.py exited {result.returncode}",
         "",
-        "This step assembles the patch in a container, so Docker has to be installed",
-        "and running. Check it answers with: docker --version",
+        "This step assembles the patch with the asar in this project's image, so start",
+        f"pack.py through the launcher: {toolchain.launched('pack.py')}",
     ]
     for stream, raw in (("stdout", result.stdout), ("stderr", result.stderr)):
         text = (raw or "").strip()

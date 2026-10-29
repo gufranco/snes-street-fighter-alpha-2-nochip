@@ -22,7 +22,7 @@
 
 ---
 
-5,672 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，0 个不同；20 个镜像各运行 12,000 帧，查表未命中 0 次；1,300 项测试；100% 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖。
+5,672 个数据流经过解压，并与 snes9x 的 `sdd1emu.cpp` 逐字节比较，0 个不同；20 个镜像各运行 12,000 帧，查表未命中 0 次；1,309 项测试；100% 的语句与分支覆盖率门禁检查；除标准库外没有任何 Python 依赖。
 
 ```python
 import hardware
@@ -53,15 +53,14 @@ $C0:8000 is file offset 0x0600000
 
 从零到可用的检出共五步。第 4 步的 doctor 会确认前三步。
 
-1. **安装 Python、git 和 Docker。**
+1. **只安装 git 和 Docker。** Python 以及构建用到的每个工具都在本项目的 Docker 镜像里，第一条命令会构建它。
 
    | | Windows | macOS | Linux |
    |:--|:--|:--|:--|
-   | Python 3.12 或更新版本 | `winget install Python.Python.3.12` | `brew install python@3.12` | 发行版的 `python3` 软件包 |
    | git | `winget install Git.Git` | `xcode-select --install` | 发行版的 `git` 软件包 |
    | Docker | `winget install Docker.DockerDesktop`，然后启动 Docker Desktop | Docker Desktop，或 `brew install colima docker` 后运行 `colima start` | Docker Engine，然后 `sudo systemctl start docker` |
 
-   在 Windows 上，本页写 `python3` 的地方请输入 `py -3.12`。
+   在 Windows 上，本页写 `./run.sh` 的地方请输入 `.\run.cmd`。
 
 2. **克隆仓库，不要下载。**
 
@@ -71,58 +70,57 @@ $C0:8000 is file offset 0x0600000
    ```
 
    > [!CAUTION]
-   > 只有克隆才能得到可用的副本。GitHub 上绿色的 **Code** 按钮还提供 **Download ZIP**，但 ZIP 在这里永远无法使用：本项目依赖的 9 个模型是以 git 子模块固定的独立仓库，ZIP 一个都不包含，之后也无法补上。doctor 会把这样的副本报告为下载的归档；请删除它并克隆。没有加 `--recurse-submodules` 的克隆，可以用 `git submodule update --init --recursive` 就地修复。
+   > 只有克隆才能得到可用的副本。GitHub 上绿色的 **Code** 按钮还提供 **Download ZIP**，但 ZIP 在这里永远无法使用：本项目依赖的 9 个模型是以 git 子模块固定的独立仓库，ZIP 一个都不包含，之后也无法补上。启动脚本会拒绝这样的副本并说明原因；请删除它并克隆。没有加 `--recurse-submodules` 的克隆，可以用 `git submodule update --init --recursive` 就地修复。
 
-3. **把转储放进 `roms/`**，文件名按[转储列表](#the-dumps)：`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`。然后检查，你提供的每个转储都应显示 `ok`：
+3. **把转储放进 `roms/`**，文件名按[转储列表](#the-dumps)：`sfa2-usa-final.sfc`, `sfz2-jp-final.sfc`。然后检查，你提供的每个转储都应显示 `ok`。这第一条命令会构建镜像，需要几分钟；之后的命令会立即开始：
 
    ```bash
-   python3 tools/identify.py
+   ./run.sh tools/identify.py
    ```
 
-4. **运行 doctor。** 它检查检出、每个模型、每个转储，以及 Docker 引擎是否在运行，最后说明下一步运行什么：
+4. **运行 doctor。** 它检查检出、每个模型、每个转储和镜像中的工具，最后说明下一步运行什么：
 
    ```bash
-   python3 doctor.py
+   ./run.sh doctor.py
    ```
 
    ```
      N checks, nothing to report
-     next: python3 pack.py
+     next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
    ```
 
-   标有 `!` 的行，下一行写着该怎么做。它能发现的设置错误：
+   标有 `!` 的行，下一行写着该怎么做。doctor 和启动脚本能发现的设置错误：
 
-   | doctor 显示 | 怎么做 |
+   | 提示 | 怎么做 |
    |:--|:--|
-   | `checkout: no git metadata` | 删除文件夹并克隆，第 2 步 |
+   | `This folder has no git metadata` | 删除文件夹并克隆，第 2 步 |
+   | `Docker is not installed` | 第 1 步 |
+   | `Docker is installed but its engine is not answering` | 启动 Docker Desktop，或 `sudo systemctl start docker` |
    | `... is not checked out` | `git submodule update --init --recursive` |
    | `cartridge ...: missing` | 第 3 步 |
-   | `docker engine: docker is not installed` | 第 1 步 |
-   | `docker engine: installed but not answering` | 启动 Docker Desktop，或 `sudo systemctl start docker` |
 
 5. **构建。** 它把每个镜像写入 `dist/v<version>/`，每种设备一个文件夹；从以你的卡带或模拟器命名的文件夹中复制文件。
 
    ```bash
-   python3 pack.py
+   ./run.sh pack.py
    ```
 
 ### 依赖与 doctor
 
 | 要求 | 版本 |
 |:--|:--|
-| Python | 3.12 或更新 |
 | git | 任意版本，用于获取九个子模块 |
-| Docker | 任意当前版本，且正在运行。[`build.py`](build.py)、[`pack.py`](pack.py) 以及与 snes9x 的比对检查都在容器中运行各自的工具链 |
+| Docker | 任意当前版本，且正在运行。Python 3.12、asar 1.81 和 snes9x 的构建都在 [`Dockerfile`](Dockerfile) 描述的镜像中，[`run.sh`](run.sh) 在其中运行每条命令 |
 | 你自己的卡带转储 | 每个 4,194,304 字节，放在 `roms/` 中，按 [转储文件](#the-dumps) 一节所列命名 |
 
-诊断脚本会打印机器信息、该文件夹是否为 git 克隆、每个固定模型的版本、`roms/` 中每个转储的状态和 SHA-256、解压器能否解码、`docker` 是否在路径上以及其引擎是否应答，以及每个模型自身诊断脚本给出的报告。不在 `roms/` 中的转储计为一项未通过的检查。报告以两行结束，第二行说明下一步运行什么。第一种形式的退出码为 0，第二种为 1：
+诊断脚本在镜像中运行，打印机器信息、该文件夹是否为 git 克隆、每个固定模型的版本、`roms/` 中每个转储的状态和 SHA-256、解压器能否解码、镜像中的 asar、sfemu 和 sdd1ref 是否存在，以及每个模型自身诊断脚本给出的报告。不在 `roms/` 中的转储计为一项未通过的检查。报告以两行结束，第二行说明下一步运行什么。第一种形式的退出码为 0，第二种为 1：
 
 ```
   N checks, nothing to report
-  next: python3 pack.py
+  next: ./run.sh pack.py, or on Windows .\run.cmd pack.py
 
   K of N checks did not pass
-  next: fix the first line marked ! above, then run python3 doctor.py again
+  next: fix the first line marked ! above, then run ./run.sh doctor.py, or on Windows .\run.cmd doctor.py
 ```
 
 提交任何缺陷报告时，请粘贴完整输出。
@@ -136,9 +134,9 @@ $C0:8000 is file offset 0x0600000
 ### 构建镜像
 
 ```bash
-python3 tools/identify.py
-python3 pack.py
-python3 pack.py usa
+./run.sh tools/identify.py
+./run.sh pack.py
+./run.sh pack.py usa
 ```
 
 [`tools/identify.py`](tools/identify.py) 根据 [`artifacts.manifest.json`](artifacts.manifest.json) 检查 `roms/` 中的每个转储。[`pack.py`](pack.py) 为指定的每个地区构建无芯片镜像，未指定时两个地区都构建。镜像按设备各写一次，写入 `dist/v<version>/` 下每个设备一个文件夹，所有文件都列在一个 `SHA256SUMS` 清单中。美版如下：
@@ -164,7 +162,7 @@ python3 pack.py usa
 
 sd2snes 固件只在头部声明芯片 `$43` 或 `$45` 时使用其 96 Mbit 映射，v1.11.2 版本还要求文件恰好为 12,583,424 字节，并且它从不读取前面的 512 字节。Game Doctor 只读取这 512 字节，来放置地址空间的每个区域。两种头部都由 [snes-rom-image-python](https://github.com/gufranco/snes-rom-image-python) 的 `copier` 模块写出：Game Doctor 映射从卡带映射推导，并逐槽检查，它与 herrkuhn 在 Game Doctor SF7 上运行两个地区时所用的头部逐字节相同。
 
-[`pack.py`](pack.py) 在零售版转储上依次执行下面的每个补丁，在 Docker 中汇编旁路代码，加入赛前表，依据冻结的数据流表布置镜像，并改写文件头，声明为普通 ROM。写出任何内容之前，它会对每个地区的数据流表运行 [`gate.py`](gate.py)，一旦有发现就停止。
+[`pack.py`](pack.py) 在零售版转储上依次执行下面的每个补丁，用镜像中的 asar 汇编旁路代码，加入赛前表，依据冻结的数据流表布置镜像，并改写文件头，声明为普通 ROM。写出任何内容之前，它会对每个地区的数据流表运行 [`gate.py`](gate.py)，一旦有发现就停止。
 
 | 命令 | 参数 | 退出码 |
 |:--|:--|:--|
@@ -305,17 +303,17 @@ sfz2-jp-nochip-v0.0.0-dev.sfc
 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip-v2.0.0.sfc
 ```
 
-`pack.output_name(region, release=None)` 从 [`version.py`](version.py) 取得版本号写入名称，版本 `0.0.0` 会标上 `-dev`。`pack.headed_name(region, release=None)` 以同样方式为带拷贝机头部的形式命名，以 `.smc` 结尾。`pack.release_folder(release=None)` 是 `dist/` 下的 `v<version>` 文件夹。`pack.forms_of(region, image)` 列出一个地区写出的每个文件的路径和字节，`pack.DEVICES` 中每一项对应一个，对没有头部的镜像抛出 `NoHeader`。`pack.unify_headers(image)` 把第一个头部复制到所有标题和映射字节与之相同、位于库末尾的副本上，使随后的改写覆盖全部六处。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 返回一个地区的完成镜像，需要 Docker 和零售版转储。`pack.REGIONS` 列出每个地区的零售版转储和旁路补丁。汇编失败时抛出 `pack.AssemblyFailed`，其中带有 [`build.py`](build.py) 的输出。
+`pack.output_name(region, release=None)` 从 [`version.py`](version.py) 取得版本号写入名称，版本 `0.0.0` 会标上 `-dev`。`pack.headed_name(region, release=None)` 以同样方式为带拷贝机头部的形式命名，以 `.smc` 结尾。`pack.release_folder(release=None)` 是 `dist/` 下的 `v<version>` 文件夹。`pack.forms_of(region, image)` 列出一个地区写出的每个文件的路径和字节，`pack.DEVICES` 中每一项对应一个，对没有头部的镜像抛出 `NoHeader`。`pack.unify_headers(image)` 把第一个头部复制到所有标题和映射字节与之相同、位于库末尾的副本上，使随后的改写覆盖全部六处。`pack.manifest_line(name, image)` 是 `SHA256SUMS` 的一行。`pack.build(region, workdir)` 返回一个地区的完成镜像，需要镜像中的 asar 和零售版转储。`pack.REGIONS` 列出每个地区的零售版转储和旁路补丁。汇编失败时抛出 `pack.AssemblyFailed`，其中带有 [`build.py`](build.py) 的输出。
 
 ### 全部命令
 
 | 命令 | 参数 | 作用 |
 |:--|:--|:--|
-| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>`，或 `--image` | 在无网络的容器中用 asar 1.81 汇编补丁，输出写在补丁旁边。`--image` 只构建容器 |
+| [`build.py`](build.py) | `<patch.asm> <source-rom> <output-rom>` | 用镜像中的 asar 1.81 汇编补丁，输出写在补丁旁边 |
 | [`rombuild.py`](rombuild.py) | `<patched-rom> <tagged-rom> <output.sfc>` | 根据带标签转储中的数据流映射布置 96 Mbit 镜像 |
 | [`mapcheck.py`](mapcheck.py) | `<rom>` | 检查该转储所属地区的冻结表：重复项、无法解码的条目和扫描距离 |
 | [`patchrun.py`](patchrun.py) | `<built-image> <patched-rom> <tagged-rom>` | 在 65816 模型上针对每个数据流运行汇编后的转换例程，并比较它指向的位置 |
-| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`，默认 500 个用例，种子 20260813 | 在容器中用 snes9x 的 `sdd1emu.cpp` 并用 Python 模型解压随机偏移，然后比较 |
+| [`sdd1ref.py`](sdd1ref.py) | `<rom> [cases] [seed]`，默认 500 个用例，种子 20260813 | 用构建进镜像的 snes9x `sdd1emu.cpp` 并用 Python 模型解压随机偏移，然后比较 |
 | [`sdd1map.py`](sdd1map.py) | `<tagged-rom> <source-rom> [output.bin]` | 从带标签转储中的 `SDD1` 标签读出数据流映射 |
 | [`sdd1find.py`](sdd1find.py) | `<source-rom> <reference-rom> [start] [stop]` | 对照一个包含相同图形解压版本的转储，按内容查找数据流 |
 | [`sdd1sites.py`](sdd1sites.py) | `<source-rom> <tagged-rom>` | 列出压缩数据之外对芯片寄存器的每一次写入，并反汇编每个启动位置 |
@@ -339,8 +337,8 @@ e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  sfz2-jp-nochip
 必需参数个数错误的命令退出码为 2。[`mapcheck.py`](mapcheck.py)、[`patchrun.py`](patchrun.py)、[`sdd1ref.py`](sdd1ref.py)、两个验证工具、[`tools/validate_all.py`](tools/validate_all.py)、[`tools/compare_audio.py`](tools/compare_audio.py) 和 [`tools/tour_audio.py`](tools/tour_audio.py) 在检查失败时退出码为 1，否则为 0。
 
 ```bash
-python3 tools/verify_streams.py
-python3 tools/verify_image.py build/all/usa-both-free.sfc
+./run.sh tools/verify_streams.py
+./run.sh tools/verify_image.py build/all/usa-both-free.sfc
 ```
 
 ```
@@ -383,7 +381,7 @@ graph TD
     spcfast --> shinakuma["shinakuma.py：解锁真豪鬼"]
     shinakuma --> gamefixes["gamefixes.py：十一项修正"]
     gamefixes --> repeatload["repeatload.py：跳过已加载的采样列表"]
-    repeatload --> bypass["build.py：在 Docker 中汇编旁路"]
+    repeatload --> bypass["build.py：用 asar 汇编旁路"]
     bypass --> cart[("4 MB 补丁卡带，仍需芯片")]
     bypass --> prefight["prefight.py：调用方改用预存的表"]
     tables[("冻结的数据流表")] --> gate["gate.py：拒绝有问题的表"]
@@ -537,13 +535,13 @@ Bank `$C0+k` 在 `$8000`-`$FFFF` 暴露 bank `k` 的低半部分，在 `$0000`-`
 
 ```bash
 mkdir -p build
-python3 spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
-python3 shinakuma.py  build/step1.sfc          build/step2.sfc
-python3 gamefixes.py  build/step2.sfc          build/step3.sfc
-python3 repeatload.py build/step3.sfc          build/step4.sfc
-python3 build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
-python3 rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
-python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
+./run.sh spcfast.py    roms/sfa2-usa-final.sfc  build/step1.sfc
+./run.sh shinakuma.py  build/step1.sfc          build/step2.sfc
+./run.sh gamefixes.py  build/step2.sfc          build/step3.sfc
+./run.sh repeatload.py build/step3.sfc          build/step4.sfc
+./run.sh build.py      asm/sdd1-bypass.asm build/step4.sfc bypass.sfc
+./run.sh rombuild.py   asm/bypass.sfc roms/sfa2-usa-vc-sound-restored.sfc build/nochip.sfc
+./run.sh -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Path("build/final.sfc").write_bytes(r.rewrite.declare_rom_only(r.dump.read("build/nochip.sfc")))'
 ```
 
 这条路线根据带标签转储中的数据流映射构建不含赛前表的美版镜像。[`rombuild.py`](rombuild.py) 从标签中读出 2,815 个数据流，比 [`pack.py`](pack.py) 使用的冻结表中的 2,817 个少两个：
@@ -579,8 +577,8 @@ python3 -c 'import hardware, pathlib; r = hardware.load("romimage"); pathlib.Pat
 [`spcfast.py`](spcfast.py) 替换采样上传循环，[`repeatload.py`](repeatload.py) 在请求的列表已加载时跳过上传。两者都不得改变音频处理器最终持有的字节。在两次运行结束时比较音频处理器的内存无法确定这一点，因为补丁改变了时序，两次运行停止时驱动处于不同的位置。
 
 ```bash
-python3 tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
-python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
+./run.sh tools/compare_audio.py build/all/jp-base-cart.sfc build/all/jp-spc-cart.sfc
+./run.sh tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-both-cart.sfc
 ```
 
 比较以每次上传为单位进行。卡带交出的每个数据块都与卡带中仍然存在的字节核对，所以丢了一个字节的循环会在丢字节的那个数据块上失败。它还报告哪些来源被上传过，因为跳过只可能上传更少的来源，绝不会上传不同的来源；它也报告每字节的写入次数，这正是更快的循环所改变的数字。`--roster` 和 `--budget` 设置巡览的角色数和每个角色的帧数，默认分别为 18 和 4000。
@@ -611,7 +609,7 @@ python3 tools/compare_audio.py --fights build/all/jp-spc-cart.sfc build/all/jp-b
 
 ## 它是否正确
 
-解压器与 snes9x 1.63 的 `sdd1emu.cpp` 进行比较，后者在 [`ref/`](ref) 下的固定容器中从源码构建。[`tools/verify_streams.py`](tools/verify_streams.py) 让全部 2,817 个美版数据流和 2,855 个日版数据流都经过两者，没有任何差异。[`tools/verify_image.py`](tools/verify_image.py) 随后通过查找表，从完成的镜像中读回每个数据流。
+解压器与 snes9x 1.63 的 `sdd1emu.cpp` 进行比较，后者由 [`Dockerfile`](Dockerfile) 的 reference 阶段连同 [`ref/`](ref) 中的驱动程序从源码构建。[`tools/verify_streams.py`](tools/verify_streams.py) 让全部 2,817 个美版数据流和 2,855 个日版数据流都经过两者，没有任何差异。[`tools/verify_image.py`](tools/verify_image.py) 随后通过查找表，从完成的镜像中读回每个数据流。
 
 镜像矩阵为两个地区乘四种补丁组合乘两种卡带形式，共十六个镜像，外加四个各去掉一个补丁的美版对照构建。[`tools/validate_all.py`](tools/validate_all.py) 在 [`emu/`](emu) 下的测试框架上将每个镜像运行 12,000 帧。在最近一次记录的运行中，全部 20 个都已加载，全部交付了 12,000 帧中的 12,000 帧，且没有一次查表未命中。
 
@@ -686,27 +684,25 @@ Super EverDrive 这一行仅以该照片为依据。这款卡带没有 S-DD1，�
 | 行为准则 | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
 
 ```bash
-uvx ruff@0.16.3 format --check .
-uvx ruff@0.16.3 check .
-pnpm install --frozen-lockfile && pnpm run format:check
-uvx --python 3.12 mypy==1.14.1
-for module in *.test.py tools/*.test.py conformance/*.test.py; do python3 "$module" || echo "FAILED $module"; done
-python3 doctor.py
+./run.sh --gates
+./run.sh doctor.py
 ```
 
-测试套件共 1,300 项测试，分布在 49 个模块中：766 项位于分析模块旁，516 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试放在模块旁边的 `<module>.retail.test.py` 文件中，没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中，测量时不包括这些文件，因此在没有转储的机器上同样成立，CI 在每次推送时都会强制执行。
+测试套件共 1,309 项测试，分布在 51 个模块中：775 项位于分析模块旁，516 项位于工具旁，18 项位于 [`conformance/`](conformance) 下。每个模块旁边都有以其命名的测试文件，可以单独运行。需要零售版转储的测试放在模块旁边的 `<module>.retail.test.py` 文件中，没有转储时报告为跳过。覆盖率门禁检查要求 100% 的语句与分支覆盖率，设置在 [`pyproject.toml`](pyproject.toml) 中，测量时不包括这些文件，因此在没有转储的机器上同样成立，CI 在每次推送时都会强制执行。
 
-构建在 Docker 中运行，使用固定版本的工具链、无网络、非 root 用户，从不在宿主机上运行。[`asm/`](asm) 中的汇编是唯一带注释的源码：入口和出口状态、寄存器宽度，以及每个还原出的地址的来源。
+每条命令都在项目镜像中运行，使用固定版本的工具链、无网络、你自己的用户 ID，宿主机上不安装任何东西。`./run.sh --gates` 用与 CI 相同的版本依次运行所有检查。[`asm/`](asm) 中的汇编是唯一带注释的源码：入口和出口状态、寄存器宽度，以及每个还原出的地址的来源。
 
 <details>
 <summary><strong>项目结构</strong></summary>
 
 | 路径 | 内容 |
 |:--|:--|
-| [`asm/`](asm) | 用 65816 和 SPC700 汇编写成的补丁，包括旁路、转换例程和快速上传，以及运行 asar 1.81 的容器 |
+| [`asm/`](asm) | 用 65816 和 SPC700 汇编写成的补丁，包括旁路、转换例程和快速上传 |
 | [`tools/`](tools) | 十六个工具：转储识别、数据流与镜像校验、镜像矩阵、音频比较和日版数据流搜索 |
 | [`emu/`](emu) | 镜像矩阵所用的模拟器测试框架，基于 snes9x 1.63 构建，并加入了窗口式映射 |
-| [`ref/`](ref) | 构建 snes9x 1.63 的 `sdd1emu.cpp` 作为解压基准的容器 |
+| [`ref/`](ref) | 镜像围绕 snes9x 1.63 的 `sdd1emu.cpp` 构建的驱动程序，即解压基准 |
+| [`Dockerfile`](Dockerfile) | 每条命令运行所在的唯一镜像：asar、模拟器测试框架、基准、Python 3.12，以及包含所有检查和测试工具的 gates 阶段 |
+| [`run.sh`](run.sh)、[`run.ps1`](run.ps1)、[`run.cmd`](run.cmd) | 构建镜像并在其中运行命令的启动脚本 |
 | [`conformance/`](conformance) | 来源分歧记录，以及让它与 [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) 保持一致的测试 |
 | [`photos/`](photos) | 镜像在硬件上运行的照片，在本文档中出现处注明作者 |
 | [`scripts/`](scripts) | 为 [`version.py`](version.py) 和 [`CITATION.cff`](CITATION.cff) 写入版本号的发布脚本 |

@@ -8,6 +8,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import toolchain
 
 dump = hardware.load("romimage").dump
 sdd1 = hardware.load("sdd1")
@@ -23,12 +24,12 @@ DMA = re.compile(r"^DMA ch=\d src=(\w\w):(\w{4}) n=(\d+) b=\w\w fixed=1")
 WINDOW_BASE = 0xC0
 
 PASSES = (
-    ("budget7200", ["-e", "SFTOURBUDGET=7200"], 129600),
-    ("budget9000", ["-e", "SFTOURBUDGET=9000"], 162000),
-    ("budget5400", ["-e", "SFTOURBUDGET=5400"], 97200),
-    ("confirm7200", ["-e", "SFTOURBUDGET=7200", "-e", "SFTOURCONFIRM=1"], 129600),
-    ("confirm12000", ["-e", "SFTOURBUDGET=12000", "-e", "SFTOURCONFIRM=1"], 216000),
-    ("long18000", ["-e", "SFTOURBUDGET=18000"], 324000),
+    ("budget7200", ["SFTOURBUDGET=7200"], 129600),
+    ("budget9000", ["SFTOURBUDGET=9000"], 162000),
+    ("budget5400", ["SFTOURBUDGET=5400"], 97200),
+    ("confirm7200", ["SFTOURBUDGET=7200", "SFTOURCONFIRM=1"], 129600),
+    ("confirm12000", ["SFTOURBUDGET=12000", "SFTOURCONFIRM=1"], 216000),
+    ("long18000", ["SFTOURBUDGET=18000"], 324000),
 )
 
 
@@ -42,23 +43,19 @@ def run(
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("wb") as handle:
         execute(
-            [
-                "docker",
-                "run",
-                "--rm",
-                "--network=none",
-                "-e",
-                "SFTOUR=1",
-                "-e",
-                "SFDMA=1",
-                *extra,
-                "-v",
-                f"{ROOT}:/work",
-                "snes-street-fighter-alpha-2-nochip/sfemu:snes9x-1.63",
-                ORACLE,
-                str(frames),
-                "-1",
-            ],
+            toolchain.command(
+                toolchain.EMULATOR,
+                [
+                    "SFTOUR=1",
+                    "SFDMA=1",
+                    *extra,
+                ],
+                [
+                    ORACLE,
+                    str(frames),
+                    "-1",
+                ],
+            ),
             stdout=handle,
             stderr=subprocess.STDOUT,
             check=False,
