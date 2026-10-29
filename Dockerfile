@@ -80,7 +80,7 @@ COPY ref/port.h ref/driver.cpp /ref/
 
 RUN g++ -O2 -Wall -Wextra -I/ref -o /ref/sdd1ref /ref/driver.cpp /ref/sdd1emu.cpp
 
-FROM mirror.gcr.io/library/python:3.12.14-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e AS runtime
+FROM mirror.gcr.io/library/python:3.15.2-slim-bookworm@sha256:4e03260adeeebafccd084f3584e6b84823aba5651cfb53ef8a078ed441ddf9cd AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/* \
