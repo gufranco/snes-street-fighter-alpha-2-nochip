@@ -6,7 +6,12 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import script
+
 ROOT = Path(__file__).resolve().parent.parent
+
+
+JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 def load_module(name: str, where: Path) -> Any:
@@ -27,20 +32,8 @@ NEEDS_A_DUMP = unittest.skipUnless(
 )
 
 
-def _unit_builds() -> bool:
-    try:
-        driver_run.ssmp.Chip("s-smp")
-    except (
-        driver_run.ssmp.NoBootRom,
-        driver_run.ssmp.Corrupt,
-        OSError,
-    ):
-        return False
-    return True
-
-
 NEEDS_THE_BOOT_ROM = unittest.skipUnless(
-    _unit_builds(),
+    driver_run.ssmp.why_not() is None,
     "the audio unit needs Sony's boot program, which nobody may distribute",
 )
 
@@ -304,5 +297,117 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(code, 0)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@NEEDS_A_DUMP
+class ImageTest(unittest.TestCase):
+    def test_the_driver_image_is_the_block_the_processor_is_handed(self) -> None:
+        image = driver_run.image_of(bytearray(USA.read_bytes()))
+
+        self.assertEqual(len(image), driver_run.IMAGE_BYTES)
+
+    def test_and_it_starts_where_the_receive_loop_was_disassembled_from(self) -> None:
+        rom = bytearray(USA.read_bytes())
+        patched = spcfast.apply(rom)
+        image = driver_run.image_of(patched)
+        at = spcfast.DRIVER_BASE + spcfast.RECEIVE_LOOP
+
+        self.assertEqual(image[spcfast.RECEIVE_LOOP], patched[at])
+
+    def test_the_two_tools_agree_on_where_the_driver_lives(self) -> None:
+        self.assertEqual(driver_run.DRIVER_BASE, spcfast.DRIVER_BASE)
+
+
+@NEEDS_A_DUMP
+class TransferTest(unittest.TestCase):
+    def deliver(self, payload: bytes | bytearray, rom: Path = USA) -> Any:
+        image = driver_run.image_of(spcfast.apply(bytearray(rom.read_bytes())))
+        return driver_run.deliver(image, payload, driver_run.DESTINATION)
+
+    def test_a_transfer_carries_three_streams_side_by_side(self) -> None:
+        found = self.deliver(PAYLOAD)
+
+        self.assertEqual(found.streams[0], PAYLOAD[0::3])
+        self.assertEqual(found.streams[1], PAYLOAD[1::3])
+        self.assertEqual(found.streams[2], PAYLOAD[2::3])
+
+    def test_the_first_stream_lands_where_the_driver_was_pointed(self) -> None:
+        found = self.deliver(bytes([0xAB, 0x00, 0x00]))
+
+        self.assertEqual(found.memory.read8(driver_run.DESTINATION), 0xAB)
+
+    def test_and_the_other_two_land_where_their_own_pointers_say(self) -> None:
+        found = self.deliver(bytes([0x00, 0xCD, 0xEF]))
+
+        self.assertEqual(found.memory.read8(driver_run.SECOND), 0xCD)
+        self.assertEqual(found.memory.read8(driver_run.THIRD), 0xEF)
+
+    def test_a_transfer_takes_one_handshake_for_every_three_bytes(self) -> None:
+        found = self.deliver(PAYLOAD)
+
+        self.assertEqual(found.handshakes, len(PAYLOAD) // 3)
+
+    def test_the_driver_echoes_the_counter_it_was_given(self) -> None:
+        found = self.deliver(bytes(range(9)))
+
+        self.assertEqual(found.memory.echoed[0], found.handshakes - 1)
+
+    def test_a_transfer_longer_than_a_page_carries_the_pointer_over(self) -> None:
+        payload = bytes(range(256)) * 3
+
+        found = self.deliver(payload)
+
+        self.assertEqual(found.streams[0], payload[0::3])
+
+    def test_the_japanese_build_receives_the_same_way(self) -> None:
+        found = self.deliver(PAYLOAD, rom=JP)
+
+        self.assertEqual(found.streams[0], PAYLOAD[0::3])
+
+    def test_a_transfer_stops_when_its_payload_does(self) -> None:
+        found = self.deliver(bytes(range(6)))
+
+        self.assertEqual(found.handshakes, 2)
+
+    def test_and_leaves_the_byte_after_it_alone(self) -> None:
+        found = self.deliver(bytes([0xFF] * 3))
+
+        self.assertNotEqual(found.memory.read8(driver_run.DESTINATION + 1), 0xFF)
+
+
+@NEEDS_A_DUMP
+class StockTest(unittest.TestCase):
+    def stock(self, payload: bytes | bytearray, rom: Path = USA) -> Any:
+        image = driver_run.image_of(bytearray(rom.read_bytes()))
+        return driver_run.deliver_one_at_a_time(image, payload, driver_run.DESTINATION)
+
+    def test_the_stock_driver_takes_a_handshake_for_every_byte(self) -> None:
+        found = self.stock(PAYLOAD)
+
+        self.assertEqual(found.handshakes, len(PAYLOAD))
+
+    def test_and_carries_one_stream_rather_than_three(self) -> None:
+        found = self.stock(bytes(range(9)))
+
+        self.assertEqual(found.streams[0][:3], bytes([0, 1, 2]))
+
+    def test_the_patch_is_three_times_fewer_handshakes_for_the_same_bytes(self) -> None:
+        stock = self.stock(PAYLOAD)
+        fast = driver_run.deliver(
+            driver_run.image_of(spcfast.apply(bytearray(USA.read_bytes()))),
+            PAYLOAD,
+            driver_run.DESTINATION,
+        )
+
+        self.assertEqual(stock.handshakes, fast.handshakes * 3)
+
+    def test_and_fewer_instructions_than_that_because_it_reads_each_port_once(self) -> None:
+        stock = self.stock(PAYLOAD)
+        fast = driver_run.deliver(
+            driver_run.image_of(spcfast.apply(bytearray(USA.read_bytes()))),
+            PAYLOAD,
+            driver_run.DESTINATION,
+        )
+
+        self.assertGreater(stock.steps, fast.steps * 3)
+
+
+script.entry(__name__, unittest.main)

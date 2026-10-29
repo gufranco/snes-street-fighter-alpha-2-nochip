@@ -8,6 +8,7 @@ from typing import Any, NamedTuple
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import script
 
 sdd1 = hardware.load("sdd1")
 
@@ -115,5 +116,4 @@ def main(argv: list[str], say: Callable[[str], None] = print) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+script.entry(__name__, main, sys.argv[1:])

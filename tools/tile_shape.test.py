@@ -7,6 +7,8 @@ from typing import Any, override
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import script
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
@@ -19,12 +21,6 @@ def load_module(name: str, where: Path) -> Any:
 
 
 tile_shape = load_module("tile_shape", Path(__file__).resolve().parent / "tile_shape.py")
-
-USA = ROOT / "roms" / "sfa2-usa-final.sfc"
-
-NEEDS_A_DUMP = unittest.skipUnless(
-    USA.exists(), "the retail dump is not on this machine, and nothing here ships one"
-)
 
 
 class TilesTest(unittest.TestCase):
@@ -109,28 +105,6 @@ class SurveyTest(unittest.TestCase):
         self.assertEqual((found.withAnyRepeat, found.noiseWithAnyRepeat), (1, 0))
 
 
-@NEEDS_A_DUMP  # pragma: no cover
-class AgainstTheCartridgeTest(unittest.TestCase):
-    def measured(self) -> Any:
-        return tile_shape.against(USA, limit=200)
-
-    def test_most_streams_are_a_whole_number_of_tiles(self) -> None:
-        found = self.measured()
-
-        self.assertGreater(found.aligned, found.unaligned)
-
-    def test_the_decompressed_output_repeats_tiles(self) -> None:
-        self.assertGreater(self.measured().meanReuse, 0.05)
-
-    def test_and_random_bytes_of_the_same_lengths_repeat_none(self) -> None:
-        self.assertEqual(self.measured().meanReuseOfNoise, 0.0)
-
-    def test_which_is_the_whole_claim(self) -> None:
-        found = self.measured()
-
-        self.assertGreater(found.withAnyRepeat, found.noiseWithAnyRepeat)
-
-
 def a_cartridge_on_disk(case: unittest.TestCase, name: str, size: int) -> Path:
     folder = tempfile.TemporaryDirectory()
     case.addCleanup(folder.cleanup)
@@ -209,10 +183,6 @@ class EntryTest(unittest.TestCase):
         # Assert
         self.assertEqual((code, said[0]), (0, "  1 streams are a whole number of 32 byte tiles"))
 
-    @NEEDS_A_DUMP  # pragma: no cover
-    def test_a_run_from_the_command_line_reports_what_it_measured(self) -> None:
-        self.assertEqual(tile_shape.main([str(USA), "60"]), 0)
-
     def test_a_rom_it_cannot_read_is_reported_rather_than_raised(self) -> None:
         self.assertEqual(tile_shape.main([str(ROOT / "roms" / "nothing-here.sfc")]), 2)
 
@@ -220,20 +190,4 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(tile_shape.main([]), 2)
 
 
-@NEEDS_A_DUMP  # pragma: no cover
-class ExhaustedTableTest(unittest.TestCase):
-    def test_a_table_shorter_than_the_limit_is_measured_whole(self) -> None:
-        table = list(tile_shape.table_for(USA))[:3]
-
-        found = tile_shape.against(USA, limit=100, table=table)
-
-        self.assertEqual(found.aligned + found.unaligned, len(table))
-
-    def test_a_table_with_no_stream_big_enough_measures_nothing(self) -> None:
-        found = tile_shape.against(USA, table=[(0x100000, tile_shape.SMALLEST - 1)])
-
-        self.assertEqual(found.aligned + found.unaligned, 0)
-
-
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

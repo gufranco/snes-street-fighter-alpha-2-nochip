@@ -7,6 +7,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import script
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
@@ -22,7 +24,6 @@ def load_images(load: Callable[[str], Any] = hardware.load) -> Any:
 
 image_package = load_images()
 
-dump = image_package.dump
 rewrite = image_package.rewrite
 copier = image_package.copier
 
@@ -39,11 +40,6 @@ def _load(name: str) -> Any:
 
 
 rombuild = _load("rombuild")
-spcfast = _load("spcfast")
-shinakuma = _load("shinakuma")
-gamefixes = _load("gamefixes")
-repeatload = _load("repeatload")
-prefight = _load("prefight")
 jpstreams = _load("jpstreams")
 usastreams = _load("usastreams")
 version = _load("version")
@@ -197,18 +193,6 @@ def assemble_bypass(
     return image
 
 
-def build(region: str, workdir: Path) -> bytes:
-    retail = dump.read(REGIONS[region].retail)
-    cart = repeatload.apply(gamefixes.apply(shinakuma.apply(spcfast.apply(retail))))
-    bypass = prefight.apply(assemble_bypass(region, cart, workdir))
-    extra = ((prefight.TABLE_ADDRESS, prefight.table()),)
-    image = rombuild.build(bypass, entries_for(region), extra=extra).image
-    assert isinstance(image, bytes)
-    declared = rewrite.declare_rom_only(unify_headers(image))
-    assert isinstance(declared, bytes)
-    return declared
-
-
 def main(
     argv: list[str],
     make: Any = None,
@@ -219,7 +203,7 @@ def main(
     forms: Callable[[str, bytes], list[tuple[str, bytes]]] = forms_of,
 ) -> int:
     complain = say if complain is None else complain
-    make = build if make is None else make
+    make = _load("pack.retail").build if make is None else make
     gate_check = gate.check if gate_check is None else gate_check
     dist = DIST if dist is None else Path(dist)
 
@@ -268,5 +252,4 @@ def main(
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+script.entry(__name__, main, sys.argv)

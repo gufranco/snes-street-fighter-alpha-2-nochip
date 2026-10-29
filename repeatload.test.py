@@ -1,8 +1,12 @@
 import importlib.util
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+
+import script
+import toolchain
 
 ROOT = Path(__file__).resolve().parent
 
@@ -16,6 +20,8 @@ def load_module(name: str) -> Any:
 
 
 repeatload = load_module("repeatload")
+
+IMAGE_BYTES = 4 * 1024 * 1024
 
 HOOK_LITERAL = bytes.fromhex("2000f6")
 
@@ -60,14 +66,25 @@ class RoutineTest(unittest.TestCase):
         self.assertEqual(len(repeatload.hook()), len(repeatload.REPLACED))
 
     def test_the_routine_matches_what_the_assembler_emits(self) -> None:
-        assembled = ROOT / "asm" / "repeat-out.sfc"
-        if not assembled.exists():
-            raise unittest.SkipTest("assemble asm/repeat-load.asm first")
+        # Arrange
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        image = Path(folder.name) / "repeat-out.sfc"
+        image.write_bytes(bytes(IMAGE_BYTES))
+        source = str(ROOT / "asm" / "repeat-load.asm")
+        command = toolchain.command(
+            toolchain.ASSEMBLER, (), ["--no-title-check", source, image.name], Path(folder.name)
+        )
 
-        produced = assembled.read_bytes()  # pragma: no cover
+        # Act
+        done = subprocess.run(command, capture_output=True, text=True, timeout=300, check=False)
 
-        self.assertEqual(  # pragma: no cover
-            produced[repeatload.FILLER_FILE : repeatload.FILLER_FILE + len(repeatload.ROUTINE)],
+        # Assert
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(
+            image.read_bytes()[
+                repeatload.FILLER_FILE : repeatload.FILLER_FILE + len(repeatload.ROUTINE)
+            ],
             repeatload.ROUTINE,
         )
 
@@ -258,5 +275,4 @@ class EntryTest(unittest.TestCase):
         self.assertEqual(said[-1], f"[done] {output} (522,240 bytes)")
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

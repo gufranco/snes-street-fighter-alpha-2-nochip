@@ -5,6 +5,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import script
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -400,5 +402,4 @@ class VanishedRunTest(unittest.TestCase):
         self.assertIn(gamefixes.FIXES[0].name, str(refusal.exception))
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

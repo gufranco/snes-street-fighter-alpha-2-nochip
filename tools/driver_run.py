@@ -6,6 +6,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import script
 
 spc700 = hardware.load("spc700")
 
@@ -303,5 +304,4 @@ def main(argv: list[str]) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+script.entry(__name__, main, sys.argv[1:])

@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 MODULE_PATH = Path(__file__).resolve().parent / "analyse.py"
 
 
@@ -162,5 +164,4 @@ class CommandTest(unittest.TestCase):
         self.assertIn("NO", "\n".join(said))
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+script.entry(__name__, unittest.main, verbosity=2)

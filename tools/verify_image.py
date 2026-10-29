@@ -7,6 +7,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import script
 
 dump = hardware.load("romimage").dump
 mapper = hardware.load("mapper")
@@ -109,5 +110,4 @@ def main(
     return 1 if wrong or unresolved else 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+script.entry(__name__, main, sys.argv)

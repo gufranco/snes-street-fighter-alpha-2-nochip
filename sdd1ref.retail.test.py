@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
@@ -82,5 +84,4 @@ class DifferentialTest(unittest.TestCase):
         self.assertEqual(found, [])
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+script.entry(__name__, unittest.main, verbosity=2)

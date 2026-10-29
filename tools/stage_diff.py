@@ -7,6 +7,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import script  # noqa: E402
 import toolchain  # noqa: E402
 
 LOGS = ROOT / "build" / "logs" / "stagediff"
@@ -94,5 +95,4 @@ def main(
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+script.entry(__name__, main, sys.argv)

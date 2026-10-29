@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -17,8 +19,6 @@ def load_module(name: str) -> Any:
 
 gate = load_module("gate")
 jpstreams = load_module("jpstreams")
-
-JP_ROM = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 class DuplicateTest(unittest.TestCase):
@@ -52,20 +52,6 @@ class ScanTest(unittest.TestCase):
         worst = gate.worst_scan([(0x10000, 32), (0x20000, 32)])
 
         self.assertLessEqual(worst, gate.SCAN_BUDGET)
-
-
-@unittest.skipUnless(JP_ROM.exists(), "the Japanese ROM is absent")  # pragma: no cover
-class ShippedTableTest(unittest.TestCase):
-    def test_the_shipped_table_passes_every_gate(self) -> None:
-        findings = gate.check("jp")
-
-        self.assertEqual(findings, [])
-
-    def test_the_recorded_requests_are_a_subset_of_the_table(self) -> None:
-        sources = {source for source, _ in jpstreams.STREAMS}
-
-        for address in gate.requests("jp"):
-            self.assertIn(address, sources)
 
 
 class UndecodableTest(unittest.TestCase):
@@ -221,5 +207,4 @@ class CommandTest(unittest.TestCase):
         self.assertEqual((said, len(complained)), ([], 1))
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+script.entry(__name__, unittest.main, verbosity=2)

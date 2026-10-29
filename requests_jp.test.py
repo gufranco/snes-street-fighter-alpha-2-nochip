@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 ROOT = Path(__file__).resolve().parent
 
 ROM_BYTES = 0x400000
@@ -65,5 +67,4 @@ class GateTest(unittest.TestCase):
         self.assertGreater(len(TABLE), len(asked))
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

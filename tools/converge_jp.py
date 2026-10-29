@@ -10,6 +10,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import script
 import toolchain
 
 dump = hardware.load("romimage").dump
@@ -18,10 +19,11 @@ sdd1 = hardware.load("sdd1")
 
 
 ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
 
 
-def load(name: str) -> Any:
-    spec = importlib.util.spec_from_file_location(name, ROOT / f"{name}.py")
+def load(name: str, where: Path = ROOT) -> Any:
+    spec = importlib.util.spec_from_file_location(name, where / f"{name}.py")
     assert spec is not None and spec.loader is not None, "no loader for that path"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -29,8 +31,6 @@ def load(name: str) -> Any:
 
 
 rombuild = load("rombuild")
-spcfast = load("spcfast")
-shinakuma = load("shinakuma")
 
 RETAIL = ROOT / "roms" / "sfz2-jp-final.sfc"
 TABLE = ROOT / "build" / "harvest" / "table.txt"
@@ -73,19 +73,13 @@ def write_table(table: dict[int, int], path: Path = TABLE) -> None:
     path.write_text("\n".join(f"{s} {n}" for s, n in sorted(table.items())) + "\n")
 
 
-def variants() -> dict[str, bytes | bytearray]:
-    retail = dump.read(RETAIL)
-    fast = spcfast.apply(retail)
-    return {"base": retail, "spc": fast, "both": shinakuma.apply(fast)}
-
-
 def build_variants(
     table: dict[int, int],
     execute: Callable[..., Any] = subprocess.run,
     carts: dict[str, bytes | bytearray] | None = None,
 ) -> Any:
     OUT.mkdir(parents=True, exist_ok=True)
-    carts = variants() if carts is None else carts
+    carts = load("converge_jp.retail", HERE).variants(dump.read(RETAIL)) if carts is None else carts
     entries = rombuild.entries_from_map({str(s): n for s, n in table.items()})
     built = []
     for name, cart in carts.items():
@@ -202,5 +196,4 @@ def main(
     return 1
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+script.entry(__name__, main)

@@ -17,6 +17,14 @@ Run every gate, and read the output rather than the exit code:
 Both run in the project's Docker image, so the versions are the ones CI uses and nothing is
 installed on your machine; on Windows the launcher is `.\run.cmd`.
 
+On a machine without the dumps, the coverage gate fails on the `*.retail.*` files it could not run. Declare that instead, as CI does:
+
+```bash
+RETAIL_INPUTS=absent ./run.sh --gates
+```
+
+On Windows, run `$env:RETAIL_INPUTS = "absent"` in PowerShell, or `set RETAIL_INPUTS=absent` in Command Prompt, before `.\run.cmd --gates`.
+
 Every model this project measures itself against lives in its own repository and is pinned here as
 a submodule at the root. `./run.sh doctor.py` reports the whole chain, including each model's own
 report and the digest of every dump it found, and it is the first thing to paste into an issue.

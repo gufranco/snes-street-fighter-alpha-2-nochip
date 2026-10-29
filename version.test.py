@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -51,5 +53,4 @@ class StampedNameTest(unittest.TestCase):
         self.assertEqual(name, "x-v1.2.3.smc")
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+script.entry(__name__, unittest.main, verbosity=2)

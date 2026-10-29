@@ -1,10 +1,13 @@
 import importlib.util
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
 
 import hardware
+import script
+import toolchain
 
 wdc65816 = hardware.load("mos65xx")
 
@@ -20,6 +23,8 @@ def load_module(name: str) -> Any:
 
 
 prefight = load_module("prefight")
+
+IMAGE_BYTES = 4 * 1024 * 1024
 
 
 class TableTest(unittest.TestCase):
@@ -65,14 +70,23 @@ class RoutineTest(unittest.TestCase):
         self.assertIn(bytes([prefight.TABLE_ADDRESS >> 16]), emitted)
 
     def test_the_routine_matches_what_the_assembler_emits(self) -> None:
-        assembled = ROOT / "asm" / "prefight-out.sfc"
-        if not assembled.exists():
-            raise unittest.SkipTest("assemble asm/prefight-table.asm first")
+        # Arrange
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        image = Path(folder.name) / "prefight-out.sfc"
+        image.write_bytes(bytes(IMAGE_BYTES))
+        source = str(ROOT / "asm" / "prefight-table.asm")
+        command = toolchain.command(
+            toolchain.ASSEMBLER, (), ["--no-title-check", source, image.name], Path(folder.name)
+        )
 
-        produced = assembled.read_bytes()  # pragma: no cover
+        # Act
+        done = subprocess.run(command, capture_output=True, text=True, timeout=300, check=False)
 
-        self.assertEqual(  # pragma: no cover
-            produced[prefight.FILLER_FILE : prefight.FILLER_FILE + len(prefight.ROUTINE)],
+        # Assert
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(
+            image.read_bytes()[prefight.FILLER_FILE : prefight.FILLER_FILE + len(prefight.ROUTINE)],
             prefight.ROUTINE,
         )
 
@@ -235,5 +249,4 @@ class CommandTest(unittest.TestCase):
         self.assertIn("[done]", said[-1])
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

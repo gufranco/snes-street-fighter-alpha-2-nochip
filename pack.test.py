@@ -8,6 +8,8 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, override
 
+import script
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -602,5 +604,4 @@ class DeviceFormTest(unittest.TestCase):
         self.assertIn("no cartridge header", str(raised.exception))
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+script.entry(__name__, unittest.main, verbosity=2)

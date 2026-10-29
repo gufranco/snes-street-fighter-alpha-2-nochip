@@ -2,9 +2,18 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar, override
+
+import hardware
+import script
 
 ROOT = Path(__file__).resolve().parent
+
+
+dump = hardware.load("romimage").dump
+
+
+JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 def load_module(name: str) -> Any:
@@ -88,5 +97,53 @@ class EntryTest(unittest.TestCase):
         self.assertTrue(said)
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+@unittest.skipUnless(USA.exists() and JP.exists(), "the retail ROMs are not present")
+class RetailRomTest(unittest.TestCase):
+    jp: ClassVar[Any]
+    usa: ClassVar[Any]
+
+    @classmethod
+    @override
+    def setUpClass(cls) -> None:
+        cls.usa = dump.read(USA)
+        cls.jp = dump.read(JP)
+
+    def test_the_gate_is_present_exactly_once_in_each_region(self) -> None:
+        self.assertEqual(shinakuma.find_gate(self.usa), 0x00EC6E)
+        self.assertEqual(shinakuma.find_gate(self.jp), 0x00ECA0)
+
+    def test_the_gate_is_byte_identical_across_regions(self) -> None:
+        usa = shinakuma.find_gate(self.usa)
+        jp = shinakuma.find_gate(self.jp)
+
+        self.assertEqual(
+            self.usa[usa : usa + len(shinakuma.GATE)],
+            self.jp[jp : jp + len(shinakuma.GATE)],
+        )
+
+    def test_patching_touches_only_the_branch_and_the_checksum(self) -> None:
+        patched = shinakuma.apply(self.usa)
+        changed = {i for i in range(len(patched)) if patched[i] != self.usa[i]}
+        site = 0x00EC6E + shinakuma.PRECONDITION
+        allowed = {site, site + 1} | set(
+            range(shinakuma.spcfast.CHECKSUM_FIELD, shinakuma.spcfast.CHECKSUM_FIELD + 4)
+        )
+
+        self.assertTrue(changed.issubset(allowed))
+        self.assertIn(site, changed)
+        self.assertIn(site + 1, changed)
+
+    def test_the_substitution_handler_is_untouched(self) -> None:
+        patched = shinakuma.apply(self.usa)
+
+        self.assertEqual(patched[0x00CA7F:0x00CAD0], self.usa[0x00CA7F:0x00CAD0])
+
+    def test_both_regions_patch_at_their_own_offset(self) -> None:
+        for rom, offset in ((self.usa, 0x00EC6E), (self.jp, 0x00ECA0)):
+            patched = shinakuma.apply(rom)
+            site = offset + shinakuma.PRECONDITION
+
+            self.assertEqual(patched[site : site + 2], shinakuma.BRANCH)
+
+
+script.entry(__name__, unittest.main, verbosity=2)

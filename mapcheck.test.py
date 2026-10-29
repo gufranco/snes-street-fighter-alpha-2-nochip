@@ -2,13 +2,11 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
-from typing import Any, ClassVar, override
+from typing import Any
+
+import script
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-import hardware
-
-dump = hardware.load("romimage").dump
 
 
 ROOT = Path(__file__).resolve().parent
@@ -24,8 +22,6 @@ def load_module(name: str) -> Any:
 
 mapcheck = load_module("mapcheck")
 jpstreams = load_module("jpstreams")
-
-JP_ROM = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 class LoadTest(unittest.TestCase):
@@ -72,42 +68,6 @@ class ScanCostTest(unittest.TestCase):
         _, worst = mapcheck.scan_cost(entries)
 
         self.assertGreater(worst, 0)
-
-
-@unittest.skipUnless(JP_ROM.exists(), "the Japanese ROM is absent")  # pragma: no cover
-class JapaneseMapTest(unittest.TestCase):
-    entries: ClassVar[Any]
-    rom: ClassVar[Any]
-
-    @classmethod
-    @override
-    def setUpClass(cls) -> None:
-        cls.rom = dump.read(JP_ROM)
-        cls.entries = mapcheck.load()
-
-    def test_the_map_holds_the_streams_the_build_needs(self) -> None:
-        self.assertGreaterEqual(len(self.entries), 2816)
-
-    def test_no_source_appears_twice(self) -> None:
-        self.assertEqual(mapcheck.duplicate_sources(self.entries), [])
-
-    def test_every_stream_decompresses(self) -> None:
-        self.assertEqual(mapcheck.undecodable(self.rom, self.entries), [])
-
-    def test_every_stream_stays_inside_the_rom(self) -> None:
-        for source, _ in self.entries:
-            self.assertLess(source, len(self.rom))
-
-    def test_the_lookup_stays_cheap_to_scan(self) -> None:
-        _, worst = mapcheck.scan_cost(self.entries)
-
-        self.assertLessEqual(worst, mapcheck.SCAN_BUDGET)
-
-    def test_the_streams_recovered_by_harvesting_are_present(self) -> None:
-        sources = {source for source, _ in self.entries}
-
-        for recovered in mapcheck.RECOVERED_JP:
-            self.assertIn(recovered, sources)
 
 
 class RegionTest(unittest.TestCase):
@@ -222,5 +182,4 @@ class LoadRefusalTest(unittest.TestCase):
             mapcheck.load([(0x100000, 0)])
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+script.entry(__name__, unittest.main, verbosity=2)

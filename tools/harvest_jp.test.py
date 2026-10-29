@@ -1,11 +1,14 @@
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+import script  # noqa: E402
 
 
 def load_module(name: str, path: Path) -> Any:
@@ -151,29 +154,6 @@ class MissedTest(unittest.TestCase):
 
 
 class VariantTest(unittest.TestCase):
-    @unittest.skipUnless(
-        harvest_jp.RETAIL.exists(), "the retail cartridge is not present"
-    )  # pragma: no cover
-    def test_the_harvest_builds_four_variants_and_none_of_them_twice(self) -> None:
-        import hardware
-
-        variants = harvest_jp.variants(hardware.load("romimage").dump.read(harvest_jp.RETAIL))
-
-        self.assertEqual(sorted(variants), ["base", "both", "sa", "spc"])
-        self.assertEqual(len(set(variants.values())), 4)
-
-    @unittest.skipUnless(
-        harvest_jp.RETAIL.exists(), "the retail cartridge is not present"
-    )  # pragma: no cover
-    def test_the_harvest_variants_carry_no_skip_patch(self) -> None:
-        import hardware
-
-        repeatload = load_module("repeatload", ROOT / "repeatload.py")
-        variants = harvest_jp.variants(hardware.load("romimage").dump.read(harvest_jp.RETAIL))
-
-        for name, image in variants.items():
-            self.assertFalse(repeatload.is_patched(image), name)
-
     def test_the_window_base_is_where_the_cartridge_window_starts(self) -> None:
         self.assertEqual(harvest_jp.WINDOW_BASE, 0xC0)
 
@@ -442,5 +422,20 @@ class SkipTest(unittest.TestCase):
         self.assertIn("cannot trim", "\n".join(said))
 
 
-if __name__ == "__main__":
-    unittest.main()
+class HarvestTest(unittest.TestCase):
+    def test_the_harvest_writes_one_sorted_row_per_stream_and_says_how_many(self) -> None:
+        # Arrange
+        said: list[str] = []
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        destination = Path(folder.name) / "table.txt"
+
+        # Act
+        harvest_jp.harvest(destination, lambda: {0x2000: 64, 0x1000: 512}, said.append)
+
+        # Assert
+        self.assertEqual(destination.read_text(), "4096 512\n8192 64\n")
+        self.assertEqual(said, ["  wrote 2 entries"])
+
+
+script.entry(__name__, unittest.main)

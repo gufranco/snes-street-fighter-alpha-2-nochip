@@ -5,6 +5,10 @@ from collections.abc import Callable, Iterable, Iterator
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import script
+
 ROOT = Path(__file__).resolve().parent.parent
 
 HDR = re.compile(r"^HDR pc=(\w+) src=(\w\w):(\w{4}) len=(\d+) dest=(\w{4})")
@@ -267,5 +271,4 @@ def main(argv: list[str], say: Callable[[str], None] = print) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+script.entry(__name__, main, sys.argv)

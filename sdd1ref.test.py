@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
@@ -233,5 +235,4 @@ class SampleTest(unittest.TestCase):
         self.assertTrue(all(length in ref.SAMPLE_LENGTHS for _, length in cases))
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
+script.entry(__name__, unittest.main, verbosity=2)

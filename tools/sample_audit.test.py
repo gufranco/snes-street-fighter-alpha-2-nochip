@@ -5,6 +5,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+import script  # noqa: E402
+
 sys.path.insert(0, str(ROOT / "tools"))
 
 import sample_audit as audit  # noqa: E402
@@ -354,5 +357,4 @@ class FaultIdentityTest(unittest.TestCase):
         self.assertEqual(len(found), 2)
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

@@ -8,26 +8,24 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import script
 
 dump = hardware.load("romimage").dump
 rewrite = hardware.load("romimage").rewrite
 
 
 ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
 
 
-def load(name: str) -> Any:
-    spec = importlib.util.spec_from_file_location(name, ROOT / f"{name}.py")
+def load(name: str, where: Path = ROOT) -> Any:
+    spec = importlib.util.spec_from_file_location(name, where / f"{name}.py")
     assert spec is not None and spec.loader is not None, "no loader for that path"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-spcfast = load("spcfast")
-shinakuma = load("shinakuma")
-gamefixes = load("gamefixes")
-repeatload = load("repeatload")
 prefight = load("prefight")
 rombuild = load("rombuild")
 sdd1map = load("sdd1map")
@@ -36,16 +34,6 @@ OUT = ROOT / "build" / "all"
 RETAIL = {"usa": ROOT / "roms" / "sfa2-usa-final.sfc", "jp": ROOT / "roms" / "sfz2-jp-final.sfc"}
 BYPASS = {"usa": "sdd1-bypass.asm", "jp": "sdd1-bypass-jp.asm"}
 TAGGED = ROOT / "roms" / "sfa2-usa-vc-sound-restored.sfc"
-
-
-def variants(retail: bytes | bytearray) -> dict[str, bytes]:
-    fast = spcfast.apply(retail)
-    return {
-        "base": retail,
-        "spc": fast,
-        "sa": shinakuma.apply(retail),
-        "both": repeatload.apply(gamefixes.apply(shinakuma.apply(fast))),
-    }
 
 
 def entries_for(region: str) -> Any:
@@ -104,7 +92,10 @@ def main(
 ) -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     carts = (
-        {region: variants(dump.read(path)) for region, path in RETAIL.items()}
+        {
+            region: load("rebuild_all.retail", HERE).variants(dump.read(path))
+            for region, path in RETAIL.items()
+        }
         if carts is None
         else carts
     )
@@ -120,5 +111,4 @@ def main(
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+script.entry(__name__, main)

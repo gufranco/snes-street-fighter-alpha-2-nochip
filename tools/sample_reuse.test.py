@@ -1,8 +1,13 @@
 import importlib.util
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import script
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -512,5 +517,4 @@ class ReplayCountTest(unittest.TestCase):
         self.assertEqual(totals["loads"], 0)
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

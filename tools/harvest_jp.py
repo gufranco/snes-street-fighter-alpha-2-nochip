@@ -9,6 +9,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import hardware
+import script
 import toolchain
 
 dump = hardware.load("romimage").dump
@@ -17,10 +18,11 @@ sdd1 = hardware.load("sdd1")
 
 
 ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
 
 
-def load(name: str) -> Any:
-    spec = importlib.util.spec_from_file_location(name, ROOT / f"{name}.py")
+def load(name: str, where: Path = ROOT) -> Any:
+    spec = importlib.util.spec_from_file_location(name, where / f"{name}.py")
     assert spec is not None and spec.loader is not None, "no loader for that path"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -28,8 +30,6 @@ def load(name: str) -> Any:
 
 
 rombuild = load("rombuild")
-spcfast = load("spcfast")
-shinakuma = load("shinakuma")
 
 RETAIL = ROOT / "roms" / "sfz2-jp-final.sfc"
 OUT = ROOT / "build" / "harvest"
@@ -44,16 +44,6 @@ SCAN = re.compile(
     r"ch7=(\w\w):(\w{4}):(\d+):fixed\d"
 )
 SCANLEN = re.compile(r"^SCANLEN addr=(\w{4}) steps=(\d+)")
-
-
-def variants(retail: bytes | bytearray) -> dict[str, bytes]:
-    fast = spcfast.apply(retail)
-    return {
-        "base": retail,
-        "spc": fast,
-        "sa": shinakuma.apply(retail),
-        "both": shinakuma.apply(fast),
-    }
 
 
 def build_image(
@@ -193,7 +183,7 @@ def main(
 ) -> dict[int, int]:
     rom = dump.read(RETAIL) if rom is None else rom
     table = dict(load("jpstreams").STREAMS) if table is None else table
-    carts = variants(rom) if carts is None else carts
+    carts = load("harvest_jp.retail", HERE).variants(rom) if carts is None else carts
 
     for iteration in range(1, rounds + 1):
         added = 0
@@ -222,8 +212,15 @@ def main(
     return table
 
 
-if __name__ == "__main__":
-    result = main()
+def harvest(
+    destination: Path = OUT / "table.txt",
+    run: Callable[[], dict[int, int]] = main,
+    say: Callable[[str], None] = print,
+) -> None:
+    result = run()
     lines = [f"{source} {length}" for source, length in sorted(result.items())]
-    (ROOT / "build" / "harvest" / "table.txt").write_text("\n".join(lines) + "\n")
-    print(f"  wrote {len(result)} entries")
+    destination.write_text("\n".join(lines) + "\n")
+    say(f"  wrote {len(result)} entries")
+
+
+script.entry(__name__, harvest)

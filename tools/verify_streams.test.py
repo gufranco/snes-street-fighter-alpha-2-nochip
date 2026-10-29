@@ -7,6 +7,8 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+import script  # noqa: E402
+
 
 def load_module(name: str, path: Path) -> Any:
     spec = importlib.util.spec_from_file_location(name, path)
@@ -155,5 +157,4 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(len([one for one in said if "MISMATCH" in one]), 20)
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

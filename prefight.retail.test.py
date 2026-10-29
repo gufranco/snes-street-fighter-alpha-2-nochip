@@ -3,6 +3,8 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -21,8 +23,7 @@ JP = ROOT / "roms" / "sfz2-jp-final.sfc"
 
 
 def retail(path: Path) -> bytes:
-    if not path.exists():
-        raise unittest.SkipTest(f"{path} is not present")
+    script.skip_unless(path.exists(), f"{path} is not present")
     return path.read_bytes()
 
 
@@ -128,5 +129,4 @@ class ApplyTest(unittest.TestCase):
         self.assertTrue(moved <= allowed, sorted(moved - allowed)[:8])
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

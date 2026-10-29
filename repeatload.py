@@ -4,6 +4,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import script
+
 ROOT = Path(__file__).resolve().parent
 
 
@@ -89,5 +91,4 @@ def main(
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+script.entry(__name__, main, sys.argv)

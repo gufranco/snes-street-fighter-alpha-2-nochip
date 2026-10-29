@@ -4,6 +4,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+import script
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
@@ -245,5 +247,4 @@ def main(
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
+script.entry(__name__, main)

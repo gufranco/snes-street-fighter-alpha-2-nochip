@@ -4,14 +4,12 @@ import unittest
 from pathlib import Path
 from typing import Any
 
+import script
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import doctor
 import hardware
-
-
-def _never_asked(_name: str) -> Any:
-    raise AssertionError("nothing should have been loaded")  # pragma: no cover
 
 
 class Complaint(Exception):
@@ -247,9 +245,14 @@ class AskingEachTest(unittest.TestCase):
         return type("Underneath", (), {"examine": staticmethod(lambda: findings)})
 
     def test_a_model_that_is_not_checked_out_is_passed_over(self) -> None:
-        found = doctor._ask_each(["nothing"], lambda _name: Path("/nowhere/at/all"), _never_asked)
+        # Arrange
+        loaded: list[str] = []
 
-        self.assertEqual(found, [])
+        # Act
+        found = doctor._ask_each(["nothing"], lambda _name: Path("/nowhere/at/all"), loaded.append)
+
+        # Assert
+        self.assertEqual((found, loaded), ([], []))
 
     def test_a_model_with_no_doctor_is_passed_over_too(self) -> None:
         def absent(_name: str) -> Any:
@@ -387,5 +390,4 @@ class NextStepTest(unittest.TestCase):
         self.assertLessEqual(wanted, names)
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)

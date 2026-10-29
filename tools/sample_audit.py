@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import hardware  # noqa: E402
+import script  # noqa: E402
 
 sdsp = hardware.load("sdsp")
 
@@ -221,5 +222,4 @@ def main(argv: list[str]) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+script.entry(__name__, main, sys.argv[1:])

@@ -5,6 +5,8 @@ import unittest
 from pathlib import Path
 from typing import override
 
+import script
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hardware
@@ -169,5 +171,4 @@ class CheckoutTest(unittest.TestCase):
             hardware.is_checked_out("nonsense")
 
 
-if __name__ == "__main__":
-    unittest.main()
+script.entry(__name__, unittest.main)
