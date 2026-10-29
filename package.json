@@ -15,5 +15,5 @@
     "prettier": "3.9.10",
     "semantic-release": "25.0.9"
   },
-  "packageManager": "pnpm@11.22.0"
+  "packageManager": "pnpm@11.28.9"
 }
