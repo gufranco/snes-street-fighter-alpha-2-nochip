@@ -69,16 +69,18 @@
 ; The marker
 ; ---------------------------------------------------------------------------
 ;
-; $1F3F and $1F40 hold a two byte magic, $5A and $A5, and $1F41 the id of the
-; last list actually uploaded. The magic is there because work RAM does not
+; $7E:9000 and $7E:9001 hold a two byte magic, $5A and $A5, and $7E:9002 the
+; id of the last list actually uploaded. The magic is there because work RAM does not
 ; come up zeroed on a console, a lesson this project already paid for once: a
 ; marker with no validity check would read garbage after power-on and could
 ; skip the first load. Both the magic and the id have to match, so garbage
 ; matches with probability one in sixteen million, and after the first real
 ; load the marker is always correct.
 ;
-; The address was moved up one byte after measurement, and the correction is
-; worth recording because the first version looked right and was not. The
+; The marker has moved twice, and both corrections are kept here because each
+; earlier version looked right and was not.
+;
+; First it sat at $1F3E, and was moved up one byte after measurement. The
 ; region survey this project uses reports which addresses a run reads or
 ; writes, and it named $1F3E to $1FC6 as touched in neither direction. Watching
 ; every write to those three bytes across an eighteen fighter tour tells a
@@ -92,12 +94,20 @@
 ; and it is not what declines the repeats that remain unskipped. What does is
 ; not established.
 ;
-; A corrupt record can only refuse a skip, never invent one. That is what the
-; two magic bytes are for and it holds either way.
+; Then $1F3F turned out to be live as well. The game holds a value there and
+; overwrites it on every play, so the magic never survived a single call: the
+; comparison that decides a skip failed every time, the skip never once fired,
+; and the patch wrote into state the game uses. The test that asserted the
+; marker sat in memory no write was seen in had a range one byte too low.
 ;
-; $1F3F to $1FC5 is the run that survives the write watch. The sound transfer's
-; private stack lives at $1FE0 and grows down, reaching $1FD2 at the deepest,
-; well clear of the three bytes used here.
+; The marker now sits at $7E:9000, chosen from a measurement rather than from
+; inspection. Two forty five thousand frame tours, one per region, walking the
+; whole roster and entering fights, wrote no byte anywhere in $7E:5E70 through
+; $7E:FE3F. That is forty kilobytes, and the marker sits in the middle of it
+; rather than at an edge. Untouched across a long run is evidence, not proof.
+;
+; A corrupt record can only refuse a skip, never invent one. That is what the
+; two magic bytes are for and it holds wherever the marker sits.
 ;
 ; Entry:  reached by jsr from $C7:0069, which is the lda #$1500 that starts the
 ;         allocator. A and X and Y are 16 bit, the direct page is zero, the
@@ -112,9 +122,9 @@
 
 lorom
 
-!MARKER_MAGIC_LOW  = $001F3F
-!MARKER_MAGIC_HIGH = $001F40
-!MARKER_ID         = $001F41
+!MARKER_MAGIC_LOW  = $7E9000    ; the middle of 40 KB no tour wrote, see above
+!MARKER_MAGIC_HIGH = $7E9001
+!MARKER_ID         = $7E9002
 
 !MAGIC_LOW  = $5A
 !MAGIC_HIGH = $A5
