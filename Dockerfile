@@ -80,7 +80,7 @@ COPY ref/port.h ref/driver.cpp /ref/
 
 RUN g++ -O2 -Wall -Wextra -I/ref -o /ref/sdd1ref /ref/driver.cpp /ref/sdd1emu.cpp
 
-FROM mirror.gcr.io/library/python:3.15.2-slim-bookworm@sha256:4e03260adeeebafccd084f3584e6b84823aba5651cfb53ef8a078ed441ddf9cd AS runtime
+FROM mirror.gcr.io/library/python:3.12.14-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/* \
@@ -117,7 +117,7 @@ RUN arch="$(dpkg --print-architecture)" \
     && tar -xzf /tmp/actionlint.tar.gz -C /usr/local/bin actionlint \
     && rm /tmp/actionlint.tar.gz
 
-COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 /uv /usr/local/bin/uv
 
 RUN uv pip install --system --no-cache \
         ruff==0.16.3 mypy==1.14.1 coverage==7.6.10 yamllint==1.38.0
