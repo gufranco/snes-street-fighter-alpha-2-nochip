@@ -198,6 +198,38 @@ class CommandTest(unittest.TestCase):
 
         self.assertEqual((code, "unknown region" in said[0]), (2, True))
 
+    def test_a_pass_without_the_dump_says_the_entries_were_not_decoded(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        gate.main(["gate", "usa"], say=said.append, examine=lambda _r: [], present=lambda _r: False)
+
+        # Assert
+        self.assertEqual(
+            said, ["  usa: 2,817 streams, ok, without decoding: roms/sfa2-usa-final.sfc is absent"]
+        )
+
+    def test_a_pass_with_the_dump_says_only_ok(self) -> None:
+        # Arrange
+        said: list[str] = []
+
+        # Act
+        gate.main(["gate", "usa"], say=said.append, examine=lambda _r: [], present=lambda _r: True)
+
+        # Assert
+        self.assertEqual(said, ["  usa: 2,817 streams, ok"])
+
+    def test_the_dump_counts_as_present_exactly_when_its_file_exists(self) -> None:
+        # Arrange
+        region = "jp"
+
+        # Act
+        found = gate.has_dump(region)
+
+        # Assert
+        self.assertEqual(found, gate.RETAIL[region].exists())
+
     def test_the_complaint_can_be_sent_somewhere_other_than_the_report(self) -> None:
         said: list[str] = []
         complained: list[str] = []

@@ -138,12 +138,24 @@ def check(
     return findings
 
 
+def has_dump(region: str) -> bool:
+    return RETAIL[region].exists()
+
+
+def passed(region: str, count: int, dumped: bool) -> str:
+    said = f"  {region}: {count:,} streams, ok"
+    if dumped:
+        return said
+    return f"{said}, without decoding: {RETAIL[region].relative_to(ROOT)} is absent"
+
+
 def main(
     argv: list[str],
     say: Callable[[str], None] = print,
     complain: Callable[[str], None] | None = None,
     examine: Callable[[str], list[str]] = check,
     listing: Callable[[str], list[tuple[int, int]]] = table,
+    present: Callable[[str], bool] = has_dump,
 ) -> int:
     complain = say if complain is None else complain
     wanted = argv[1:] or sorted(RETAIL)
@@ -162,7 +174,7 @@ def main(
             for finding in findings:
                 say(f"    {finding}")
         else:
-            say(f"  {region}: {len(entries):,} streams, ok")
+            say(passed(region, len(entries), present(region)))
     return 1 if failed else 0
 
 

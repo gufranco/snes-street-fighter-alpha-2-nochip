@@ -143,7 +143,7 @@ Every tool is pinned in the image because a local install of a different
 version disagrees, and a report from a version nobody ships is worse than no
 report. A gate run on the host proves nothing about the image: an output filter
 there has already hidden a ruff diff that the image's ruff failed on. The suite
-takes several minutes and 1,320 tests; a run that finishes faster than that did
+takes several minutes and 1,323 tests; a run that finishes faster than that did
 not run all of it.
 
 A test that needs a retail dump goes in `<module>.retail.test.py` beside the
