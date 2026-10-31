@@ -27,9 +27,7 @@ RUN git clone --depth=1 --branch "${SNES9X_REF}" \
 
 RUN echo "${SDD1EMU_SHA256}  /src/snes9x/sdd1emu.cpp" | sha256sum --check --strict
 
-RUN sed -i 's|^inline uint8 S9xGetByte (uint32 Address)\n{|&|' /src/snes9x/getset.h \
-    && sed -i 's|^inline uint8 S9xGetByte (uint32 Address)$|extern unsigned long sf_bank_reads[256];\ninline uint8 S9xGetByte (uint32 Address)|' /src/snes9x/getset.h \
-    && sed -i '0,/^{$/{}' /src/snes9x/getset.h \
+RUN sed -i 's|^inline uint8 S9xGetByte (uint32 Address)$|extern unsigned long sf_bank_reads[256];\ninline uint8 S9xGetByte (uint32 Address)|' /src/snes9x/getset.h \
     && perl -0pi -e 's/(inline uint8 S9xGetByte \(uint32 Address\)\n\{)/$1\n\tsf_bank_reads[(Address >> 16) & 0xFF]++;/' /src/snes9x/getset.h \
     && grep -c "sf_bank_reads" /src/snes9x/getset.h
 
@@ -120,7 +118,7 @@ RUN arch="$(dpkg --print-architecture)" \
 COPY --from=ghcr.io/astral-sh/uv:0.13.1@sha256:4a1f3666816dafadd20ceb71eac9a7d56d7ef30279f7d64048519ab901ada336 /uv /usr/local/bin/uv
 
 RUN uv pip install --system --no-cache \
-        ruff==0.16.3 mypy==1.14.1 coverage==7.6.10 yamllint==1.38.0
+        ruff==0.17.3 mypy==2.4.1 coverage==7.17.0 yamllint==1.38.0
 
 ENV COREPACK_HOME=/opt/corepack \
     PATH=/opt/tooling/node_modules/.bin:$PATH
