@@ -1,64 +1,10 @@
-# Compressed graphics streams in Street Fighter Zero 2 (Japan).
-#
-# Each entry is (source, length).
-#
-#   source  byte offset of the stream inside the 4 MB retail ROM. The engine
-#           reaches it through the cartridge window, where bank $C0 + n is ROM
-#           bank n, so the stream at $19104C is asked for as $D9:104C.
-#   length  decompressed bytes. An S-DD1 stream carries no length of its own,
-#           so it ends where its consumer stops reading. This is the largest
-#           transfer the retail cartridge was observed to decompress from that
-#           address, which is what the rebuilt image has to hold.
-#
-# Streams overlap, and that is not a defect. Decompressing the full length of
-# one entry frequently runs into the compressed bytes of the next, because the
-# decoder reads ahead and because the cartridge sometimes asks one address for
-# more than the following stream's start would allow. The tagged USA dump shows
-# the same thing, so an entry covering another entry's start proves nothing on
-# its own.
-#
-# Where the table comes from. The USA cartridge has a tagged dump, DarkAkuma's
-# SNES Classic ROM, which places an SDD1 marker before every stream and hands
-# over all 2,815 of them directly. No equivalent exists for Japan, so every
-# entry here was recovered by running the retail cartridge under emulation with
-# the S-DD1 emulated and logging each DMA whose A-bus is fixed, the exact
-# condition the chip decompresses under. Each entry was then confirmed by
-# decompressing it out of the retail ROM and checking it produces exactly the
-# recorded number of bytes, and the whole table is checked against snes9x's own
-# sdd1emu.cpp before release.
-#
-# Coverage is the hard part, and it is a property of how the game was driven,
-# not of the ROM. A stream nobody asks for cannot be discovered. Successive
-# input drivers found 42 addresses, then 274 once the character roster was
-# swept, then 734 once a driver that actually enters fights was added. Each
-# widening exposed streams the previous one had no way to see.
-#
-# The converted build may be used to find candidates but never to change an
-# existing entry. Adding a start it asks for is safe: a lookup can only stop
-# resolving to the wrong neighbour. Shortening an entry on its word is not, and
-# doing exactly that once produced a table that truncated two streams the
-# cartridge genuinely needs. Every candidate is confirmed by decompressing it
-# out of the retail ROM to exactly the requested size, requests_jp.py holds the
-# cartridge's own evidence, and gate.py refuses to build an image that fails it.
-#
-# A miss is not the only way a lookup goes wrong, and it is not the way that
-# hurts most. The scan walks forward until a slot holds a matching bank byte,
-# so an address with no key of its own can stop on a neighbour's key a few
-# slots away and return that stream's destination. Nothing looks unusual: the
-# scan is short, no miss is counted, and the screen quietly draws the wrong
-# picture. Birdie's portrait arriving as Bison's is what that looks like, and
-# it is why the check that matters is whether every requested address is a
-# stream start, not whether the scan stayed inside its budget.
-
 STREAMS = (
-    # ROM bank 0x00, window bank $C0: 6 streams, 5,056 decompressed bytes
     (0x007890, 832),
     (0x00792C, 832),
     (0x0079D1, 832),
     (0x007A39, 832),
     (0x007A9A, 896),
     (0x007B15, 832),
-    # ROM bank 0x13, window bank $D3: 38 streams, 186,116 decompressed bytes
     (0x130000, 1152),
     (0x1302EF, 8192),
     (0x130E9D, 2048),
@@ -97,7 +43,6 @@ STREAMS = (
     (0x13CB9F, 17920),
     (0x13F22F, 8192),
     (0x13FB7D, 2048),
-    # ROM bank 0x14, window bank $D4: 10 streams, 124,096 decompressed bytes
     (0x14000F, 24576),
     (0x143C56, 1024),
     (0x143E7C, 1120),
@@ -108,7 +53,6 @@ STREAMS = (
     (0x14D663, 8192),
     (0x14E1E1, 8192),
     (0x14EC85, 8192),
-    # ROM bank 0x15, window bank $D5: 14 streams, 143,225 decompressed bytes
     (0x150011, 22368),
     (0x1538E6, 25248),
     (0x1578C4, 2144),
@@ -123,7 +67,6 @@ STREAMS = (
     (0x15E996, 1801),
     (0x15EFBB, 8192),
     (0x15F462, 5408),
-    # ROM bank 0x16, window bank $D6: 12 streams, 144,948 decompressed bytes
     (0x16000B, 25888),
     (0x163E42, 1024),
     (0x1640B9, 8192),
@@ -136,7 +79,6 @@ STREAMS = (
     (0x16ED2E, 5300),
     (0x16F177, 8192),
     (0x16F7CF, 5120),
-    # ROM bank 0x17, window bank $D7: 12 streams, 113,376 decompressed bytes
     (0x17000A, 27264),
     (0x174353, 1792),
     (0x174843, 8192),
@@ -149,7 +91,6 @@ STREAMS = (
     (0x17DD54, 3744),
     (0x17EF0E, 4064),
     (0x17F875, 3392),
-    # ROM bank 0x18, window bank $D8: 9 streams, 124,704 decompressed bytes
     (0x18000A, 30656),
     (0x1844E5, 8192),
     (0x184D5F, 23200),
@@ -159,7 +100,6 @@ STREAMS = (
     (0x18D846, 8192),
     (0x18E292, 8960),
     (0x18F7E3, 8192),
-    # ROM bank 0x19, window bank $D9: 63 streams, 218,660 decompressed bytes
     (0x190011, 8192),
     (0x1908FF, 800),
     (0x190B01, 8192),
@@ -223,7 +163,6 @@ STREAMS = (
     (0x19F7E5, 1024),
     (0x19F8E5, 3072),
     (0x19FD0A, 960),
-    # ROM bank 0x1a, window bank $DA: 51 streams, 115,894 decompressed bytes
     (0x1A0008, 2656),
     (0x1A052A, 2048),
     (0x1A05DC, 1024),
@@ -275,7 +214,6 @@ STREAMS = (
     (0x1ACCD1, 6144),
     (0x1AD536, 1088),
     (0x1AD6C9, 128),
-    # ROM bank 0x1b, window bank $DB: 64 streams, 146,874 decompressed bytes
     (0x1B0000, 32),
     (0x1B0015, 3552),
     (0x1B0748, 1568),
@@ -340,7 +278,6 @@ STREAMS = (
     (0x1BED10, 64),
     (0x1BED15, 7936),
     (0x1BF944, 3840),
-    # ROM bank 0x1c, window bank $DC: 130 streams, 130,234 decompressed bytes
     (0x1C0000, 2304),
     (0x1C0434, 2144),
     (0x1C0864, 1088),
@@ -471,7 +408,6 @@ STREAMS = (
     (0x1CFA00, 768),
     (0x1CFB37, 992),
     (0x1CFDFB, 928),
-    # ROM bank 0x1d, window bank $DD: 130 streams, 138,030 decompressed bytes
     (0x1D0000, 1024),
     (0x1D021C, 2184),
     (0x1D04C3, 640),
@@ -602,7 +538,6 @@ STREAMS = (
     (0x1DFD5E, 2048),
     (0x1DFEAB, 2048),
     (0x1DFFF1, 64),
-    # ROM bank 0x1e, window bank $DE: 54 streams, 181,600 decompressed bytes
     (0x1E0000, 10752),
     (0x1E18F8, 22400),
     (0x1E3E22, 2048),
@@ -657,7 +592,6 @@ STREAMS = (
     (0x1EFA55, 2048),
     (0x1EFB57, 4096),
     (0x1EFEDB, 512),
-    # ROM bank 0x20, window bank $E0: 73 streams, 99,752 decompressed bytes
     (0x200000, 1568),
     (0x200427, 1600),
     (0x200865, 1664),
@@ -731,7 +665,6 @@ STREAMS = (
     (0x20F688, 1024),
     (0x20F941, 1280),
     (0x20FC7A, 1472),
-    # ROM bank 0x21, window bank $E1: 78 streams, 103,876 decompressed bytes
     (0x210000, 1216),
     (0x210366, 1536),
     (0x210757, 1248),
@@ -810,7 +743,6 @@ STREAMS = (
     (0x21FC24, 416),
     (0x21FD42, 352),
     (0x21FE47, 640),
-    # ROM bank 0x22, window bank $E2: 164 streams, 102,206 decompressed bytes
     (0x220000, 352),
     (0x22010E, 320),
     (0x220211, 416),
@@ -975,7 +907,6 @@ STREAMS = (
     (0x22FD5F, 224),
     (0x22FDFD, 352),
     (0x22FEF5, 384),
-    # ROM bank 0x23, window bank $E3: 79 streams, 108,792 decompressed bytes
     (0x230000, 1024),
     (0x2302BA, 480),
     (0x2303F3, 704),
@@ -1055,7 +986,6 @@ STREAMS = (
     (0x23F93B, 1024),
     (0x23FBDE, 376),
     (0x23FD32, 992),
-    # ROM bank 0x24, window bank $E4: 82 streams, 113,102 decompressed bytes
     (0x240000, 1344),
     (0x240367, 640),
     (0x240483, 1408),
@@ -1138,7 +1068,6 @@ STREAMS = (
     (0x24F694, 1344),
     (0x24F966, 1600),
     (0x24FCBB, 1280),
-    # ROM bank 0x25, window bank $E5: 85 streams, 109,856 decompressed bytes
     (0x250000, 1216),
     (0x2502B6, 1120),
     (0x250540, 1664),
@@ -1224,7 +1153,6 @@ STREAMS = (
     (0x25F04D, 1312),
     (0x25F3D5, 1664),
     (0x25FAE4, 1952),
-    # ROM bank 0x26, window bank $E6: 68 streams, 104,192 decompressed bytes
     (0x260000, 1952),
     (0x2604CB, 1312),
     (0x260811, 960),
@@ -1293,7 +1221,6 @@ STREAMS = (
     (0x26F472, 1664),
     (0x26F878, 1376),
     (0x26FBAF, 1728),
-    # ROM bank 0x27, window bank $E7: 102 streams, 115,196 decompressed bytes
     (0x270000, 1536),
     (0x270383, 1664),
     (0x270769, 1536),
@@ -1396,7 +1323,6 @@ STREAMS = (
     (0x27F709, 1728),
     (0x27FAA2, 1344),
     (0x27FDE6, 896),
-    # ROM bank 0x28, window bank $E8: 84 streams, 112,832 decompressed bytes
     (0x280000, 1728),
     (0x28037D, 1728),
     (0x280709, 1792),
@@ -1481,7 +1407,6 @@ STREAMS = (
     (0x28F326, 2048),
     (0x28F7F6, 2048),
     (0x28FC86, 1408),
-    # ROM bank 0x29, window bank $E9: 78 streams, 116,020 decompressed bytes
     (0x290000, 2304),
     (0x290553, 2048),
     (0x290A1A, 1856),
@@ -1560,7 +1485,6 @@ STREAMS = (
     (0x29FABB, 832),
     (0x29FCBF, 832),
     (0x29FECB, 704),
-    # ROM bank 0x2a, window bank $EA: 76 streams, 120,128 decompressed bytes
     (0x2A0000, 896),
     (0x2A0219, 1408),
     (0x2A0580, 1920),
@@ -1637,7 +1561,6 @@ STREAMS = (
     (0x2AF397, 2048),
     (0x2AF781, 2048),
     (0x2AFC33, 1728),
-    # ROM bank 0x2b, window bank $EB: 79 streams, 124,096 decompressed bytes
     (0x2B0000, 1792),
     (0x2B0398, 2240),
     (0x2B0826, 1728),
@@ -1717,7 +1640,6 @@ STREAMS = (
     (0x2BF718, 1600),
     (0x2BFA39, 1184),
     (0x2BFCD3, 1248),
-    # ROM bank 0x2c, window bank $EC: 88 streams, 106,912 decompressed bytes
     (0x2C0000, 1280),
     (0x2C02CD, 1376),
     (0x2C05D1, 1280),
@@ -1806,7 +1728,6 @@ STREAMS = (
     (0x2CF783, 1184),
     (0x2CFA78, 992),
     (0x2CFCDA, 1088),
-    # ROM bank 0x2d, window bank $ED: 86 streams, 109,504 decompressed bytes
     (0x2D0000, 1120),
     (0x2D02C5, 1184),
     (0x2D055E, 1184),
@@ -1893,7 +1814,6 @@ STREAMS = (
     (0x2DF427, 1728),
     (0x2DF819, 1664),
     (0x2DFBCE, 1920),
-    # ROM bank 0x2e, window bank $EE: 82 streams, 116,096 decompressed bytes
     (0x2E0000, 1952),
     (0x2E0471, 864),
     (0x2E0666, 1216),
@@ -1976,7 +1896,6 @@ STREAMS = (
     (0x2EF67B, 1600),
     (0x2EFA3B, 1920),
     (0x2EFE81, 768),
-    # ROM bank 0x2f, window bank $EF: 86 streams, 118,836 decompressed bytes
     (0x2F0064, 704),
     (0x2F00A3, 1664),
     (0x2F049A, 2048),
@@ -2063,7 +1982,6 @@ STREAMS = (
     (0x2FF64D, 1024),
     (0x2FF87B, 2048),
     (0x2FFC9D, 1440),
-    # ROM bank 0x30, window bank $F0: 80 streams, 121,312 decompressed bytes
     (0x300000, 2048),
     (0x3003CF, 1728),
     (0x3007B6, 1312),
@@ -2144,7 +2062,6 @@ STREAMS = (
     (0x30F80F, 960),
     (0x30FA5A, 1248),
     (0x30FCF6, 1312),
-    # ROM bank 0x31, window bank $F1: 98 streams, 117,728 decompressed bytes
     (0x310000, 1792),
     (0x3103ED, 864),
     (0x3105F0, 1056),
@@ -2243,7 +2160,6 @@ STREAMS = (
     (0x31F6CB, 1216),
     (0x31F944, 1792),
     (0x31FDA1, 1088),
-    # ROM bank 0x32, window bank $F2: 60 streams, 105,632 decompressed bytes
     (0x320000, 1152),
     (0x320283, 1600),
     (0x32058F, 1152),
@@ -2304,7 +2220,6 @@ STREAMS = (
     (0x32EE0E, 2624),
     (0x32F40B, 2688),
     (0x32FAB0, 2144),
-    # ROM bank 0x33, window bank $F3: 54 streams, 107,995 decompressed bytes
     (0x330000, 2048),
     (0x330526, 1664),
     (0x330880, 2048),
@@ -2359,7 +2274,6 @@ STREAMS = (
     (0x33F6AE, 1664),
     (0x33F9BD, 1248),
     (0x33FC6A, 1728),
-    # ROM bank 0x34, window bank $F4: 59 streams, 122,848 decompressed bytes
     (0x340000, 2272),
     (0x34054C, 2144),
     (0x340A24, 1984),
@@ -2419,7 +2333,6 @@ STREAMS = (
     (0x34EFDD, 2304),
     (0x34F457, 2816),
     (0x34FA02, 2880),
-    # ROM bank 0x35, window bank $F5: 62 streams, 126,596 decompressed bytes
     (0x350000, 2688),
     (0x350551, 2112),
     (0x350A1B, 1408),
@@ -2482,7 +2395,6 @@ STREAMS = (
     (0x35F217, 2560),
     (0x35F7B1, 2624),
     (0x35FD19, 1280),
-    # ROM bank 0x36, window bank $F6: 65 streams, 118,400 decompressed bytes
     (0x360000, 2432),
     (0x36053A, 1728),
     (0x3608C2, 1024),
@@ -2548,7 +2460,6 @@ STREAMS = (
     (0x36F79E, 1920),
     (0x36FBAA, 1024),
     (0x36FDAB, 960),
-    # ROM bank 0x37, window bank $F7: 68 streams, 120,508 decompressed bytes
     (0x370000, 2944),
     (0x370673, 1728),
     (0x370972, 1024),
@@ -2617,7 +2528,6 @@ STREAMS = (
     (0x37F343, 2816),
     (0x37F974, 768),
     (0x37FB3B, 1920),
-    # ROM bank 0x38, window bank $F8: 91 streams, 131,024 decompressed bytes
     (0x380000, 2048),
     (0x3804B3, 1536),
     (0x380785, 2176),
@@ -2709,7 +2619,6 @@ STREAMS = (
     (0x38F73F, 1792),
     (0x38FA69, 912),
     (0x38FD1B, 1280),
-    # ROM bank 0x39, window bank $F9: 93 streams, 138,720 decompressed bytes
     (0x390000, 2048),
     (0x3903F3, 1792),
     (0x3906E8, 1600),
@@ -2803,7 +2712,6 @@ STREAMS = (
     (0x39F6B2, 1920),
     (0x39FA69, 1088),
     (0x39FCD5, 1664),
-    # ROM bank 0x3a, window bank $FA: 71 streams, 138,472 decompressed bytes
     (0x3A0000, 1792),
     (0x3A0319, 1728),
     (0x3A065A, 1856),
@@ -2875,7 +2783,6 @@ STREAMS = (
     (0x3AF1E3, 2720),
     (0x3AF5FE, 3072),
     (0x3AFBEE, 1600),
-    # ROM bank 0x3b, window bank $FB: 57 streams, 132,480 decompressed bytes
     (0x3B0000, 1728),
     (0x3B03CD, 2208),
     (0x3B0825, 2048),
@@ -2933,7 +2840,6 @@ STREAMS = (
     (0x3BF2DF, 2368),
     (0x3BF69E, 2496),
     (0x3BFB4D, 2176),
-    # ROM bank 0x3e, window bank $FE: 14 streams, 11,376 decompressed bytes
     (0x3E0735, 560),
     (0x3E0768, 832),
     (0x3E07F0, 832),

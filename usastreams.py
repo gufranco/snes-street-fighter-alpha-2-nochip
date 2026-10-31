@@ -1,26 +1,4 @@
-# Compressed graphics streams in Street Fighter Alpha 2 (USA).
-#
-# Each entry is (source, length): the byte offset of the stream in the 4 MB
-# retail ROM, and the number of decompressed bytes it produces.
-#
-# Unlike the Japanese table this one was not discovered by running the game.
-# DarkAkuma's SNES Classic ROM carries an eight byte tag at the start of every
-# stream, the literal "SDD1" followed by a little-endian 32 bit address, and
-# that address is the destination the decompressed bytes belong at. Finding the
-# tags is a byte search that returns all 2,815 of them with no ambiguity, and
-# each stream's length is the distance between its own destination and the next
-# one. Nothing has to be executed and no screen has to be visited, so the class
-# of error that cost the Japanese table eleven revisions cannot occur here: a
-# length is arithmetic between two recorded destinations rather than the size of
-# a transfer somebody happened to observe.
-#
-# The table is frozen here so that building the USA image needs only the retail
-# cartridge. sdd1map.py still reads the tags directly, and regenerating this
-# file from the tagged ROM must reproduce it exactly; that equality is the check
-# that the freeze is faithful.
-
 TAGGED = (
-    # ROM bank 0x00, window bank $C0: 10 streams, 8,048 decompressed bytes
     (0x007890, 832),
     (0x007998, 832),
     (0x007A65, 832),
@@ -31,7 +9,6 @@ TAGGED = (
     (0x007CC9, 832),
     (0x007D2A, 832),
     (0x007DA4, 832),
-    # ROM bank 0x13, window bank $D3: 36 streams, 154,784 decompressed bytes
     (0x130000, 1152),
     (0x1302EF, 8192),
     (0x130E9D, 2048),
@@ -68,7 +45,6 @@ TAGGED = (
     (0x13C03B, 1536),
     (0x13C3F8, 8192),
     (0x13CE4D, 19904),
-    # ROM bank 0x14, window bank $D4: 9 streams, 123,936 decompressed bytes
     (0x140011, 24576),
     (0x143C58, 1024),
     (0x143E7E, 8192),
@@ -78,7 +54,6 @@ TAGGED = (
     (0x147A77, 28832),
     (0x14B8DE, 8192),
     (0x14C11B, 25888),
-    # ROM bank 0x15, window bank $D5: 9 streams, 118,304 decompressed bytes
     (0x150002, 27584),
     (0x154508, 8192),
     (0x155086, 22368),
@@ -88,7 +63,6 @@ TAGGED = (
     (0x15D8B5, 8192),
     (0x15E36B, 8192),
     (0x15EEC6, 8192),
-    # ROM bank 0x16, window bank $D6: 12 streams, 135,264 decompressed bytes
     (0x16000F, 24064),
     (0x16390E, 8192),
     (0x1641C9, 1024),
@@ -101,7 +75,6 @@ TAGGED = (
     (0x16F7EC, 2048),
     (0x16FA4E, 2048),
     (0x16FB45, 8192),
-    # ROM bank 0x17, window bank $D7: 11 streams, 129,312 decompressed bytes
     (0x17000C, 27264),
     (0x174355, 1792),
     (0x174845, 8192),
@@ -113,7 +86,6 @@ TAGGED = (
     (0x17E5F2, 8192),
     (0x17EE6C, 8192),
     (0x17F71E, 8192),
-    # ROM bank 0x18, window bank $D8: 20 streams, 186,240 decompressed bytes
     (0x180006, 23200),
     (0x183B3F, 3104),
     (0x184341, 8192),
@@ -134,7 +106,6 @@ TAGGED = (
     (0x18F216, 8192),
     (0x18F8D7, 8192),
     (0x18FED7, 2048),
-    # ROM bank 0x19, window bank $D9: 62 streams, 189,408 decompressed bytes
     (0x190008, 8192),
     (0x1906C5, 8192),
     (0x190EB3, 8192),
@@ -197,7 +168,6 @@ TAGGED = (
     (0x19EE1D, 1600),
     (0x19F630, 960),
     (0x19F903, 3328),
-    # ROM bank 0x1a, window bank $DA: 51 streams, 113,554 decompressed bytes
     (0x1A000D, 3936),
     (0x1A07E4, 64),
     (0x1A0813, 4032),
@@ -249,7 +219,6 @@ TAGGED = (
     (0x1AC3BE, 128),
     (0x1AC800, 3584),
     (0x1ACC76, 2048),
-    # ROM bank 0x1b, window bank $DB: 69 streams, 142,640 decompressed bytes
     (0x1B0000, 32),
     (0x1B0015, 3552),
     (0x1B0748, 1568),
@@ -319,7 +288,6 @@ TAGGED = (
     (0x1BEC08, 2048),
     (0x1BED2E, 7936),
     (0x1BF95D, 3840),
-    # ROM bank 0x1c, window bank $DC: 124 streams, 126,208 decompressed bytes
     (0x1C0000, 2304),
     (0x1C0434, 2144),
     (0x1C0864, 1088),
@@ -444,7 +412,6 @@ TAGGED = (
     (0x1CFA00, 768),
     (0x1CFB37, 992),
     (0x1CFDFB, 928),
-    # ROM bank 0x1d, window bank $DD: 122 streams, 114,016 decompressed bytes
     (0x1D0000, 1024),
     (0x1D04C3, 640),
     (0x1D0611, 992),
@@ -567,7 +534,6 @@ TAGGED = (
     (0x1DFD5E, 2048),
     (0x1DFEAB, 2048),
     (0x1DFFF1, 64),
-    # ROM bank 0x1e, window bank $DE: 53 streams, 172,000 decompressed bytes
     (0x1E0000, 10752),
     (0x1E18F8, 22400),
     (0x1E3E22, 2048),
@@ -621,7 +587,6 @@ TAGGED = (
     (0x1EFA55, 2048),
     (0x1EFB57, 4096),
     (0x1EFEDB, 512),
-    # ROM bank 0x20, window bank $E0: 70 streams, 99,296 decompressed bytes
     (0x200000, 1568),
     (0x200427, 1600),
     (0x200865, 1664),
@@ -692,7 +657,6 @@ TAGGED = (
     (0x20F688, 1024),
     (0x20F941, 1280),
     (0x20FC7A, 1472),
-    # ROM bank 0x21, window bank $E1: 78 streams, 103,616 decompressed bytes
     (0x210000, 1216),
     (0x210366, 1536),
     (0x210757, 1248),
@@ -771,7 +735,6 @@ TAGGED = (
     (0x21FC24, 416),
     (0x21FD42, 352),
     (0x21FE47, 640),
-    # ROM bank 0x22, window bank $E2: 163 streams, 101,376 decompressed bytes
     (0x220000, 352),
     (0x22010E, 320),
     (0x220211, 416),
@@ -935,7 +898,6 @@ TAGGED = (
     (0x22FD5F, 224),
     (0x22FDFD, 352),
     (0x22FEF5, 384),
-    # ROM bank 0x23, window bank $E3: 78 streams, 108,416 decompressed bytes
     (0x230000, 1024),
     (0x2302BA, 480),
     (0x2303F3, 704),
@@ -1014,7 +976,6 @@ TAGGED = (
     (0x23F5E1, 1600),
     (0x23F93B, 1024),
     (0x23FD32, 992),
-    # ROM bank 0x24, window bank $E4: 81 streams, 112,864 decompressed bytes
     (0x240000, 1344),
     (0x240367, 640),
     (0x240483, 1408),
@@ -1096,7 +1057,6 @@ TAGGED = (
     (0x24F694, 1344),
     (0x24F966, 1600),
     (0x24FCBB, 1280),
-    # ROM bank 0x25, window bank $E5: 85 streams, 109,856 decompressed bytes
     (0x250000, 1216),
     (0x2502B6, 1120),
     (0x250540, 1664),
@@ -1182,7 +1142,6 @@ TAGGED = (
     (0x25F04D, 1312),
     (0x25F3D5, 1664),
     (0x25FAE4, 1952),
-    # ROM bank 0x26, window bank $E6: 67 streams, 102,848 decompressed bytes
     (0x260000, 1952),
     (0x2604CB, 1312),
     (0x260811, 960),
@@ -1250,7 +1209,6 @@ TAGGED = (
     (0x26F472, 1664),
     (0x26F878, 1376),
     (0x26FBAF, 1728),
-    # ROM bank 0x27, window bank $E7: 100 streams, 114,624 decompressed bytes
     (0x270000, 1536),
     (0x270383, 1664),
     (0x270769, 1536),
@@ -1351,7 +1309,6 @@ TAGGED = (
     (0x27F709, 1728),
     (0x27FAA2, 1344),
     (0x27FDE6, 896),
-    # ROM bank 0x28, window bank $E8: 84 streams, 112,832 decompressed bytes
     (0x280000, 1728),
     (0x28037D, 1728),
     (0x280709, 1792),
@@ -1436,7 +1393,6 @@ TAGGED = (
     (0x28F326, 2048),
     (0x28F7F6, 2048),
     (0x28FC86, 1408),
-    # ROM bank 0x29, window bank $E9: 77 streams, 115,776 decompressed bytes
     (0x290000, 2304),
     (0x290553, 2048),
     (0x290A1A, 1856),
@@ -1514,7 +1470,6 @@ TAGGED = (
     (0x29FABB, 832),
     (0x29FCBF, 832),
     (0x29FECB, 704),
-    # ROM bank 0x2a, window bank $EA: 75 streams, 118,208 decompressed bytes
     (0x2A0000, 896),
     (0x2A0219, 1408),
     (0x2A0580, 1920),
@@ -1590,7 +1545,6 @@ TAGGED = (
     (0x2AF397, 2048),
     (0x2AF781, 2048),
     (0x2AFC33, 1728),
-    # ROM bank 0x2b, window bank $EB: 78 streams, 122,432 decompressed bytes
     (0x2B0000, 1792),
     (0x2B0398, 2240),
     (0x2B0826, 1728),
@@ -1669,7 +1623,6 @@ TAGGED = (
     (0x2BF718, 1600),
     (0x2BFA39, 1184),
     (0x2BFCD3, 1248),
-    # ROM bank 0x2c, window bank $EC: 88 streams, 106,912 decompressed bytes
     (0x2C0000, 1280),
     (0x2C02CD, 1376),
     (0x2C05D1, 1280),
@@ -1758,7 +1711,6 @@ TAGGED = (
     (0x2CF783, 1184),
     (0x2CFA78, 992),
     (0x2CFCDA, 1088),
-    # ROM bank 0x2d, window bank $ED: 86 streams, 109,504 decompressed bytes
     (0x2D0000, 1120),
     (0x2D02C5, 1184),
     (0x2D055E, 1184),
@@ -1845,7 +1797,6 @@ TAGGED = (
     (0x2DF427, 1728),
     (0x2DF819, 1664),
     (0x2DFBCE, 1920),
-    # ROM bank 0x2e, window bank $EE: 82 streams, 116,096 decompressed bytes
     (0x2E0000, 1952),
     (0x2E0471, 864),
     (0x2E0666, 1216),
@@ -1928,7 +1879,6 @@ TAGGED = (
     (0x2EF67B, 1600),
     (0x2EFA3B, 1920),
     (0x2EFE81, 768),
-    # ROM bank 0x2f, window bank $EF: 85 streams, 118,368 decompressed bytes
     (0x2F0064, 704),
     (0x2F00A3, 1664),
     (0x2F049A, 2048),
@@ -2014,7 +1964,6 @@ TAGGED = (
     (0x2FF64D, 1024),
     (0x2FF87B, 2048),
     (0x2FFC9D, 1440),
-    # ROM bank 0x30, window bank $F0: 79 streams, 120,128 decompressed bytes
     (0x300000, 2048),
     (0x3003CF, 1728),
     (0x3007B6, 1312),
@@ -2094,7 +2043,6 @@ TAGGED = (
     (0x30F80F, 960),
     (0x30FA5A, 1248),
     (0x30FCF6, 1312),
-    # ROM bank 0x31, window bank $F1: 98 streams, 117,728 decompressed bytes
     (0x310000, 1792),
     (0x3103ED, 864),
     (0x3105F0, 1056),
@@ -2193,7 +2141,6 @@ TAGGED = (
     (0x31F6CB, 1216),
     (0x31F944, 1792),
     (0x31FDA1, 1088),
-    # ROM bank 0x32, window bank $F2: 59 streams, 103,584 decompressed bytes
     (0x320000, 1152),
     (0x320283, 1600),
     (0x32058F, 1152),
@@ -2253,7 +2200,6 @@ TAGGED = (
     (0x32EE0E, 2624),
     (0x32F40B, 2688),
     (0x32FAB0, 2144),
-    # ROM bank 0x33, window bank $F3: 52 streams, 103,840 decompressed bytes
     (0x330000, 2048),
     (0x330526, 1664),
     (0x330880, 2048),
@@ -2306,7 +2252,6 @@ TAGGED = (
     (0x33F6AE, 1664),
     (0x33F9BD, 1248),
     (0x33FC6A, 1728),
-    # ROM bank 0x34, window bank $F4: 59 streams, 122,848 decompressed bytes
     (0x340000, 2272),
     (0x34054C, 2144),
     (0x340A24, 1984),
@@ -2366,7 +2311,6 @@ TAGGED = (
     (0x34EFDD, 2304),
     (0x34F457, 2816),
     (0x34FA02, 2880),
-    # ROM bank 0x35, window bank $F5: 60 streams, 123,680 decompressed bytes
     (0x350000, 2688),
     (0x350551, 2112),
     (0x350E77, 2688),
@@ -2427,7 +2371,6 @@ TAGGED = (
     (0x35F217, 2560),
     (0x35F7B1, 2624),
     (0x35FD19, 1280),
-    # ROM bank 0x36, window bank $F6: 65 streams, 118,400 decompressed bytes
     (0x360000, 2432),
     (0x36053A, 1728),
     (0x3608C2, 1024),
@@ -2493,7 +2436,6 @@ TAGGED = (
     (0x36F79E, 1920),
     (0x36FBAA, 1024),
     (0x36FDAB, 960),
-    # ROM bank 0x37, window bank $F7: 65 streams, 115,648 decompressed bytes
     (0x370000, 2944),
     (0x370673, 1728),
     (0x370972, 1024),
@@ -2559,7 +2501,6 @@ TAGGED = (
     (0x37F343, 2816),
     (0x37F974, 768),
     (0x37FB3B, 1920),
-    # ROM bank 0x38, window bank $F8: 90 streams, 130,112 decompressed bytes
     (0x380000, 2048),
     (0x3804B3, 1536),
     (0x380785, 2176),
@@ -2650,7 +2591,6 @@ TAGGED = (
     (0x38F45E, 1344),
     (0x38F73F, 1792),
     (0x38FD1B, 1280),
-    # ROM bank 0x39, window bank $F9: 92 streams, 137,376 decompressed bytes
     (0x390000, 2048),
     (0x3903F3, 1792),
     (0x3906E8, 1600),
@@ -2743,7 +2683,6 @@ TAGGED = (
     (0x39F6B2, 1920),
     (0x39FA69, 1088),
     (0x39FCD5, 1664),
-    # ROM bank 0x3a, window bank $FA: 70 streams, 132,416 decompressed bytes
     (0x3A0000, 1792),
     (0x3A0319, 1728),
     (0x3A065A, 1856),
@@ -2814,7 +2753,6 @@ TAGGED = (
     (0x3AF1E3, 2720),
     (0x3AF5FE, 3072),
     (0x3AFBEE, 1600),
-    # ROM bank 0x3b, window bank $FB: 57 streams, 132,480 decompressed bytes
     (0x3B0000, 1728),
     (0x3B03CD, 2208),
     (0x3B0825, 2048),
@@ -2872,24 +2810,12 @@ TAGGED = (
     (0x3BF2DF, 2368),
     (0x3BF69E, 2496),
     (0x3BFB4D, 2176),
-    # ROM bank 0x3e, window bank $FE: 4 streams, 67,760 decompressed bytes
     (0x3E0E30, 832),
     (0x3E0EE0, 832),
     (0x3E0F7E, 560),
     (0x3E0FAE, 65536),
 )
 
-# Two streams the tags do not record. The tagged Virtual Console dump is a
-# static source, so it can only name transfers its tagging captured; these two
-# are asked for by the running game and were found by logging every transfer
-# the S-DD1 performs on the cartridge, where the chip decides what is a stream
-# and what is not.
-#
-# 0x19F8FE is requested 256 bytes at a time, 108 times across an attract cycle
-# and a tour of all eighteen fighters. 0x1BED29 is requested 64 bytes at a
-# time, 12 times, and supplies four tiles beside the character portraits in the
-# attract montage; without it the game reads zeros and draws garbage there.
-# Both were checked against the bytes the chip itself produces.
 HARVESTED = (
     (0x19F8FE, 256),
     (0x1BED29, 64),

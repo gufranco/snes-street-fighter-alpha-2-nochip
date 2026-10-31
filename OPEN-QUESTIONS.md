@@ -43,6 +43,47 @@ The USA table does not have this problem. It came out of an image that tags wher
 each stream begins, so it was read rather than discovered, and the two methods
 agreeing on the streams they share is what makes the Japanese one credible.
 
+How each table was made:
+
+- **USA, `TAGGED` in [`usastreams.py`](usastreams.py).** DarkAkuma's SNES Classic
+  dump puts an eight byte tag before every stream: the literal `SDD1` and a
+  little-endian 32 bit destination. A byte search finds all 2,815 tags, and each
+  length is the distance from one destination to the next. Reading the tagged dump
+  with [`sdd1map.py`](sdd1map.py) has to reproduce the frozen table exactly.
+- **USA, `HARVESTED`.** Two streams the tags miss, found by logging every transfer
+  the chip performs on the running game. `$19F8FE` is asked for 256 bytes at a
+  time, 108 times across an attract cycle and a tour of all eighteen fighters.
+  `$1BED29` is asked for 64 bytes at a time, 12 times, and holds four tiles beside
+  the portraits in the attract montage; without it the game draws garbage there.
+  Both were checked against the bytes the chip itself produces.
+- **Japan, [`jpstreams.py`](jpstreams.py).** Found by driving the retail cartridge
+  under emulation with the S-DD1 emulated and logging every DMA whose A-bus is
+  fixed, the condition the chip decompresses under. Each length is the largest
+  transfer seen from that address, and each entry decompresses out of the retail
+  ROM to exactly that length. [`requests_jp.py`](requests_jp.py) keeps the
+  observations, and [`gate.py`](gate.py) refuses a table that does not cover them.
+
+Each widening of the Japanese input drivers found streams the previous one could
+not reach:
+
+| Round | Addresses seen | What it exposed |
+|:--|:--|:--|
+| A driver hovering a few character slots | 42 | The starting set |
+| Sweeping the whole roster | 274 | Four missing streams, all select screen portraits |
+| A driver that forces a character and enters fights | 579 alone, 734 with the others | Ten missing streams and one entry shortened below what the cartridge asks for |
+| A person playing for a few minutes, hovering every character and starting a fight | 56 more | Two missing streams and a second shortened entry |
+
+Entries overlap, and that is expected: the decoder reads ahead, and the cartridge
+sometimes asks one address for more than the next stream's start allows. The
+tagged USA dump shows the same overlaps.
+
+The converted image may propose a new start, but it never changes an existing
+entry. Shortening an entry on the converted image's word once truncated two
+streams the cartridge needs. A lookup that misses does not hang when a later slot
+carries the same bank byte: it stops there and returns that stream, so Birdie's
+portrait arrives as Bison's. That is why the gate asks whether every requested
+address is a stream start, not only whether the scan stays inside its budget.
+
 If a screen ever comes up wrong, the fix is mechanical rather than exploratory:
 drive the retail cartridge to that screen, read what it asks the chip for, add
 it. Nothing about the approach has to change.

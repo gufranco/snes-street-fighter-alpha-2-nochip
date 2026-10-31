@@ -1,31 +1,3 @@
-# Decompression requests observed on the retail Japanese cartridge.
-#
-# Each entry is (source, length): a stream address in the cartridge window and
-# the largest transfer the hardware was seen to decompress from it. This is
-# ground truth in the only sense available for this region. It was taken from
-# the retail ROM running under snes9x with the S-DD1 emulated, logging every
-# DMA whose A-bus is fixed, which is the exact condition the chip decompresses
-# under. Nothing in the conversion is involved, so these numbers cannot inherit
-# a mistake from it.
-#
-# The set is a floor, not a census. It contains what the cartridge asked for
-# while the harness drove it, and a screen nobody reached contributes nothing.
-# Its value is as a gate: every address here must appear in jpstreams.STREAMS
-# with a length at least this large, or the converted image will hand the game
-# the wrong bytes for something the hardware demonstrably decompresses.
-#
-# Two rounds produced it. The first, with the input driver hovering a handful
-# of character slots, saw 42 addresses. Sweeping the whole roster raised that
-# to 274 and exposed four streams missing from the table, all of them character
-# portraits on the select screen. A third round added a driver that forces a
-# character and enters fights, which alone reached 579 addresses. The union of
-# every driver is 734, and it exposed ten more streams plus one entry that had
-# been shortened below what the cartridge asks for. A human then played the
-# retail cartridge for a few minutes, hovering every character and starting a
-# fight, which added 56 addresses no driver had reached and exposed two more
-# missing streams and a second truncated entry. Scripted input is a poor
-# explorer of a fighting game, and this is the measurement that says so.
-
 REQUESTS = (
     (0x130000, 1152),
     (0x1302EF, 8192),
