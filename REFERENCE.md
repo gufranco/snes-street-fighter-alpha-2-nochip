@@ -492,7 +492,6 @@ The hardware runs are in the README under [Tested hardware](README.md#tested-har
 |:--|:--|
 | Every gate and the order to run them | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | The same material for a coding agent | [AGENTS.md](AGENTS.md) |
-| The standard this repository shares with the rest of the family | [FAMILY.md](FAMILY.md) |
 | Bug reports and wrong screens | [GitHub Issues](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues) |
 | Security reports | [SECURITY.md](SECURITY.md) |
 | Conduct | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) |
