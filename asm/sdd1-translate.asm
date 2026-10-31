@@ -27,8 +27,8 @@
 ;   $62:xxxx  dest high
 ;   $63:xxxx  dest bank
 ; The scan starts at the source address and walks forward until the key matches
-; the source bank. sdd1tables.py proves, for all 2815 streams, that this scan
-; reaches the right slot and never a wrong one.
+; the source bank. sdd1tables.py proves, for every stream in both regions'
+; tables, that this scan reaches the right slot and never a wrong one.
 
 !TABLE_KEY   = $600000
 !TABLE_LOW   = $610000
