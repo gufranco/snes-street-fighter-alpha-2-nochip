@@ -116,14 +116,6 @@ SD2SNES、SD2SNES Pro、Game Doctorでの実行はherrkuhnさんによるもの�
 
 エミュレーターでは、[プルリクエスト1082](https://github.com/snes9xgit/snes9x/pull/1082)でこのイメージが使うマップが追加されたため、snes9xで読み込めます。ares、Mesen2、bsnes、Mednafenは試していません。
 
-## 既知の制限
-
-- 日本版のストリームテーブルは、市販カートリッジをプレイしてチップへの要求を記録して見つけたものなので、完全であることは証明できません。誰も到達していない画面が正しく表示されない可能性は残ります。北米版のテーブルはタグ付きのダンプから読み取ったもので、このような抜けはありません。
-- 修正のうち2つ、オブジェクトテーブルのあふれとダンの父親のスプライトは、コードを読んだことに基づいています。記録した実行のどれも、その場面には到達していません。
-- FXPAK Proでの素の`.sfc`の動作は、ファームウェアのソースでは説明がつきません。このカートリッジでは`fxpak`フォルダーのファイルを使ってください。
-
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md)に、それぞれの制限と、それを確定させる測定が書かれています。
-
 ## 問題の報告
 
 `./run.sh doctor.py`の出力を添えて[issue](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues)を開いてください。画面がおかしい場合は、使ったファイルとリージョンを書き、その画面の写真かキャプチャーを添付してください。ROMやROMから展開したものは決して添付しないでください。
@@ -143,8 +135,6 @@ SD2SNES、SD2SNES Pro、Game Doctorでの実行はherrkuhnさんによるもの�
 - Nintendo Life、[After 25 Years, A New Cheat Code Has Been Discovered For Street Fighter Alpha 2 On The SNES](https://www.nintendolife.com/news/2021/01/after_25_years_a_new_cheat_code_has_been_discovered_for_street_fighter_alpha_2_on_the_snes)。
 - Retroware、[The Curious Case of Street Fighter Alpha 2 on the SNES](https://articles.retroware.com/2021/03/08/the-curious-case-of-street-fighter-alpha-2-on-the-snes/)。
 - [snes9x](https://github.com/snes9xgit/snes9x) 1.63、[issue 1081](https://github.com/snes9xgit/snes9x/issues/1081)と[プルリクエスト1082](https://github.com/snes9xgit/snes9x/pull/1082)。
-
-このプロジェクトについて書かれたもの: 吉野@連邦さん([@yoshinokentarou](https://x.com/yoshinokentarou/status/2111959864163664247))のXへの投稿、2026-10-18。Junior Candidoさんの[Arkade](https://arkade.com.br/street-fighter-alpha-2-ganha-versao-para-super-nintendo-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor/)の記事、2026-10-20。Sonymasterさんによる[Adrenalineフォーラム](https://forum.adrenaline.com.br/threads/street-fighter-alpha-2-de-super-nintendo-ganha-versao-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor.721807/)への転載、2026-10-21。
 
 このプロジェクトを引用するときは[CITATION.cff](CITATION.cff)を使ってください。
 

@@ -116,14 +116,6 @@ SD2SNES、SD2SNES Pro 和 Game Doctor 的运行由 herrkuhn 完成，报告于 [
 
 在模拟器上，自从 [pull request 1082](https://github.com/snes9xgit/snes9x/pull/1082) 加入了这个镜像所用的映射，snes9x 就能加载它。ares、Mesen2、bsnes 和 Mednafen 尚未试过。
 
-## 已知限制
-
-- 日版数据流表是通过游玩零售卡带并记录它向芯片请求了什么找出来的，所以无法证明它是完整的。没人到达过的画面仍可能显示错误。美版表是从带标签的转储里读出来的，没有这种缺口。
-- 有两项修正，即对象表溢出和 Dan 父亲的精灵，是根据读代码得出的。没有任何记录过的运行到达过这两个场景。
-- FXPAK Pro 上运行普通 `.sfc` 的结果无法用固件源码解释。在这块卡带上请使用 `fxpak` 文件夹里的文件。
-
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) 列出了每一项限制，以及能确定它的测量。
-
 ## 报告问题
 
 请附上 `./run.sh doctor.py` 的输出，开一个 [issue](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues)。如果画面不对，请说明你用的是哪个文件和地区，并附上该画面的照片或截图。绝不要附上 ROM 或从 ROM 中解出的任何内容。
@@ -143,8 +135,6 @@ SD2SNES、SD2SNES Pro 和 Game Doctor 的运行由 herrkuhn 完成，报告于 [
 - Nintendo Life，[After 25 Years, A New Cheat Code Has Been Discovered For Street Fighter Alpha 2 On The SNES](https://www.nintendolife.com/news/2021/01/after_25_years_a_new_cheat_code_has_been_discovered_for_street_fighter_alpha_2_on_the_snes)。
 - Retroware，[The Curious Case of Street Fighter Alpha 2 on the SNES](https://articles.retroware.com/2021/03/08/the-curious-case-of-street-fighter-alpha-2-on-the-snes/)。
 - [snes9x](https://github.com/snes9xgit/snes9x) 1.63，[issue 1081](https://github.com/snes9xgit/snes9x/issues/1081) 和 [pull request 1082](https://github.com/snes9xgit/snes9x/pull/1082)。
-
-关于本项目的文章：吉野@連邦（[@yoshinokentarou](https://x.com/yoshinokentarou/status/2111959864163664247)）在 X 上的帖子，2026-10-18；Junior Candido 在 [Arkade](https://arkade.com.br/street-fighter-alpha-2-ganha-versao-para-super-nintendo-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor/) 的文章，2026-10-20；Sonymaster 在 [Adrenaline 论坛](https://forum.adrenaline.com.br/threads/street-fighter-alpha-2-de-super-nintendo-ganha-versao-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor.721807/)的转载，2026-10-21。
 
 引用本项目请使用 [CITATION.cff](CITATION.cff)。
 

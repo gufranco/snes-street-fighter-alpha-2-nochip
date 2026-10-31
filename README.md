@@ -116,14 +116,6 @@ The SD2SNES, SD2SNES Pro and Game Doctor runs are herrkuhn's, from [issue 31](ht
 
 On emulators, snes9x loads the image since [pull request 1082](https://github.com/snes9xgit/snes9x/pull/1082) added the map it uses. ares, Mesen2, bsnes and Mednafen have not been tried.
 
-## Known limits
-
-- The Japanese stream table was found by playing the retail cartridge and recording what it asked the chip for, so it cannot be proved complete. A screen nobody reached could still come up wrong. The USA table was read from a tagged dump and has no such gap.
-- Two of the corrections, the object table overflow and Dan's father's sprite, rest on reading the code. No recorded run reaches either scene.
-- The FXPAK Pro run of the plain `.sfc` is not explained by the firmware source. Use the file in the `fxpak` folder on that cartridge.
-
-[OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) has each of these with the measurement that would settle it.
-
 ## Reporting a problem
 
 Open an [issue](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues) with the output of `./run.sh doctor.py`. For a wrong screen, say which file and region you used and attach a photo or capture of it. Never attach a ROM or anything decoded from one.
@@ -143,8 +135,6 @@ Every stream is decompressed with a Python model of the chip and compared byte f
 - Nintendo Life, [After 25 Years, A New Cheat Code Has Been Discovered For Street Fighter Alpha 2 On The SNES](https://www.nintendolife.com/news/2021/01/after_25_years_a_new_cheat_code_has_been_discovered_for_street_fighter_alpha_2_on_the_snes).
 - Retroware, [The Curious Case of Street Fighter Alpha 2 on the SNES](https://articles.retroware.com/2021/03/08/the-curious-case-of-street-fighter-alpha-2-on-the-snes/).
 - [snes9x](https://github.com/snes9xgit/snes9x) 1.63, [issue 1081](https://github.com/snes9xgit/snes9x/issues/1081) and [pull request 1082](https://github.com/snes9xgit/snes9x/pull/1082).
-
-Written about this project: 吉野@連邦 ([@yoshinokentarou](https://x.com/yoshinokentarou/status/2111959864163664247)) on X, 2026-10-18; Junior Candido on [Arkade](https://arkade.com.br/street-fighter-alpha-2-ganha-versao-para-super-nintendo-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor/), 2026-10-20, reposted by Sonymaster on the [Adrenaline forum](https://forum.adrenaline.com.br/threads/street-fighter-alpha-2-de-super-nintendo-ganha-versao-sem-o-chip-s-dd1-e-com-pausa-pre-luta-bem-menor.721807/), 2026-10-21.
 
 To cite this project, use [CITATION.cff](CITATION.cff).
 
