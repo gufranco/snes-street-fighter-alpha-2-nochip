@@ -12,13 +12,12 @@
       "id": "the-fxpak-pro-run-of-the-sfc-is-not-explained",
       "parts": ["pack", "romimage"],
       "severity": "medium",
-      "status": "open",
+      "status": "closed",
       "documentSays": "The sd2snes firmware's smc_id in src/smc.c selects its 96 Mbit map, mapper 6, only for map byte $22 or $32 with chip $43 or $45; release v1.11.2 also needs the file to be exactly 0xC00200 bytes.",
       "referenceDoes": "The hardware table records the chip $00 .sfc running on an FXPAK Pro, which runs the same firmware.",
       "packageFollows": "document",
-      "reasoning": "By the firmware source the .sfc falls back to plain LoROM, and on an SD2SNES Mk.II clone running firmware 1.11.2 the .sfc built with all six header copies rewritten goes black at power on, as predicted. The FXPAK Pro run was recorded before this was known, so either that run used a firmware that maps the file differently or it was not the image it is listed as.",
-      "wouldSettleIt": "The .sfc and the .smc from the same build run on the FXPAK Pro, with the firmware version noted.",
-      "namedInDocument": "The FXPAK Pro run of the `.sfc` is not explained"
+      "reasoning": "By the firmware source the .sfc falls back to plain LoROM, and on an SD2SNES Mk.II clone running firmware 1.11.2 the .sfc built with all six header copies rewritten goes black at power on, as predicted. The FXPAK Pro run was recorded before this was known, so either that run used a firmware that maps the file differently or it was not the image it is listed as. On 2026-10-31 the owner reported that every image for the FXPAK Pro, the SD2SNES and the Game Doctor SF7 has been tested on his hardware and runs, the plain image on the FXPAK Pro included. Why the FXPAK Pro maps a chip $00 header where the firmware source says it should not is not explained, and no published claim waits on it.",
+      "wouldSettleIt": "The .sfc and the .smc from the same build run on the FXPAK Pro, with the firmware version noted."
     },
     {
       "id": "the-guarded-upload-runs-on-a-cartridge",
@@ -29,8 +28,7 @@
       "referenceDoes": "No emulator models a port read that lands during the other side's write, so a receive loop that trusts one read passes every emulated run.",
       "packageFollows": "reference",
       "reasoning": "Release 1.5.4 decided on one read. Issue #31 reported a black screen right after the Capcom logo on an SD2SNES Mk.II clone, an original SD2SNES and an SD2SNES Pro, and a Game Doctor SF7 that ran only without the fast upload. On the SPC700 model, one counter read that looks ahead left the 1.5.4 loops spinning forever, and the guarded loops deliver every byte. On the SD2SNES Mk.II clone, firmware 1.11.2, the 4 MB retail ROM with nothing but the upload patch went black after the logo when built from 1.5.4, and with the second read, at SHA-256 38b519adcebc6702ead736b6fd35aa82a93736489b1ee41ec4db24f76c07e141, was played through the whole game with Ken, Ryu and Akuma, with normal sound and no unusual pause. That image touches neither the map nor the header, so the second read is what fixed the black screen. Reported by Hamilton Pimentel in issue #31 on 2026-10-27.",
-      "wouldSettleIt": "n/a. Seen on a cartridge and closed. herrkuhn reports 1.6.0 reaching a fight in both regions on an original SD2SNES, an SD2SNES Pro and a Game Doctor SF7 in issue #31 on 2026-10-28.",
-      "namedInDocument": "The guarded sample upload runs on a cartridge"
+      "wouldSettleIt": "n/a. Seen on a cartridge and closed. herrkuhn reports 1.6.0 reaching a fight in both regions on an original SD2SNES, an SD2SNES Pro and a Game Doctor SF7 in issue #31 on 2026-10-28."
     },
     {
       "id": "the-sd2snes-form-runs-on-a-cartridge",
@@ -41,8 +39,7 @@
       "referenceDoes": "snes9x detects these images by title and size and ignores the chip byte.",
       "packageFollows": "document",
       "reasoning": "The .sfc declares chip $00, so the firmware falls back to plain LoROM and reads the graphics banks from the wrong offsets; mapper 6 in verilog/sd2snes_base/address.v places every address where this project's map does. The .smc form sets chip $43 in all six header copies and adds a 512 byte copier header. On an SD2SNES Mk.II clone, firmware 1.11.2, the USA .smc built with the guarded upload was played through the whole game, and the .sfc from the same build went black at power on. pack.py writes that form into the sd2snes and fxpak folders of every build. herrkuhn reports both regions reaching a fight with it on an original SD2SNES and an SD2SNES Pro on firmware 1.11.2, in issue #31 on 2026-10-28. Reported by Hamilton Pimentel in issue #31 on 2026-10-27.",
-      "wouldSettleIt": "n/a. Seen on a cartridge and closed. What the FXPAK Pro does with the .sfc is a separate open entry.",
-      "namedInDocument": "The sd2snes form runs on a cartridge"
+      "wouldSettleIt": "n/a. Seen on a cartridge and closed. What the FXPAK Pro does with the .sfc is a separate open entry."
     },
     {
       "id": "the-japanese-stream-table-cannot-be-proved-complete",
@@ -53,8 +50,7 @@
       "referenceDoes": "n/a",
       "packageFollows": "recording",
       "reasoning": "A stream nobody asks for cannot be found by asking. The table satisfies all 1,661 recorded requests and the search converged, which is the strongest statement available and is not a proof of completeness. The USA table came from a tagged image and does not have this problem, so the gap is one cartridge wide rather than general. Separately, the entries the table does contain are now known to be right for a large part of it: 242 of them expand to bytes that appear verbatim in the 1996-09-15 prototype, 311,264 bytes in total, which is Capcom's own data from before the compression step. That confirms correctness and says nothing about completeness, which are different questions and are kept apart here.",
-      "wouldSettleIt": "A tagged Japanese image, or a run that reaches every screen in the game and records what each one asks for. The prototype cannot settle it: it is a different build and 2,138 of the table's streams are absent from it.",
-      "namedInDocument": "The Japanese stream table cannot be proved complete"
+      "wouldSettleIt": "A tagged Japanese image, or a run that reaches every screen in the game and records what each one asks for. The prototype cannot settle it: it is a different build and 2,138 of the table's streams are absent from it."
     },
     {
       "id": "two-corrections-are-not-demonstrated-on-screen",
@@ -65,8 +61,7 @@
       "referenceDoes": "n/a",
       "packageFollows": "neither",
       "reasoning": "The object table overflow needs eight simultaneous shadow frames and a projectile collision at once; the thrown father sprite sits in a scene no run here reaches. Both rest on reading the disassembly. The same runs do show that neither correction changes anything that is reached, which bounds the risk without demonstrating the benefit.",
-      "wouldSettleIt": "A recorded input sequence that reaches either scene, run before and after.",
-      "namedInDocument": "Two corrections are not demonstrated on screen"
+      "wouldSettleIt": "A recorded input sequence that reaches either scene, run before and after."
     },
     {
       "id": "a-published-patch-does-not-match-its-published-source",
@@ -77,8 +72,7 @@
       "referenceDoes": "A widely circulated patch ships assembly dated 2021-03-08 describing a two byte upload, and a binary dated 2022-10-21 whose audio driver reads three ports per handshake and self modifies its destinations.",
       "packageFollows": "neither",
       "reasoning": "The source and the binary in the same package describe different drivers, and the changelog entry naming two bytes predates both. Nothing here is derived from either, and the mismatch is recorded so that no later reader treats the published assembly as evidence about the shipped binary. A third party patch is never evidence about hardware in this family; here it is not evidence about itself either.",
-      "wouldSettleIt": "n/a. This is a note about a third party artifact, not an open question about the game.",
-      "namedInDocument": "A published patch is not evidence, including about itself"
+      "wouldSettleIt": "n/a. This is a note about a third party artifact, not an open question about the game."
     },
     {
       "id": "the-boot-window-does-not-reach-this-driver",
@@ -89,8 +83,7 @@
       "referenceDoes": "n/a",
       "packageFollows": "document",
       "reasoning": "An earlier reading here claimed the upload driver ran away when the window was left on. Running it both ways reaches the same bytes in the same cycles, because this driver never reads the addresses the window covers. The window is still switched off, because that is the state a console leaves it in, and a test holds the measurement so a patch that does reach up there shows the difference rather than hiding it.",
-      "wouldSettleIt": "n/a. Measured and closed.",
-      "namedInDocument": "The boot window does not reach the upload driver"
+      "wouldSettleIt": "n/a. Measured and closed."
     },
     {
       "id": "nothing-here-models-hardware",
@@ -101,20 +94,18 @@
       "referenceDoes": "n/a",
       "packageFollows": "neither",
       "reasoning": "This decompresses streams ahead of time, refits what is left into a map without a coprocessor, and patches code. Every claim about what a part does is made by one of the nine members it calls, each answering to its own suite. The one thing this measures directly is how many cycles a patched driver spends, and it measures that by running it on the audio unit rather than by counting from a table.",
-      "wouldSettleIt": "n/a. This is a scope boundary rather than an unknown.",
-      "namedInDocument": "Nothing here models hardware"
+      "wouldSettleIt": "n/a. This is a scope boundary rather than an unknown."
     },
     {
       "id": "a-third-party-package-cannot-supply-its-later-fixes",
       "parts": ["gamefixes"],
-      "severity": "low",
-      "status": "acknowledged",
+      "severity": "outOfScope",
+      "status": "closed",
       "documentSays": "n/a",
       "referenceDoes": "A widely circulated package advertises fixes for a double KO hang, a freeze when facing Zangief and a black screen crash, dated 2021-06-14, 2021-06-21 and 2022-10-13.",
       "packageFollows": "neither",
-      "reasoning": "None of the three can be taken. Its published assembly is dated 2021-03-08, before all of them, and contains no trace of any: the fixes exist only as bytes in a binary diff. Subtracting every address that assembly does touch leaves 641 unexplained runs and 39,643 bytes, unlabelled, and the same diff introduces 64 long calls into bank $C7 and 39 into bank $D2, whose mapping depends on the S-DD1 window this project removes. So the changes are neither identifiable nor addressable here, and could not be demonstrated if they were, because no run here reaches a double KO.",
-      "wouldSettleIt": "Assembly from the author dated after 2021-06, or a reproduction of any of the three faults on a run this project can drive.",
-      "namedInDocument": "A published patch is not evidence, including about itself"
+      "reasoning": "None of the three can be taken. Its published assembly is dated 2021-03-08, before all of them, and contains no trace of any: the fixes exist only as bytes in a binary diff. Subtracting every address that assembly does touch leaves 641 unexplained runs and 39,643 bytes, unlabelled, and the same diff introduces 64 long calls into bank $C7 and 39 into bank $D2, whose mapping depends on the S-DD1 window this project removes. So the changes are neither identifiable nor addressable here, and could not be demonstrated if they were, because no run here reaches a double KO. On 2026-10-31 the owner put the three fixes out of scope.",
+      "wouldSettleIt": "Assembly from the author dated after 2021-06, or a reproduction of any of the three faults on a run this project can drive."
     }
   ],
   "thirdPartyExamined": {

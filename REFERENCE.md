@@ -484,7 +484,63 @@ Every image carrying the sound patch is also driven through all eighteen fighter
 
 The hardware runs are in the README under [Tested hardware](README.md#tested-hardware).
 
-`tools/freeze_spcfast.py --check` confirms the frozen patch in [`spcfast.py`](spcfast.py) still reproduces the assembler's output byte for byte. The divergences between sources are in [`conformance/divergences.json`](conformance/divergences.json), which [`conformance/divergences.test.py`](conformance/divergences.test.py) holds to [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md).
+`tools/freeze_spcfast.py --check` confirms the frozen patch in [`spcfast.py`](spcfast.py) still reproduces the assembler's output byte for byte. Where sources disagree, [`conformance/divergences.json`](conformance/divergences.json) records it, and [`conformance/divergences.test.py`](conformance/divergences.test.py) checks its shape.
+
+### Where the stream tables come from
+
+How each table was made:
+
+- **USA, `TAGGED` in [`usastreams.py`](usastreams.py).** DarkAkuma's SNES Classic
+  dump puts an eight byte tag before every stream: the literal `SDD1` and a
+  little-endian 32 bit destination. A byte search finds all 2,815 tags, and each
+  length is the distance from one destination to the next. Reading the tagged dump
+  with [`sdd1map.py`](sdd1map.py) has to reproduce the frozen table exactly.
+- **USA, `HARVESTED`.** Two streams the tags miss, found by logging every transfer
+  the chip performs on the running game. `$19F8FE` is asked for 256 bytes at a
+  time, 108 times across an attract cycle and a tour of all eighteen fighters.
+  `$1BED29` is asked for 64 bytes at a time, 12 times, and holds four tiles beside
+  the portraits in the attract montage; without it the game draws garbage there.
+  Both were checked against the bytes the chip itself produces.
+- **Japan, [`jpstreams.py`](jpstreams.py).** Found by driving the retail cartridge
+  under emulation with the S-DD1 emulated and logging every DMA whose A-bus is
+  fixed, the condition the chip decompresses under. Each length is the largest
+  transfer seen from that address, and each entry decompresses out of the retail
+  ROM to exactly that length. [`requests_jp.py`](requests_jp.py) keeps the
+  observations, and [`gate.py`](gate.py) refuses a table that does not cover them.
+
+Each widening of the Japanese input drivers found streams the previous one could
+not reach:
+
+| Round | Addresses seen | What it exposed |
+|:--|:--|:--|
+| A driver hovering a few character slots | 42 | The starting set |
+| Sweeping the whole roster | 274 | Four missing streams, all select screen portraits |
+| A driver that forces a character and enters fights | 579 alone, 734 with the others | Ten missing streams and one entry shortened below what the cartridge asks for |
+| A person playing for a few minutes, hovering every character and starting a fight | 56 more | Two missing streams and a second shortened entry |
+
+Entries overlap, and that is expected: the decoder reads ahead, and the cartridge
+sometimes asks one address for more than the next stream's start allows. The
+tagged USA dump shows the same overlaps.
+
+The converted image may propose a new start, but it never changes an existing
+entry. Shortening an entry on the converted image's word once truncated two
+streams the cartridge needs. A lookup that misses does not hang when a later slot
+carries the same bank byte: it stops there and returns that stream, so Birdie's
+portrait arrives as Bison's. That is why the gate asks whether every requested
+address is a stream start, not only whether the scan stays inside its budget.
+
+If a screen ever comes up wrong, drive the retail cartridge to that screen, read
+what it asks the chip for, and add it.
+
+### The prototype check
+
+Capcom's prototype of the Japanese cartridge, dated 1996-09-15, declares no
+coprocessor and stores uncompressed much of what the retail cartridge compresses.
+Decompressing every stream in the Japanese table and searching that prototype
+finds 242 streams matching in full, 311,264 bytes, with no partial match counted.
+For those entries the table is confirmed against Capcom's own data. 2,138 of the
+table's streams are absent from the prototype and 472 share only their first 64
+bytes, so the prototype cannot show a stream that is missing.
 
 ## Working on the code
 
@@ -501,7 +557,7 @@ The hardware runs are in the README under [Tested hardware](README.md#tested-har
 ./run.sh doctor.py
 ```
 
-The suite is 1,323 tests across 65 test files: 786 beside the analysis modules, 519 beside the tools and 18 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one, and code that only runs on a dump, such as the build in [`pack.retail.py`](pack.retail.py), lives in a `<module>.retail.py` file. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), with nothing excluded, and it measures those files too wherever the dumps are present. CI holds no dump, so it runs `RETAIL_INPUTS=absent ./run.sh --gates`, which leaves the `*.retail.*` files out of the report. Run it the same way on a machine without the dumps.
+The suite is 1,318 tests across 65 test files: 786 beside the analysis modules, 519 beside the tools and 13 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one, and code that only runs on a dump, such as the build in [`pack.retail.py`](pack.retail.py), lives in a `<module>.retail.py` file. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), with nothing excluded, and it measures those files too wherever the dumps are present. CI holds no dump, so it runs `RETAIL_INPUTS=absent ./run.sh --gates`, which leaves the `*.retail.*` files out of the report. Run it the same way on a machine without the dumps.
 
 Every command runs in the project's image, with pinned toolchains, no network and your own user id, and nothing is installed on the host. `./run.sh --gates` runs every gate in order, with the versions CI uses. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 
@@ -516,7 +572,7 @@ Every command runs in the project's image, with pinned toolchains, no network an
 | [`ref/`](ref) | The driver the image builds around snes9x 1.63's `sdd1emu.cpp`, the decompression reference |
 | [`Dockerfile`](Dockerfile) | The one image every command runs in: asar, the emulator harness, the reference, Python 3.12, and a gates stage with every lint and test tool |
 | [`run.sh`](run.sh), [`run.ps1`](run.ps1), [`run.cmd`](run.cmd) | The launchers that build the image and run a command in it |
-| [`conformance/`](conformance) | The divergences record and the test that holds it to [`OPEN-QUESTIONS.md`](OPEN-QUESTIONS.md) |
+| [`conformance/`](conformance) | The divergence record and its test |
 | [`photos/`](photos) | Photographs of the images running on hardware, credited in the README |
 | [`scripts/`](scripts) | The release script that stamps [`version.py`](version.py) and [`CITATION.cff`](CITATION.cff) |
 | The root | Twenty-seven modules: the patches, the image builder, the gate, the doctor and the frozen stream tables |

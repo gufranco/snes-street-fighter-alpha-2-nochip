@@ -2,14 +2,12 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from typing import Any, override
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 import script  # noqa: E402
-
-DOCUMENT = ROOT / "OPEN-QUESTIONS.md"
 
 RECORD = ROOT / "conformance" / "divergences.json"
 
@@ -37,10 +35,6 @@ def live() -> list[dict[str, Any]]:
 
 
 class RecordTest(unittest.TestCase):
-    @override
-    def setUp(self) -> None:
-        self.text = DOCUMENT.read_text()
-
     def test_the_record_says_where_its_facts_came_from(self) -> None:
         self.assertTrue(held()["sources"])
 
@@ -73,16 +67,6 @@ class RecordTest(unittest.TestCase):
         silent = [one["id"] for one in divergences() if not one.get("reasoning")]
 
         self.assertEqual(silent, [])
-
-    def test_the_document_names_every_live_entry(self) -> None:
-        missing = [one["id"] for one in live() if one["namedInDocument"] not in self.text]
-
-        self.assertEqual(missing, [])
-
-    def test_every_entry_names_itself_in_the_document_including_the_settled_ones(self) -> None:
-        missing = [one["id"] for one in divergences() if one["namedInDocument"] not in self.text]
-
-        self.assertEqual(missing, [])
 
     def test_each_live_entry_says_what_measurement_would_close_it(self) -> None:
         silent = [
@@ -119,22 +103,13 @@ class RecordTest(unittest.TestCase):
 
     def test_there_are_live_questions_to_report(self) -> None:
         # Arrange
-        expected = 4
+        expected = 2
 
         # Act
         count = len(live())
 
         # Assert
         self.assertEqual(count, expected)
-
-    def test_the_document_separates_boundaries_from_unknowns(self) -> None:
-        self.assertIn("Boundaries, so nobody mistakes them for gaps", self.text)
-
-    def test_and_says_what_has_been_closed(self) -> None:
-        self.assertIn("What is closed, and why it is worth saying", self.text)
-
-    def test_the_document_points_at_the_record(self) -> None:
-        self.assertIn("conformance/divergences.json", self.text)
 
     def test_no_entry_carries_bytes_of_anything(self) -> None:
         text = json.dumps(held())

@@ -117,7 +117,7 @@ no fallback; the divergence record carries that.
 format, mypy, prettier, yamllint, shellcheck, actionlint, then every test module
 under coverage and the coverage report. CI runs the same script in the same
 image. A gate run on the host proves nothing about the image, and every gate
-decides on its exit code, never on a phrase in its output. The suite is 1,323
+decides on its exit code, never on a phrase in its output. The suite is 1,318
 tests and takes several minutes; a run that finishes faster did not run all of
 it.
 
