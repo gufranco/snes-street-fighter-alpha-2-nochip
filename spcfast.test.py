@@ -146,7 +146,7 @@ def stock_rom() -> bytes:
 
 
 class PatchSizeTest(unittest.TestCase):
-    def test_the_patch_is_the_four_hundred_and_twenty_bytes_the_readme_states(self) -> None:
+    def test_the_patch_is_the_four_hundred_and_twenty_bytes_the_reference_states(self) -> None:
         # Arrange
         expected = 420
 
