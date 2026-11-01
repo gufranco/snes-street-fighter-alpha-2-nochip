@@ -38,6 +38,65 @@ def retail(path: Path) -> bytes:
     return path.read_bytes()
 
 
+OVERFLOW_PATHS = {"usa": 0x0AF537, "jp": 0x0AF546}
+OWNER = 0x1000
+LIVE_COUNT = OWNER + 0x87
+ALL_SLOTS_FULL = 8
+OVERWRITTEN_SLOT = 0x20
+STEP_LIMIT = 1000
+
+
+class LoRom:
+    def __init__(self, rom: bytes) -> None:
+        self.rom = rom
+        self.ram: dict[int, int] = {}
+
+    def read8(self, address: int) -> int:
+        bank, offset = address >> 16, address & 0xFFFF
+        if (bank & 0x7F) < 0x40 and offset >= 0x8000:
+            return self.rom[(bank & 0x3F) * 0x8000 + offset - 0x8000]
+        return self.ram.get(offset, 0)
+
+    def write8(self, address: int, value: int) -> None:
+        self.ram[address & 0xFFFF] = value & 0xFF
+
+
+def overflow(rom: bytes, region: str) -> tuple[int, int]:
+    memory = LoRom(rom)
+    memory.ram[0x28], memory.ram[0x29] = OWNER & 0xFF, OWNER >> 8
+    memory.ram[LIVE_COUNT] = ALL_SLOTS_FULL
+    memory.ram[OWNER + 0xA1] = 0
+    cpu = hardware.load("mos65xx").Cpu("65816", memory)
+    cpu.emulation = False
+    cpu.m8, cpu.x8 = True, False
+    cpu.d, cpu.db, cpu.s = 0, 0, 0x01FF
+    cpu.call(OVERFLOW_PATHS[region], limit=STEP_LIMIT)
+    slot = memory.ram[OVERWRITTEN_SLOT] | memory.ram[OVERWRITTEN_SLOT + 1] << 8
+    return memory.ram[LIVE_COUNT], slot
+
+
+class ObjectTableOverflowTest(unittest.TestCase):
+    def test_the_stock_code_counts_an_object_it_never_added(self) -> None:
+        # Arrange
+        roms = {region: retail(path) for path, region in REGIONS}
+
+        # Act
+        found = {region: overflow(rom, region) for region, rom in roms.items()}
+
+        # Assert
+        self.assertEqual(found, {"usa": (9, 0x0C00), "jp": (9, 0x0C00)})
+
+    def test_the_corrected_code_leaves_the_count_where_it_started(self) -> None:
+        # Arrange
+        roms = {region: gamefixes.apply(retail(path)) for path, region in REGIONS}
+
+        # Act
+        found = {region: overflow(rom, region) for region, rom in roms.items()}
+
+        # Assert
+        self.assertEqual(found, {"usa": (8, 0x0C00), "jp": (8, 0x0C00)})
+
+
 class RetailTest(unittest.TestCase):
     def test_every_empty_call_is_retired_in_both_regions(self) -> None:
         # Arrange
