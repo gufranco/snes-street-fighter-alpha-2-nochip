@@ -103,7 +103,7 @@ class RecordTest(unittest.TestCase):
 
     def test_there_are_live_questions_to_report(self) -> None:
         # Arrange
-        expected = 2
+        expected = 1
 
         # Act
         count = len(live())

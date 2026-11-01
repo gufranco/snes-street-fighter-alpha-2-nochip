@@ -45,11 +45,11 @@
       "id": "the-japanese-stream-table-cannot-be-proved-complete",
       "parts": ["sdd1", "jpstreams"],
       "severity": "medium",
-      "status": "narrowed",
+      "status": "closed",
       "documentSays": "Nothing. No document lists what a cartridge asks its decompressor for.",
       "referenceDoes": "n/a",
       "packageFollows": "recording",
-      "reasoning": "A stream nobody asks for cannot be found by asking. The table satisfies all 1,661 recorded requests and the search converged, which is the strongest statement available and is not a proof of completeness. The USA table came from a tagged image and does not have this problem, so the gap is one cartridge wide rather than general. Separately, the entries the table does contain are now known to be right for a large part of it: 242 of them expand to bytes that appear verbatim in the 1996-09-15 prototype, 311,264 bytes in total, which is Capcom's own data from before the compression step. That confirms correctness and says nothing about completeness, which are different questions and are kept apart here.",
+      "reasoning": "A stream nobody asks for cannot be found by asking. The table satisfies all 1,661 recorded requests and the search converged, which is the strongest statement available and is not a proof of completeness. The USA table came from a tagged image and does not have this problem, so the gap is one cartridge wide rather than general. Separately, the entries the table does contain are now known to be right for a large part of it: 242 of them expand to bytes that appear verbatim in the 1996-09-15 prototype, 311,264 bytes in total, which is Capcom's own data from before the compression step. That confirms correctness and says nothing about completeness, which are different questions and are kept apart here. On 2026-11-01 the table was checked against the ROM's own bytes instead. Above $130000 every Japanese byte is consumed by a listed stream, equals the USA ROM at the same offset or one byte earlier, or sits in a run whose densest 256-byte window stays below 6.9 bits of entropy, where real stream bytes reach 6.94 or more in 95 of 100 windows. The check found eight streams no driver reached and fifteen entries listed short, all now in the table, and jpstreams.retail.test.py runs it.",
       "wouldSettleIt": "A tagged Japanese image, or a run that reaches every screen in the game and records what each one asks for. The prototype cannot settle it: it is a different build and 2,138 of the table's streams are absent from it."
     },
     {
@@ -60,8 +60,8 @@
       "documentSays": "n/a",
       "referenceDoes": "n/a",
       "packageFollows": "neither",
-      "reasoning": "The object table overflow needs eight simultaneous shadow frames and a projectile collision at once; the thrown father sprite sits in a scene no run here reaches. Both rest on reading the disassembly. The same runs do show that neither correction changes anything that is reached, which bounds the risk without demonstrating the benefit.",
-      "wouldSettleIt": "A recorded input sequence that reaches either scene, run before and after."
+      "reasoning": "The object table overflow needs eight simultaneous shadow frames and a projectile collision at once; the thrown father sprite sits in a scene no run here reaches. Both rest on reading the disassembly. The same runs do show that neither correction changes anything that is reached, which bounds the risk without demonstrating the benefit. On 2026-11-01 the object table overflow was demonstrated on the 65816 model in both regions: entered on its failure path with an owner holding eight live objects, the stock code leaves the count at nine after overwriting slot $0C00, and the corrected code leaves it at eight. gamefixes.retail.test.py runs both. The thrown father sprite is data, three Y offsets in a layout at file $3EA95E that no pointer in its own bank names, and no run here reaches the scene that draws it.",
+      "wouldSettleIt": "The scene where Sagat holds Dan's father, captured before and after the correction, on hardware or on the harness."
     },
     {
       "id": "a-published-patch-does-not-match-its-published-source",

@@ -89,7 +89,7 @@ The sd2snes firmware uses its 96 Mbit map only for a header declaring chip `$43`
 [`gate.py`](gate.py) refuses a table with a repeated source, an entry that does not decode to its recorded length, a recorded hardware request the table does not cover, or a key scan longer than 64 slots. On the frozen tables it prints:
 
 ```
-  jp: 2,855 streams, ok
+  jp: 2,863 streams, ok
   usa: 2,817 streams, ok
 ```
 
@@ -238,7 +238,7 @@ A command given the wrong number of required arguments exits 2. [`mapcheck.py`](
 ```
 
 ```
-  jp: all 2855 streams identical to the reference
+  jp: all 2863 streams identical to the reference
   usa: all 2817 streams identical to the reference
 ```
 
@@ -303,11 +303,11 @@ The lookup is four 64 KB tables in banks `$60` to `$63`, indexed by the low 16 b
   RESULT         OK
 ```
 
-The Japanese table has 2,855 streams, with the same median of 0 and worst of 31.
+The Japanese table has 2,863 streams, with the same median of 0 and worst of 31.
 
 ### Why the image is 96 Mbit, and how it is addressed
 
-Decompressed, the graphics come to 5,013,058 bytes for the USA table and 5,047,300 for the Japanese one, which does not fit a 4 MB cartridge. The image grows to 12 MB, and 192 banks of 64 KB do not fit the 24-bit address space once mirrors and work RAM are accounted for.
+Decompressed, the graphics come to 5,013,058 bytes for the USA table and 5,087,938 for the Japanese one, which does not fit a 4 MB cartridge. The image grows to 12 MB, and 192 banks of 64 KB do not fit the 24-bit address space once mirrors and work RAM are accounted for.
 
 The layout splits every bank in two and stores the halves in two planes of the file. Banks `$C0` and above own no storage and are a window onto the second plane.
 
@@ -457,7 +457,7 @@ The models start dirty: memory and registers hold arbitrary but reproducible val
 
 ## How it is checked
 
-The decompressor is compared with snes9x 1.63's `sdd1emu.cpp`, built from source by the reference stage of the [`Dockerfile`](Dockerfile) around the driver in [`ref/`](ref). [`tools/verify_streams.py`](tools/verify_streams.py) runs all 2,817 USA and 2,855 Japanese streams through both, and none differ. [`tools/verify_image.py`](tools/verify_image.py) then reads every stream back out of a finished image through its lookup tables.
+The decompressor is compared with snes9x 1.63's `sdd1emu.cpp`, built from source by the reference stage of the [`Dockerfile`](Dockerfile) around the driver in [`ref/`](ref). [`tools/verify_streams.py`](tools/verify_streams.py) runs all 2,817 USA and 2,863 Japanese streams through both, and none differ. [`tools/verify_image.py`](tools/verify_image.py) then reads every stream back out of a finished image through its lookup tables.
 
 The image matrix is two regions by four patch sets by two cartridge forms, sixteen images, plus four USA control builds that each drop one patch. [`tools/validate_all.py`](tools/validate_all.py) runs each on the harness under [`emu/`](emu) for 12,000 frames. In the last recorded run all 20 loaded, all delivered 12,000 of 12,000 frames, and none missed a lookup.
 
@@ -529,6 +529,32 @@ carries the same bank byte: it stops there and returns that stream, so Birdie's
 portrait arrives as Bison's. That is why the gate asks whether every requested
 address is a stream start, not only whether the scan stays inside its budget.
 
+Driving the cartridge finds only what the drivers reach, so the Japanese table is
+also checked against the ROM's own bytes. Compressed streams sit back to back, so
+a stream missing from the table leaves bytes that no listed stream consumes. Above
+`$130000`, every Japanese byte is either consumed by a listed stream, equal to the
+USA ROM at the same offset or one byte earlier, or part of a run whose densest
+256-byte window stays below 6.9 bits of entropy. Real stream bytes reach 6.94 or
+more in 95 of 100 windows, and the region's code, tables and text stay at or below
+6.58. [`jpstreams.retail.test.py`](jpstreams.retail.test.py) runs the check and
+fails when any listed stream is removed.
+
+That check found eight streams no driver had reached, each matched against its
+USA counterpart:
+
+| Japanese start | Length | USA counterpart | Agreement |
+|:--|:--|:--|:--|
+| `$1A3E45` | 3104 | `$1A2196` | 73% of non-zero bytes |
+| `$1A7EA0` | 3872 | `$1A6CE4` | 86% of non-zero bytes |
+| `$1AB17F` | 2112 | `$1AA190` | 71% of non-zero bytes |
+| `$1AB575`, `$1AB740`, `$1ABFF4`, `$1AC6AD` | 704 | four of the nineteen 704-byte streams from `$1AA5B1` | 647 to 686 of 704 bytes, as close as the fifteen already listed |
+| `$1AC794` | 2048 | `$1AB82E` | 1,118 of 2,048 bytes |
+
+It also lengthened fifteen entries. Thirteen take the length of their USA
+counterpart. `$14EC85` and `$17DD54` were listed shorter than the compressed bytes
+they own, and now run until those bytes reach the next stream: 16,256 and 8,352
+bytes. A longer entry only stores more of what the chip would produce.
+
 If a screen ever comes up wrong, drive the retail cartridge to that screen, read
 what it asks the chip for, and add it.
 
@@ -557,7 +583,7 @@ bytes, so the prototype cannot show a stream that is missing.
 ./run.sh doctor.py
 ```
 
-The suite is 1,318 tests across 65 test files: 786 beside the analysis modules, 519 beside the tools and 13 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one, and code that only runs on a dump, such as the build in [`pack.retail.py`](pack.retail.py), lives in a `<module>.retail.py` file. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), with nothing excluded, and it measures those files too wherever the dumps are present. CI holds no dump, so it runs `RETAIL_INPUTS=absent ./run.sh --gates`, which leaves the `*.retail.*` files out of the report. Run it the same way on a machine without the dumps.
+The suite is 1,326 tests across 66 test files: 794 beside the analysis modules, 519 beside the tools and 13 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one, and code that only runs on a dump, such as the build in [`pack.retail.py`](pack.retail.py), lives in a `<module>.retail.py` file. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), with nothing excluded, and it measures those files too wherever the dumps are present. CI holds no dump, so it runs `RETAIL_INPUTS=absent ./run.sh --gates`, which leaves the `*.retail.*` files out of the report. Run it the same way on a machine without the dumps.
 
 Every command runs in the project's image, with pinned toolchains, no network and your own user id, and nothing is installed on the host. `./run.sh --gates` runs every gate in order, with the versions CI uses. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 

@@ -56,4 +56,38 @@ class ShapeTest(unittest.TestCase):
         self.assertGreater(len(jpstreams.STREAMS), 0)
 
 
+class CoverageTest(unittest.TestCase):
+    def test_the_run_of_704_byte_streams_holds_all_nineteen_members(self) -> None:
+        # Arrange
+        run = range(0x1AB500, 0x1AC800)
+
+        # Act
+        members = [
+            source for source, length in jpstreams.STREAMS if source in run and length == 704
+        ]
+
+        # Assert
+        self.assertEqual(len(members), 19)
+
+    def test_the_streams_no_recorded_run_reached_are_listed(self) -> None:
+        # Arrange
+        missed = {0x1A3E45, 0x1A7EA0, 0x1AB17F, 0x1AB575, 0x1AB740, 0x1ABFF4, 0x1AC6AD, 0x1AC794}
+
+        # Act
+        listed = missed & {source for source, _ in jpstreams.STREAMS}
+
+        # Assert
+        self.assertEqual(listed, missed)
+
+    def test_two_streams_cover_their_compressed_bytes_up_to_the_next_stream(self) -> None:
+        # Arrange
+        table = dict(jpstreams.STREAMS)
+
+        # Act
+        lengths = (table[0x14EC85], table[0x17DD54])
+
+        # Assert
+        self.assertEqual(lengths, (16256, 8352))
+
+
 script.entry(__name__, unittest.main)
