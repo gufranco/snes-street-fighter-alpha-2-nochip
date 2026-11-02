@@ -80,13 +80,13 @@ The sd2snes firmware picks its 96 Mbit map only for a header declaring chip `$43
 
 **Eleven corrections** to the game's own code:
 
-| Fix | Regions |
-|:--|:--|
-| Sodom's name restored on the life bar, select, versus and results screens | USA |
-| Akuma's win poses in arcade order | Both |
-| The live-object count no longer exceeds the object table when a ninth shadow frame is requested | Both |
-| Three sprite records corrected where Sagat holds Dan's father | Both |
-| 45 calls to an empty routine rewritten to return directly | Both |
+| Fix | Corrections | Regions |
+|:--|:--|:--|
+| Sodom's name restored on the life bar, select, versus and results screens | 4 | USA |
+| Akuma's win poses in arcade order, with the silent pose found in its new place | 2 | Both |
+| The live-object count no longer exceeds the object table when a ninth shadow frame is requested | 1 | Both |
+| Three sprite records corrected where Sagat holds Dan's father | 1 | Both |
+| 45 calls to three empty routines rewritten to return directly | 3 | Both |
 
 The chip-free image also stores the 24,704 byte table the game used to spend 27 frames building before every fight.
 
@@ -97,10 +97,10 @@ The chip-free image also stores the 24,704 byte table the game used to spend 27 
 | Game Doctor SF7, 128 Mbit DRAM | USA and Japan, `gamedoctor` file | Reaches a fight |
 | SD2SNES and SD2SNES Pro, firmware 1.11.2 | USA and Japan, `sd2snes` file | Reaches a fight |
 | SD2SNES Mk.II clone, firmware 1.11.2 | USA, `sd2snes` file | Whole game |
-| FXPAK Pro | USA, chip-free image | Runs |
+| FXPAK Pro | USA and Japan, `fxpak`, `sd2snes` and `emulator` files | Runs |
 | Super EverDrive | USA, chip-free image | Title screen, from a [photograph](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1) by @yoshinokentarou |
 
-The SD2SNES, SD2SNES Pro and Game Doctor runs are herrkuhn's, from [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) and [issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37). The Mk.II clone run and the photographs below are Hamilton Pimentel's, from issue 31.
+The SD2SNES, SD2SNES Pro and Game Doctor runs are herrkuhn's, from [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) and [issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37). The Mk.II clone run and the photographs below are Hamilton Pimentel's, from issue 31. The FXPAK Pro runs are the maintainer's.
 
 <p align="center">
   <img src="photos/sd2snes-mk2/01-sd2snes-in-a-super-famicom.jpg" width="250" alt="An SD2SNES cartridge in a Super Famicom, powered on">

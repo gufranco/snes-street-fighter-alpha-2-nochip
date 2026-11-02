@@ -80,13 +80,13 @@ sd2snesファームウェアが96 Mbitのマップを使うのは、ヘッダー
 
 ゲーム自身のコードへの**11個の修正**:
 
-| 修正 | リージョン |
-|:--|:--|
-| ライフバー、キャラクター選択、対戦、結果の各画面でソドムの名前を元に戻す | 北米版 |
-| 豪鬼の勝利ポーズをアーケードの順序に | 両方 |
-| 9つ目の影フレームが要求されたとき、生存オブジェクト数がオブジェクトテーブルを超えないように | 両方 |
-| サガットがダンの父親をつかむ場面の3つのスプライトレコードを修正 | 両方 |
-| 空のルーチンへの45個の呼び出しを、直接戻るように書き換え | 両方 |
+| 修正 | 件数 | リージョン |
+|:--|:--|:--|
+| ライフバー、キャラクター選択、対戦、結果の各画面でソドムの名前を元に戻す | 4 | 北米版 |
+| 豪鬼の勝利ポーズをアーケードの順序にし、無音のポーズを新しい位置で見つけるように | 2 | 両方 |
+| 9つ目の影フレームが要求されたとき、生存オブジェクト数がオブジェクトテーブルを超えないように | 1 | 両方 |
+| サガットがダンの父親をつかむ場面の3つのスプライトレコードを修正 | 1 | 両方 |
+| 3つの空のルーチンへの45個の呼び出しを、直接戻るように書き換え | 3 | 両方 |
 
 チップなしイメージは、ゲームが毎試合の前に27フレームかけて作っていた24,704バイトのテーブルも、完成した形で持っています。
 
@@ -97,10 +97,10 @@ sd2snesファームウェアが96 Mbitのマップを使うのは、ヘッダー
 | Game Doctor SF7、128 Mbit DRAM | 北米版と日本版、`gamedoctor`のファイル | 試合まで到達 |
 | SD2SNESとSD2SNES Pro、ファームウェア1.11.2 | 北米版と日本版、`sd2snes`のファイル | 試合まで到達 |
 | SD2SNES Mk.IIのクローン、ファームウェア1.11.2 | 北米版、`sd2snes`のファイル | ゲーム全体 |
-| FXPAK Pro | 北米版、チップなしイメージ | 動作 |
+| FXPAK Pro | 北米版と日本版、`fxpak`、`sd2snes`、`emulator`のファイル | 動作 |
 | Super EverDrive | 北米版、チップなしイメージ | タイトル画面。@yoshinokentarouさんの[写真](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1)より |
 
-SD2SNES、SD2SNES Pro、Game Doctorでの実行はherrkuhnさんによるもので、[issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31)と[issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37)で報告されました。Mk.IIのクローンでの実行と下の写真はHamilton Pimentelさんによるもので、issue 31で報告されました。
+SD2SNES、SD2SNES Pro、Game Doctorでの実行はherrkuhnさんによるもので、[issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31)と[issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37)で報告されました。Mk.IIのクローンでの実行と下の写真はHamilton Pimentelさんによるもので、issue 31で報告されました。FXPAK Proでの実行はメンテナーによるものです。
 
 <p align="center">
   <img src="photos/sd2snes-mk2/01-sd2snes-in-a-super-famicom.jpg" width="250" alt="スーパーファミコンに挿して電源を入れたSD2SNESカートリッジ">

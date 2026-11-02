@@ -80,13 +80,13 @@ sd2snes 韌體只會在標頭宣告晶片 `$43` 或 `$45`、而且檔案剛好�
 
 對遊戲本身程式碼的**十一項修正**：
 
-| 修正 | 地區 |
-|:--|:--|
-| 在體力條、選角、對戰及結果畫面還原 Sodom 的名字 | 美國版 |
-| 豪鬼的勝利姿勢改為街機次序 | 兩者 |
-| 要求第九個影子幀時，存活物件數不再超出物件表 | 兩者 |
-| 修正 Sagat 抓住 Dan 父親那一幀中的三條精靈記錄 | 兩者 |
-| 把 45 處對空例程的呼叫改寫為直接返回 | 兩者 |
+| 修正 | 項數 | 地區 |
+|:--|:--|:--|
+| 在體力條、選角、對戰及結果畫面還原 Sodom 的名字 | 4 | 美國版 |
+| 豪鬼的勝利姿勢改為街機次序，並在新位置找到無聲姿勢 | 2 | 兩者 |
+| 要求第九個影子幀時，存活物件數不再超出物件表 | 1 | 兩者 |
+| 修正 Sagat 抓住 Dan 父親那一幀中的三條精靈記錄 | 1 | 兩者 |
+| 把 45 處對三個空例程的呼叫改寫為直接返回 | 3 | 兩者 |
 
 無晶片映像檔亦直接存放了那個 24,704 位元組的表，遊戲原本在每場對戰前要花 27 幀來建構它。
 
@@ -97,10 +97,10 @@ sd2snes 韌體只會在標頭宣告晶片 `$43` 或 `$45`、而且檔案剛好�
 | Game Doctor SF7，128 Mbit DRAM | 美國版及日本版，`gamedoctor` 檔案 | 進入對戰 |
 | SD2SNES 及 SD2SNES Pro，韌體 1.11.2 | 美國版及日本版，`sd2snes` 檔案 | 進入對戰 |
 | SD2SNES Mk.II 複製版，韌體 1.11.2 | 美國版，`sd2snes` 檔案 | 整個遊戲 |
-| FXPAK Pro | 美國版，無晶片映像檔 | 運行 |
+| FXPAK Pro | 美國版及日本版，`fxpak`、`sd2snes` 及 `emulator` 檔案 | 運行 |
 | Super EverDrive | 美國版，無晶片映像檔 | 標題畫面，出自 @yoshinokentarou 的[相片](https://x.com/yoshinokentarou/status/2111959864163664247/photo/1) |
 
-SD2SNES、SD2SNES Pro 和 Game Doctor 的運行由 herrkuhn 完成，報告於 [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) 和 [issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37)。Mk.II 複製版的運行和下面的相片由 Hamilton Pimentel 提供，報告於 issue 31。
+SD2SNES、SD2SNES Pro 和 Game Doctor 的運行由 herrkuhn 完成，報告於 [issue 31](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/31) 和 [issue 37](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/issues/37)。Mk.II 複製版的運行和下面的相片由 Hamilton Pimentel 提供，報告於 issue 31。FXPAK Pro 的運行由維護者完成。
 
 <p align="center">
   <img src="photos/sd2snes-mk2/01-sd2snes-in-a-super-famicom.jpg" width="250" alt="插在 Super Famicom 上並已開機的 SD2SNES 卡帶">
