@@ -31,7 +31,8 @@ stage names, launchers, gate script, [`toolchain.py`](toolchain.py), CI jobs and
 doctor shape. A tooling change lands in all three in the same task, and a
 difference between them comes from the game.
 
-**No retail data is ever committed.** Nothing in `roms/` or `boot/`, and no
+**No retail data is ever committed.** Nothing in `roms/` or `external/boot/`,
+where the `ssmp` model looks for the audio chip's boot program, and no
 `*.sfc`, `*.smc` or `*.bin`, in any form. Everything published about an input
 is a digest: [`artifacts.manifest.json`](artifacts.manifest.json) carries four
 per file, and `sha256` decides.
