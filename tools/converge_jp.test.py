@@ -58,6 +58,38 @@ class PassTest(unittest.TestCase):
 
         self.assertGreater(len(drivers), 1)
 
+    def test_an_arcade_pass_plays_every_fighter_and_shin_akuma_to_the_ending(self) -> None:
+        # Arrange
+        scenes = [extra[0] for name, extra, _ in converge.PASSES if name.startswith("arcade")]
+
+        # Act
+        fighters = sorted(scene.removeprefix("SFSCENE=") for scene in scenes)
+
+        # Assert
+        self.assertEqual(fighters, sorted([f"{n:02X},FF" for n in range(18)] + ["02,FF"]))
+
+    def test_shin_akuma_is_akuma_with_his_variant(self) -> None:
+        # Arrange
+        name, fighter, variant = "arcadeshin", 0x02, 0x14
+
+        # Act
+        found = converge.arcade(name, fighter, variant)
+
+        # Assert
+        self.assertEqual(found[1][:2], ["SFSCENE=02,FF", "SFSCENEVARIANT=14"])
+
+    def test_an_arcade_pass_knocks_the_opponent_out_and_keeps_the_player_standing(self) -> None:
+        # Arrange
+        name, fighter = "arcade11", 0x11
+
+        # Act
+        found = converge.arcade(name, fighter)
+
+        # Assert
+        self.assertEqual(
+            (found[0], found[1][-1], found[2]), ("arcade11", "SFWRITE=09BE:00,073E:90", 90000)
+        )
+
 
 def _scan(address: int, channels: Any) -> str:
     parts = " ".join(

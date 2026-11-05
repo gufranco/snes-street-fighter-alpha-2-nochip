@@ -79,15 +79,49 @@ class CoverageTest(unittest.TestCase):
         # Assert
         self.assertEqual(listed, missed)
 
-    def test_two_streams_cover_their_compressed_bytes_up_to_the_next_stream(self) -> None:
+    def test_two_streams_keep_the_lengths_the_game_asks_and_the_next_stream_follows(self) -> None:
         # Arrange
         table = dict(jpstreams.STREAMS)
 
         # Act
-        lengths = (table[0x14EC85], table[0x17DD54])
+        lengths = (table[0x14EC85], table[0x17DD54], table.get(0x17E6D1))
 
         # Assert
-        self.assertEqual(lengths, (16256, 8352))
+        self.assertEqual(lengths, (16256, 3744, 3456))
+
+    def test_the_streams_only_an_arcade_ending_or_a_load_table_reaches_are_listed(self) -> None:
+        # Arrange
+        glyphs = {
+            0x1B1C43,
+            0x1B1C65,
+            0x1B1C7B,
+            0x1B1C9D,
+            0x1B1CB8,
+            0x1B1CDC,
+            0x1B1CFE,
+            0x1B1D1E,
+            0x1B1D31,
+            0x1B1D4E,
+            0x1B1D70,
+            0x1B1D8B,
+            0x1B1DAA,
+            0x1B1DCA,
+            0x1B1DE4,
+            0x1B1E00,
+            0x1B1E20,
+        }
+        wanted = {(source, 64) for source in glyphs} | {
+            (0x17E6D1, 3456),
+            (0x1947F1, 8192),
+            (0x1BBA2B, 832),
+            (0x3E0700, 560),
+        }
+
+        # Act
+        listed = wanted & set(jpstreams.STREAMS)
+
+        # Assert
+        self.assertEqual(listed, wanted)
 
 
 script.entry(__name__, unittest.main)

@@ -801,7 +801,7 @@ int main(int argc, char **argv)
             const char *comma = strchr(wanted, ',');
             const unsigned long second = comma ? strtoul(comma + 1, NULL, 16) : first;
             Memory.RAM[PLAYER_ONE_CHARACTER] = (uint8)first;
-            Memory.RAM[PLAYER_TWO_CHARACTER] = (uint8)second;
+            if (second != 0xFF) { Memory.RAM[PLAYER_TWO_CHARACTER] = (uint8)second; }
             if (getenv("SFSCENEVARIANT")) {
                 const unsigned long variant = strtoul(getenv("SFSCENEVARIANT"), NULL, 16);
                 Memory.RAM[PLAYER_ONE_VARIANT] = (uint8)variant;

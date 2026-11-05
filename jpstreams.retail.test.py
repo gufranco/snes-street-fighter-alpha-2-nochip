@@ -34,6 +34,24 @@ def load_module(name: str) -> Any:
 
 gate = load_module("gate")
 jpstreams = load_module("jpstreams")
+usastreams = load_module("usastreams")
+
+LOAD_LISTS = (0x1F0000, 0x200000)
+
+LIST_END = 0xFF
+
+LIST_RECORD = 7
+
+LIST_LONGEST = 0x8000
+
+TILE = 32
+
+WINDOW_BANKS = range(0x80, 0xC0)
+
+CHARACTER_TABLES = {
+    "usa": ((0x003F2E, 8, 21), (0x00D9FB, 5, 40)),
+    "jp": ((0x003F16, 8, 21), (0x00DA27, 5, 40)),
+}
 
 
 def retail(path: Path) -> bytes:
@@ -77,6 +95,55 @@ def dense(jp: bytes, run: tuple[int, int]) -> bool:
     return any(entropy(jp[low : low + WINDOW]) >= COMPRESSED_ENTROPY for low in lows)
 
 
+def source_at(rom: bytes, at: int) -> int:
+    return (rom[at + 2] & 0x3F) << 16 | rom[at + 1] << 8 | rom[at]
+
+
+def list_record(rom: bytes, at: int) -> int | None:
+    length = rom[at] | rom[at + 1] << 8
+    source = source_at(rom, at + 4)
+    named = (
+        rom[at + 6] in WINDOW_BANKS
+        and 0 < length <= LIST_LONGEST
+        and length % TILE == 0
+        and source >= COMPRESSED_AREA
+    )
+    return source if named else None
+
+
+def one_list(rom: bytes, start: int) -> list[int]:
+    found: list[int] = []
+    at = start
+    while (source := list_record(rom, at)) is not None:
+        found.append(source)
+        at += LIST_RECORD
+    return found if rom[at] == LIST_END else []
+
+
+def unlisted(rom: bytes, table: tuple[tuple[int, int], ...]) -> set[int]:
+    low, high = LOAD_LISTS
+    named = {
+        source
+        for start in range(low, high)
+        if rom[start - 1] == LIST_END
+        for source in one_list(rom, start)
+    }
+    return named - {source for source, _ in table}
+
+
+def unnamed_characters(rom: bytes, region: str, table: tuple[tuple[int, int], ...]) -> set[int]:
+    named = {
+        source_at(rom, start + slot * stride)
+        for start, stride, count in CHARACTER_TABLES[region]
+        for slot in range(count)
+    }
+    return named - {source for source, _ in table}
+
+
+def without(table: tuple[tuple[int, int], ...], source: int) -> tuple[tuple[int, int], ...]:
+    return tuple(entry for entry in table if entry[0] != source)
+
+
 def stray(table: tuple[tuple[int, int], ...]) -> list[int]:
     jp = retail(JP_ROM)
     usa = retail(USA_ROM)
@@ -116,6 +183,57 @@ class CompressedByteCoverageTest(unittest.TestCase):
 
         # Assert
         self.assertEqual(found, 0.0)
+
+
+class LoadListTest(unittest.TestCase):
+    def test_the_japanese_table_leaves_out_only_what_the_tagged_usa_table_leaves_out(
+        self,
+    ) -> None:
+        # Arrange
+        jp, usa = retail(JP_ROM), retail(USA_ROM)
+
+        # Act
+        found = (unlisted(jp, jpstreams.STREAMS), unlisted(usa, usastreams.STREAMS))
+
+        # Assert
+        self.assertEqual(found[0], found[1])
+
+    def test_a_table_missing_an_ending_glyph_leaves_its_load_list_entry_unlisted(self) -> None:
+        # Arrange
+        jp, usa = retail(JP_ROM), retail(USA_ROM)
+        table = without(jpstreams.STREAMS, 0x1B1C43)
+
+        # Act
+        found = unlisted(jp, table) - unlisted(usa, usastreams.STREAMS)
+
+        # Assert
+        self.assertEqual(found, {0x1B1C43})
+
+
+class CharacterTableTest(unittest.TestCase):
+    def test_every_stream_a_per_character_table_names_is_in_its_regions_table(self) -> None:
+        # Arrange
+        roms = {"usa": retail(USA_ROM), "jp": retail(JP_ROM)}
+        tables = {"usa": usastreams.STREAMS, "jp": jpstreams.STREAMS}
+
+        # Act
+        found = {
+            region: unnamed_characters(roms[region], region, tables[region]) for region in roms
+        }
+
+        # Assert
+        self.assertEqual(found, {"usa": set(), "jp": set()})
+
+    def test_a_table_missing_shin_akumas_portrait_leaves_his_slot_unnamed(self) -> None:
+        # Arrange
+        jp = retail(JP_ROM)
+        table = without(jpstreams.STREAMS, 0x1947F1)
+
+        # Act
+        found = unnamed_characters(jp, "jp", table)
+
+        # Assert
+        self.assertEqual(found, {0x1947F1})
 
 
 script.entry(__name__, unittest.main)

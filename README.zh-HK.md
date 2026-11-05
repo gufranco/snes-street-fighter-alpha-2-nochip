@@ -122,7 +122,7 @@ SD2SNES、SD2SNES Pro 和 Game Doctor 的運行由 herrkuhn 完成，報告於 [
 
 ## 如何建構和檢查
 
-每個數據流都用晶片的 Python 模型解壓，並與 snes9x 的 `sdd1emu.cpp` 逐位元組比較：美國版 2,817 個、日本版 2,863 個數據流，沒有任何不同。每個完成的映像檔都在模擬器測試工具上運行 12,000 幀，每次取樣上傳都與其來源比較。建構步驟、映像檔佈局、每條指令和 Python 介面都在 [REFERENCE.md](REFERENCE.md) 中。測試關卡見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+每個數據流都用晶片的 Python 模型解壓，並與 snes9x 的 `sdd1emu.cpp` 逐位元組比較：美國版 2,817 個、日本版 2,884 個數據流，沒有任何不同。每個完成的映像檔都在模擬器測試工具上運行 12,000 幀，每次取樣上傳都與其來源比較。建構步驟、映像檔佈局、每條指令和 Python 介面都在 [REFERENCE.md](REFERENCE.md) 中。測試關卡見 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## 鳴謝與參考
 

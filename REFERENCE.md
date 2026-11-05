@@ -89,7 +89,7 @@ The sd2snes firmware uses its 96 Mbit map only for a header declaring chip `$43`
 [`gate.py`](gate.py) refuses a table with a repeated source, an entry that does not decode to its recorded length, a recorded hardware request the table does not cover, or a key scan longer than 64 slots. On the frozen tables it prints:
 
 ```
-  jp: 2,863 streams, ok
+  jp: 2,884 streams, ok
   usa: 2,817 streams, ok
 ```
 
@@ -238,7 +238,7 @@ A command given the wrong number of required arguments exits 2. [`mapcheck.py`](
 ```
 
 ```
-  jp: all 2863 streams identical to the reference
+  jp: all 2884 streams identical to the reference
   usa: all 2817 streams identical to the reference
 ```
 
@@ -303,11 +303,11 @@ The lookup is four 64 KB tables in banks `$60` to `$63`, indexed by the low 16 b
   RESULT         OK
 ```
 
-The Japanese table has 2,863 streams, with the same median of 0 and worst of 31.
+The Japanese table has 2,884 streams, with the same median of 0 and worst of 31.
 
 ### Why the image is 96 Mbit, and how it is addressed
 
-Decompressed, the graphics come to 5,013,058 bytes for the USA table and 5,087,938 for the Japanese one, which does not fit a 4 MB cartridge. The image grows to 12 MB, and 192 banks of 64 KB do not fit the 24-bit address space once mirrors and work RAM are accounted for.
+Decompressed, the graphics come to 5,013,058 bytes for the USA table and 5,097,458 for the Japanese one, which does not fit a 4 MB cartridge. The image grows to 12 MB, and 192 banks of 64 KB do not fit the 24-bit address space once mirrors and work RAM are accounted for.
 
 The layout splits every bank in two and stores the halves in two planes of the file. Banks `$C0` and above own no storage and are a window onto the second plane.
 
@@ -457,7 +457,7 @@ The models start dirty: memory and registers hold arbitrary but reproducible val
 
 ## How it is checked
 
-The decompressor is compared with snes9x 1.63's `sdd1emu.cpp`, built from source by the reference stage of the [`Dockerfile`](Dockerfile) around the driver in [`ref/`](ref). [`tools/verify_streams.py`](tools/verify_streams.py) runs all 2,817 USA and 2,863 Japanese streams through both, and none differ. [`tools/verify_image.py`](tools/verify_image.py) then reads every stream back out of a finished image through its lookup tables.
+The decompressor is compared with snes9x 1.63's `sdd1emu.cpp`, built from source by the reference stage of the [`Dockerfile`](Dockerfile) around the driver in [`ref/`](ref). [`tools/verify_streams.py`](tools/verify_streams.py) runs all 2,817 USA and 2,884 Japanese streams through both, and none differ. [`tools/verify_image.py`](tools/verify_image.py) then reads every stream back out of a finished image through its lookup tables.
 
 The image matrix is two regions by four patch sets by two cartridge forms, sixteen images, plus four USA control builds that each drop one patch. [`tools/validate_all.py`](tools/validate_all.py) runs each on the harness under [`emu/`](emu) for 12,000 frames. In the last recorded run all 20 loaded, all delivered 12,000 of 12,000 frames, and none missed a lookup.
 
@@ -517,6 +517,19 @@ not reach:
 | Sweeping the whole roster | 274 | Four missing streams, all select screen portraits |
 | A driver that forces a character and enters fights | 579 alone, 734 with the others | Ten missing streams and one entry shortened below what the cartridge asks for |
 | A person playing for a few minutes, hovering every character and starting a fight | 56 more | Two missing streams and a second shortened entry |
+| Every fighter and Shin Akuma played through arcade to the credits, each opponent knocked out | 2,196 | Twenty missing streams: seventeen 64-byte kanji glyphs, asked in every fighter's run, `$17E6D1` in six fighters' runs, `$1BBA2B` in Gen's and `$3E0700` in Akuma's and Shin Akuma's |
+
+The game also names its streams itself. Scene load lists between `$1F0000` and
+`$200000` are 7-byte records, a length, a video address and a 24-bit source,
+closed by `$FF`. Two per-character tables give each fighter a pair of streams and
+an 8 KB portrait, with Shin Akuma in slot 18.
+[`jpstreams.retail.test.py`](jpstreams.retail.test.py) reads both from each dump:
+the Japanese table must leave out only what the tagged USA table leaves out, so
+the sources both regions list but neither holds are not streams. That check found
+Shin Akuma's portrait at `$1947F1`, which no driver has asked for. Two of these
+streams had been hidden by a neighbour asked for more bytes than it holds,
+`$17DD54` lengthened past `$17E6D1` and `$1940F2` past `$1947F1`, which is why
+the compressed byte coverage check alone missed them.
 
 Entries overlap, and that is expected: the decoder reads ahead, and the cartridge
 sometimes asks one address for more than the next stream's start allows. The

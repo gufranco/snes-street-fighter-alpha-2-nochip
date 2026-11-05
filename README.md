@@ -122,7 +122,7 @@ Open an [issue](https://github.com/gufranco/snes-street-fighter-alpha-2-nochip/i
 
 ## How it is built and checked
 
-Every stream is decompressed with a Python model of the chip and compared byte for byte with snes9x's `sdd1emu.cpp`: 2,817 USA and 2,863 Japanese streams, none different. Each finished image runs for 12,000 frames on an emulator harness, and every sample upload is compared with its source. The build steps, the image layout, every command and the Python interface are in [REFERENCE.md](REFERENCE.md). [CONTRIBUTING.md](CONTRIBUTING.md) covers the test gates.
+Every stream is decompressed with a Python model of the chip and compared byte for byte with snes9x's `sdd1emu.cpp`: 2,817 USA and 2,884 Japanese streams, none different. Each finished image runs for 12,000 frames on an emulator harness, and every sample upload is compared with its source. The build steps, the image layout, every command and the Python interface are in [REFERENCE.md](REFERENCE.md). [CONTRIBUTING.md](CONTRIBUTING.md) covers the test gates.
 
 ## Credits and references
 

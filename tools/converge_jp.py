@@ -46,7 +46,39 @@ SCAN = re.compile(
     r"ch7=(\w\w):(\w{4}):(\d+):fixed\d"
 )
 
+ROSTER = 18
+AKUMA = 0x02
+SHIN_AKUMA_VARIANT = 0x14
+FREE_OPPONENT = 0xFF
+OPPONENT_HEALTH = 0x09BE
+PLAYER_HEALTH = 0x073E
+FULL_HEALTH = 0x90
+ARCADE_FRAMES = 90000
+
+
+def arcade(name: str, fighter: int, variant: int | None = None) -> tuple[str, list[str], int]:
+    chosen = [] if variant is None else [f"SFSCENEVARIANT={variant:02X}"]
+    return (
+        name,
+        [
+            f"SFSCENE={fighter:02X},{FREE_OPPONENT:02X}",
+            *chosen,
+            "SFSCENEMENU=1800",
+            "SFSCENECONTINUE=",
+            "SFSCENEJUMP=1",
+            f"SFWRITE={OPPONENT_HEALTH:04X}:00,{PLAYER_HEALTH:04X}:{FULL_HEALTH:02X}",
+        ],
+        ARCADE_FRAMES,
+    )
+
+
+ARCADE = (
+    *(arcade(f"arcade{fighter:02X}", fighter) for fighter in range(ROSTER)),
+    arcade("arcadeshin", AKUMA, SHIN_AKUMA_VARIANT),
+)
+
 PASSES = (
+    *ARCADE,
     ("tour18000", ["SFTOUR=1", "SFTOURBUDGET=18000"], 216000),
     ("tour9000", ["SFTOUR=1", "SFTOURBUDGET=9000"], 162000),
     (
