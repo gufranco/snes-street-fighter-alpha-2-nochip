@@ -27,6 +27,7 @@ def load(name: str, where: Path = ROOT) -> Any:
 
 
 prefight = load("prefight")
+rawreads = load("rawreads")
 rombuild = load("rombuild")
 sdd1map = load("sdd1map")
 
@@ -106,7 +107,7 @@ def main(
         for name, cart in region_carts.items():
             bypass = build(region, name, cart)
             source, extra = source_for(name, bypass)
-            image = rombuild.build(source, entries, extra=extra).image
+            image = rombuild.build(source, entries, extra=extra, keep=rawreads.READS[region]).image
             free = out / f"{region}-{name}-free.sfc"
             free.write_bytes(rewrite.declare_rom_only(image))
             say(f"  {region}-{name}: cart, bypass, free ({len(entries)} streams)")

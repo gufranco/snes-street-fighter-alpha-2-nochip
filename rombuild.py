@@ -76,6 +76,19 @@ def spans_of(extra: tuple[Any, ...]) -> list[Region]:
     ]
 
 
+def window_spans(keep: tuple[tuple[int, int], ...]) -> list[Region]:
+    spans: list[Region] = []
+    for source, length in keep:
+        start, end = source, source + length
+        while start < end:
+            edge = min(end, (start | 0xFFFF) + 1)
+            spans.append(
+                Region(WINDOW_BASE + (start >> 16), start & 0xFFFF, edge - (start & ~0xFFFF))
+            )
+            start = edge
+    return spans
+
+
 def subtract(regions: list[Region], taken: list[Region]) -> list[Region]:
     out: list[Region] = []
     for region in regions:
@@ -101,6 +114,7 @@ def reclaimed_regions(
     rom: bytes | bytearray,
     entries: list[Any],
     decode: Callable[..., Any] = sdd1.decompress,
+    keep: tuple[tuple[int, int], ...] = (),
 ) -> list[Region]:
     spans: list[Region] = []
     for entry in entries:
@@ -117,7 +131,8 @@ def reclaimed_regions(
                 end - (entry.source & ~0xFFFF),
             )
         )
-    return [r for r in merge(spans) if r.end - r.start >= MIN_REGION]
+    free = subtract(merge(spans), window_spans(keep))
+    return [r for r in free if r.end - r.start >= MIN_REGION]
 
 
 def merge(regions: list[Region]) -> list[Region]:
@@ -173,11 +188,14 @@ def build(
     entries: list[Any],
     image_banks: int = IMAGE_BANKS,
     extra: tuple[Any, ...] = (),
+    keep: tuple[tuple[int, int], ...] = (),
 ) -> Any:
     if len(rom) != ORIGINAL_SIZE:
         raise ValueError(f"expected a {ORIGINAL_SIZE} byte rom, got {len(rom)}")
 
-    regions = subtract(data_bank_regions(), spans_of(extra)) + reclaimed_regions(rom, entries)
+    regions = subtract(data_bank_regions(), spans_of(extra)) + reclaimed_regions(
+        rom, entries, keep=keep
+    )
     ordered = entries[-1:] + entries[:-1] if len(entries) > 1 else list(entries)
     destinations = allocate([(e.index, e.length) for e in ordered], regions)
     tables = sdd1tables.build([(e, destinations[e.index]) for e in entries])

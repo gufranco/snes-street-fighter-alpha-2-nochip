@@ -29,6 +29,8 @@ patchrun = load_module("patchrun")
 
 rombuild = load_module("rombuild")
 
+rawreads = load_module("rawreads")
+
 IMAGE = ROOT / "build" / "sfa2-usa-nochip.sfc"
 
 PATCHED = ROOT / "build" / "sfa2-usa-patched.sfc"
@@ -68,7 +70,9 @@ class TranslationTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.image = dump.read(IMAGE)
         cls.entries = rombuild.load_entries(dump.read(TAGGED))
-        cls.expected = rombuild.build(dump.read(PATCHED), cls.entries).destinations
+        cls.expected = rombuild.build(
+            dump.read(PATCHED), cls.entries, keep=rawreads.USA
+        ).destinations
         cls.memory = patchrun.SnesMemory(cls.image)
 
     def test_every_stream_translates_to_its_allocated_address(self) -> None:

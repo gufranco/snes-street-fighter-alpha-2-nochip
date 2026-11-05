@@ -329,7 +329,7 @@ Bank `$C0+k` exposes the low half of bank `k` at `$8000`-`$FFFF` and the low hal
 | Banks `$80`-`$BF` | FastROM mirror of `$00`-`$3F` |
 | Banks `$C0`-`$FF` | The original 4 MB ROM, linear, as the window |
 
-The free banks do not hold every decompressed stream, so once a stream is decompressed the compressed bytes it came from are reclaimed in the window banks, using each stream's real consumed extent.
+The free banks do not hold every decompressed stream, so once a stream is decompressed the compressed bytes it came from are reclaimed in the window banks, using each stream's real consumed extent. Some of the bytes a stream's extent covers are also copied by the game without the chip. The Japanese dialogue border is a 64-byte tile at `$DA:2203`, inside the 8,576 bytes asked of `$1A19F0`. [`rawreads.py`](rawreads.py) records every span the game copies by plain DMA out of banks `$C0` to `$FF`, 41 in the USA cartridge and 38 in the Japanese one, logged with the S-DD1 emulated over an arcade run to the credits for every fighter and Shin Akuma. The layout never reclaims those spans.
 
 ### The pause
 
@@ -596,7 +596,7 @@ bytes, so the prototype cannot show a stream that is missing.
 ./run.sh doctor.py
 ```
 
-The suite is 1,326 tests across 66 test files: 794 beside the analysis modules, 519 beside the tools and 13 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one, and code that only runs on a dump, such as the build in [`pack.retail.py`](pack.retail.py), lives in a `<module>.retail.py` file. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), with nothing excluded, and it measures those files too wherever the dumps are present. CI holds no dump, so it runs `RETAIL_INPUTS=absent ./run.sh --gates`, which leaves the `*.retail.*` files out of the report. Run it the same way on a machine without the dumps.
+The suite is 1,343 tests across 67 test files: 808 beside the analysis modules, 522 beside the tools and 13 under [`conformance/`](conformance). Each module has its test file beside it, named after it, and runs on its own. A test that needs a retail dump lives in a `<module>.retail.test.py` file beside the module and reports as skipped without one, and code that only runs on a dump, such as the build in [`pack.retail.py`](pack.retail.py), lives in a `<module>.retail.py` file. Coverage is a 100% statement and branch gate set in [`pyproject.toml`](pyproject.toml), with nothing excluded, and it measures those files too wherever the dumps are present. CI holds no dump, so it runs `RETAIL_INPUTS=absent ./run.sh --gates`, which leaves the `*.retail.*` files out of the report. Run it the same way on a machine without the dumps.
 
 Every command runs in the project's image, with pinned toolchains, no network and your own user id, and nothing is installed on the host. `./run.sh --gates` runs every gate in order, with the versions CI uses. The assembly in [`asm/`](asm) is the only source carrying comments: entry and exit state, register widths, and where each recovered address came from.
 

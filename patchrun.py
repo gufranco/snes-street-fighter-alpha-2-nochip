@@ -14,6 +14,7 @@ emu65816 = hardware.load("mos65xx")
 dump = hardware.load("romimage").dump
 mapper = hardware.load("mapper")
 
+import rawreads  # noqa: E402
 import rombuild  # noqa: E402
 
 ENTRY_POINTS = {0x00: 0x35CD84, 0x10: 0x35CDD0, 0x70: 0x35CE1C}
@@ -128,7 +129,7 @@ def main(
 
     image = dump.read(argv[1])
     entries = rombuild.load_entries(dump.read(argv[3]))
-    expected = rombuild.build(dump.read(argv[2]), entries).destinations
+    expected = rombuild.build(dump.read(argv[2]), entries, keep=rawreads.USA).destinations
 
     failures = walk(SnesMemory(image), entries, expected, say)
     say(f"  executed {len(entries):,} streams, {failures} failures")

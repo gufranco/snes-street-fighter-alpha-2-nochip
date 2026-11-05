@@ -29,6 +29,7 @@ def load(name: str, where: Path = ROOT) -> Any:
     return module
 
 
+rawreads = load("rawreads")
 rombuild = load("rombuild")
 
 RETAIL = ROOT / "roms" / "sfz2-jp-final.sfc"
@@ -73,7 +74,7 @@ def build_image(
     produced.unlink()
 
     entries = rombuild.entries_from_map({str(source): length for source, length in table.items()})
-    image = rombuild.build(bypass, entries).image
+    image = rombuild.build(bypass, entries, keep=rawreads.READS["jp"]).image
     free = OUT / f"jp-{name}-free.sfc"
     free.write_bytes(rewrite.declare_rom_only(image))
     return free

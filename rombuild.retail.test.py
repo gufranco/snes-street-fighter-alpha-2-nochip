@@ -210,4 +210,58 @@ class ImageTest(unittest.TestCase):
             self.assertEqual(destination, self.result.destinations[entry.index])
 
 
+RETAIL = {
+    "usa": ROOT / "roms" / "sfa2-usa-final.sfc",
+    "jp": ROOT / "roms" / "sfz2-jp-final.sfc",
+}
+
+STREAMS = {"usa": "usastreams", "jp": "jpstreams"}
+
+rawreads = load_module("rawreads")
+
+
+def reclaimed(region: str, keep: tuple[tuple[int, int], ...]) -> list[Any]:
+    script.skip_unless(RETAIL[region].exists(), f"{RETAIL[region]} is not present")
+    table = load_module(STREAMS[region]).STREAMS
+    entries = rombuild.entries_from_map({str(source): length for source, length in table})
+    found: list[Any] = rombuild.reclaimed_regions(dump.read(RETAIL[region]), entries, keep=keep)
+    return found
+
+
+def raw_reads_inside(regions: list[Any], keep: tuple[tuple[int, int], ...]) -> list[int]:
+    return [
+        ((span.bank - rombuild.WINDOW_BASE) << 16) | span.start
+        for span in rombuild.window_spans(keep)
+        for region in regions
+        if region.bank == span.bank and span.start < region.end and region.start < span.end
+    ]
+
+
+class RawReadTest(unittest.TestCase):
+    def test_no_region_reclaims_a_byte_the_game_reads_without_the_chip(self) -> None:
+        # Arrange
+        regions = ("usa", "jp")
+
+        # Act
+        found = {
+            region: raw_reads_inside(
+                reclaimed(region, rawreads.READS[region]), rawreads.READS[region]
+            )
+            for region in regions
+        }
+
+        # Assert
+        self.assertEqual(found, {"usa": [], "jp": []})
+
+    def test_without_the_record_the_japanese_layout_reclaims_the_dialogue_border(self) -> None:
+        # Arrange
+        keep = rawreads.JP
+
+        # Act
+        found = raw_reads_inside(reclaimed("jp", ()), keep)
+
+        # Assert
+        self.assertEqual(found, [0x1A2203])
+
+
 script.entry(__name__, unittest.main)

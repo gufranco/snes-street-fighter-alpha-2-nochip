@@ -297,6 +297,45 @@ class ReclaimTest(unittest.TestCase):
 
         self.assertEqual(rombuild.reclaimed_regions(self.ROM, [entry], lambda *_a: Consumed()), [])
 
+    def test_a_span_the_game_reads_raw_is_never_reclaimed(self) -> None:
+        # Arrange
+        entry = sdd1map.Entry(index=0, source=0x100000, target=None, length=4096)
+        middle = 0x100000 + 3 * rombuild.MIN_REGION
+
+        class Consumed:
+            end = 0x100000 + 6 * rombuild.MIN_REGION + 1
+
+        # Act
+        found = rombuild.reclaimed_regions(
+            self.ROM, [entry], lambda *_a: Consumed(), keep=((middle, 64),)
+        )
+
+        # Assert
+        window = rombuild.WINDOW_BASE + 0x10
+        self.assertEqual(
+            found,
+            [
+                rombuild.Region(window, 0x0000, 3 * rombuild.MIN_REGION),
+                rombuild.Region(window, 3 * rombuild.MIN_REGION + 64, 6 * rombuild.MIN_REGION),
+            ],
+        )
+
+    def test_a_kept_span_that_crosses_a_bank_edge_is_split_at_the_edge(self) -> None:
+        # Arrange
+        keep = ((0x10FFF0, 0x20),)
+
+        # Act
+        found = rombuild.window_spans(keep)
+
+        # Assert
+        self.assertEqual(
+            found,
+            [
+                rombuild.Region(rombuild.WINDOW_BASE + 0x10, 0xFFF0, 0x10000),
+                rombuild.Region(rombuild.WINDOW_BASE + 0x11, 0x0000, 0x0010),
+            ],
+        )
+
 
 class MergeTest(unittest.TestCase):
     def test_two_overlapping_regions_in_one_bank_become_one(self) -> None:

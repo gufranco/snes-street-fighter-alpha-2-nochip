@@ -21,6 +21,7 @@ def _load(name: str) -> Any:
 
 
 pack = _load("pack")
+rawreads = _load("rawreads")
 rombuild = _load("rombuild")
 spcfast = _load("spcfast")
 shinakuma = _load("shinakuma")
@@ -34,7 +35,8 @@ def build(region: str, workdir: Path) -> bytes:
     cart = repeatload.apply(gamefixes.apply(shinakuma.apply(spcfast.apply(retail))))
     bypass = prefight.apply(pack.assemble_bypass(region, cart, workdir))
     extra = ((prefight.TABLE_ADDRESS, prefight.table()),)
-    image = rombuild.build(bypass, pack.entries_for(region), extra=extra).image
+    entries = pack.entries_for(region)
+    image = rombuild.build(bypass, entries, extra=extra, keep=rawreads.READS[region]).image
     assert isinstance(image, bytes)
     declared = romimage.rewrite.declare_rom_only(pack.unify_headers(image))
     assert isinstance(declared, bytes)
