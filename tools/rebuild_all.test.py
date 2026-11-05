@@ -1,8 +1,9 @@
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -42,8 +43,11 @@ class EntryTest(unittest.TestCase):
 
 
 class AssembleTest(unittest.TestCase):
-    @staticmethod
-    def build(region: str, name: str, cart: bytes) -> tuple[Path, list[Any]]:
+    @override
+    def setUp(self) -> None:
+        self.out = Path(tempfile.mkdtemp())
+
+    def build(self, region: str, name: str, cart: bytes) -> tuple[Path, list[Any]]:
         asked: list[Any] = []
 
         def _record(args: Any, **_rest: Any) -> Any:
@@ -51,7 +55,7 @@ class AssembleTest(unittest.TestCase):
             (rebuild_all.ROOT / "asm" / args[4]).write_bytes(cart)
             return None
 
-        return rebuild_all.assemble(region, name, cart, execute=_record), asked
+        return rebuild_all.assemble(region, name, cart, execute=_record, out=self.out), asked
 
     def test_the_bypass_source_for_the_region_is_the_one_assembled(self) -> None:
         _, asked = self.build("jp", "probe", bytes(0x1000))
@@ -59,14 +63,24 @@ class AssembleTest(unittest.TestCase):
         self.assertIn(rebuild_all.BYPASS["jp"], asked[0][2])
 
     def test_the_staged_cartridge_is_written_beside_the_output(self) -> None:
-        self.build("jp", "probe", bytes(0x1000))
+        # Arrange
+        cart = bytes(0x1000)
 
-        self.assertTrue((rebuild_all.OUT / "jp-probe-cart.sfc").exists())
+        # Act
+        self.build("jp", "probe", cart)
+
+        # Assert
+        self.assertEqual((self.out / "jp-probe-cart.sfc").read_bytes(), cart)
 
     def test_it_returns_the_assembled_image_under_the_build_directory(self) -> None:
-        found, _ = self.build("jp", "probe", bytes(0x1000))
+        # Arrange
+        cart = bytes(0x1000)
 
-        self.assertEqual(found, rebuild_all.OUT / "jp-probe-bypass.sfc")
+        # Act
+        found, _ = self.build("jp", "probe", cart)
+
+        # Assert
+        self.assertEqual(found, self.out / "jp-probe-bypass.sfc")
 
     def test_the_scratch_file_the_assembler_wrote_is_removed(self) -> None:
         self.build("jp", "probe", bytes(0x1000))
@@ -102,6 +116,10 @@ class ImageSourceTest(unittest.TestCase):
 
 
 class CommandTest(unittest.TestCase):
+    @override
+    def setUp(self) -> None:
+        self.out = Path(tempfile.mkdtemp())
+
     @staticmethod
     def headed() -> bytes:
         rom = bytearray(0x400000)
@@ -115,10 +133,11 @@ class CommandTest(unittest.TestCase):
         rom = self.headed()
         code = rebuild_all.main(
             carts=carts,
-            build=lambda region, name, _c: rebuild_all.OUT / f"{region}-{name}-bypass.sfc",
+            build=lambda region, name, _c: self.out / f"{region}-{name}-bypass.sfc",
             source_for=lambda _n, _b: (rom, ()),
             table_for=lambda _r: [],
             say=said.append,
+            out=self.out,
         )
         return code, said
 
@@ -138,11 +157,19 @@ class CommandTest(unittest.TestCase):
         self.assertEqual(len(said), 3)
 
     def test_the_free_image_is_written_where_the_name_says(self) -> None:
-        self.run_with({"jp": {"base": b""}})
+        # Arrange
+        carts: dict[str, dict[str, Any]] = {"jp": {"base": b""}}
 
-        self.assertTrue((rebuild_all.OUT / "jp-base-free.sfc").exists())
+        # Act
+        self.run_with(carts)
+
+        # Assert
+        self.assertEqual(
+            (self.out / "jp-base-free.sfc").stat().st_size, rebuild_all.rombuild.IMAGE_SIZE
+        )
 
     def test_the_prefight_variant_carries_its_table(self) -> None:
+        # Arrange
         rom = self.headed()
         seen: list[str] = []
 
@@ -150,14 +177,17 @@ class CommandTest(unittest.TestCase):
             seen.append(name)
             return rom, ()
 
+        # Act
         rebuild_all.main(
             carts={"jp": {rebuild_all.PREFIGHT_VARIANT: b""}},
-            build=lambda region, name, _c: rebuild_all.OUT / f"{region}-{name}-bypass.sfc",
+            build=lambda region, name, _c: self.out / f"{region}-{name}-bypass.sfc",
             source_for=_source,
             table_for=lambda _r: [],
             say=lambda _l: None,
+            out=self.out,
         )
 
+        # Assert
         self.assertEqual(seen, [rebuild_all.PREFIGHT_VARIANT])
 
 

@@ -46,9 +46,10 @@ def assemble(
     name: str,
     cart: bytes | bytearray,
     execute: Callable[..., Any] = subprocess.run,
+    out: Path = OUT,
 ) -> Path:
-    OUT.mkdir(parents=True, exist_ok=True)
-    staged = OUT / f"{region}-{name}-cart.sfc"
+    out.mkdir(parents=True, exist_ok=True)
+    staged = out / f"{region}-{name}-cart.sfc"
     staged.write_bytes(cart)
     output = f"{region}-{name}-bypass.sfc"
     execute(
@@ -56,7 +57,7 @@ def assemble(
             sys.executable,
             "build.py",
             f"asm/{BYPASS[region]}",
-            str(staged.relative_to(ROOT)),
+            str(staged.resolve()),
             output,
         ],
         cwd=ROOT,
@@ -64,7 +65,7 @@ def assemble(
         capture_output=True,
     )
     produced = ROOT / "asm" / output
-    target = OUT / output
+    target = out / output
     target.write_bytes(produced.read_bytes())
     produced.unlink()
     return target
@@ -89,8 +90,9 @@ def main(
     source_for: Callable[[str, Path], tuple[Any, tuple[Any, ...]]] = image_source,
     table_for: Callable[[str], Any] = entries_for,
     say: Callable[[str], None] = print,
+    out: Path = OUT,
 ) -> int:
-    OUT.mkdir(parents=True, exist_ok=True)
+    out.mkdir(parents=True, exist_ok=True)
     carts = (
         {
             region: load("rebuild_all.retail", HERE).variants(dump.read(path))
@@ -105,7 +107,7 @@ def main(
             bypass = build(region, name, cart)
             source, extra = source_for(name, bypass)
             image = rombuild.build(source, entries, extra=extra).image
-            free = OUT / f"{region}-{name}-free.sfc"
+            free = out / f"{region}-{name}-free.sfc"
             free.write_bytes(rewrite.declare_rom_only(image))
             say(f"  {region}-{name}: cart, bypass, free ({len(entries)} streams)")
     return 0
